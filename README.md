@@ -4,7 +4,7 @@ Repetitive prompts that have graduated into reusable Claude Code skills.
 
 ## Skills TUI
 
-Skills in this repo are organized to be run with the [skills-tui](https://github.com/kevinpinscoe/skills-tui) — a terminal UI for browsing and executing skills via Claude Code. The binary installs to `~/skills/skills`.
+Skills in this repo are organized to be run with the [skills-tui](https://github.com/kevinpinscoe/skills-tui) — a terminal UI for browsing and executing skills via Claude Code.
 
 They can also be run directly with the Claude CLI:
 

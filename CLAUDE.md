@@ -45,6 +45,10 @@ See `skills/template.md` for the canonical template. Every skill file should hav
 - Category directories: lowercase, hyphenated (e.g. `task-management`, `aws`)
 - Skill files: lowercase, hyphenated, descriptive verb-noun (e.g. `check-backup-is-current.md`, `create-task-for-inbox.md`)
 
+## Session resumption
+
+After every session, a `resume.sh` script is saved to the repo root containing the command to resume the last Claude session. This file is git-ignored and should never be committed.
+
 ## Claude's role
 
 - Human-authored skills are the norm; Claude may create skills when explicitly asked
