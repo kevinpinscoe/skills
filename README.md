@@ -1,10 +1,25 @@
 # My personal skills
 
-There are repetitive prompts which have graduated into skills.
-
-Many of these skills are run from command line however they will become over time agentic.
+Repetitive prompts that have graduated into reusable Claude Code skills.
 
 ## Skills TUI
 
-I had generated a TUI to flip through them for execution.
+Skills in this repo are organized to be run with the [skills-tui](https://github.com/kevinpinscoe/skills-tui) — a terminal UI for browsing and executing skills via Claude Code. The binary installs to `~/skills/skills`.
 
+They can also be run directly with the Claude CLI:
+
+```
+claude "$(cat skills/<category>/<skill>.md)"
+```
+
+## Structure
+
+Skills are organized in two levels: **category directory** → **skill Markdown file**.
+
+```
+skills/
+├── template.md
+├── task-management/
+├── aws/
+└── ...
+```

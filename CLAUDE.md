@@ -10,8 +10,7 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
 ~/skills/
 ├── CLAUDE.md               # This file
 ├── README.md
-├── commands/
-│   └── skill               # Compiled Go binary (the skill CLI)
+├── skills                  # Compiled Go binary (from github.com/kevinpinscoe/skills-tui)
 └── skills/
     ├── template.md         # Template for new skill files
     ├── task-management/    # Task management related skills
@@ -22,7 +21,7 @@ Skills are organized in two levels: **category directory** → **skill Markdown 
 
 ## The `skill` CLI
 
-Binary lives at `~/skills/commands/skill`. Source is in this repo.
+Binary lives at `~/skills/skills`. Source is at https://github.com/kevinpinscoe/skills-tui.
 
 **Behavior:**
 1. Presents an interactive chooser listing category directories under `~/skills/skills`
