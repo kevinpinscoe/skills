@@ -1,0 +1,10 @@
+[Unit]
+Description=Put email offers on Google Calendar
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/kinscoe/skills/skills/daily/put-email-offers-on-my-calendar/run.sh
+StandardOutput=journal
+StandardError=journal
