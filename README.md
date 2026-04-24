@@ -14,12 +14,13 @@ Skills are three levels deep: **category directory** → **skill directory** →
 
 ```
 ~/skills/skills/
+├── command-line/
+│   └── install-command-line-command/
+│       └── SKILL.md
 ├── daily/
 │   └── put-email-offers-on-my-calendar/
 │       └── SKILL.md
-└── <category>/
-    └── <skill-name>/
-        └── SKILL.md
+└── task-management/
 ```
 
 The `skill` command reads `~/skills/skills` by default (overridable via `SKILLS_DIR`). It only lists directories that contain a `SKILL.md` file.
