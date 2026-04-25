@@ -9,16 +9,8 @@ Install a command-line tool (script or binary; assume a single file unless clari
 
 Before doing anything, read:
 
-- `~/skills/README.md`
-- `~/skills/CLAUDE.md`
-- `~/cheats/README.md`
-- `~/cheats/CLAUDE.md`
-- `~/.dotfiles/README.md`
-- `~/.dotfiles/CLAUDE.md`
-- `~/tools/README.md`
-- `~/tools/CLAUDE.md`
-- `~/todo/README.md`
-- `~/todo/CLAUDE.md`
+- `~/.dotfiles/CLAUDE.md` — binary install paths, gitsign warning, stow structure
+- `~/todo/CLAUDE.md` — TODO entry format and folder mapping
 
 ## Requirements
 
