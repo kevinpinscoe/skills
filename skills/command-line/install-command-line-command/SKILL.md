@@ -36,6 +36,8 @@ Before doing anything, read:
 
 ### 1. Gather information
 
+**Ask questions one at a time** — do not present multiple questions at once. Wait for the user's answer before asking the next question.
+
 - Ask for the command name, then perform the uniqueness/collision evaluation.
   - Use `command -v`, `type -a`, and a direct check of `~/.local/bin` to detect collisions.
 - Ask for a link to the best documentation to use for installation instructions.
@@ -46,18 +48,21 @@ Before doing anything, read:
 
 ### 2. Install on the current host
 
+**Install location preference:** Prefer installing third-party tools to `~/.local/bin/`. However, if the tool's native installer or a system package manager (e.g. `dnf`, `brew`, `apt`, `npm`) is the standard/recommended method, use that instead — do not fight the tool's ecosystem.
+
 Detect the current platform with `uname -s` (and `/etc/os-release` on Linux):
 
-- **Fedora Linux**: Download the binary and install to `~/.local/bin/`:
+- **Fedora Linux**: Prefer downloading the binary to `~/.local/bin/`:
   ```bash
   curl -sSfL <download-url> -o ~/.local/bin/<command> && chmod +x ~/.local/bin/<command>
   ```
-  Create `~/.local/bin/` first if it does not exist.
-- **macOS (Apple Silicon)**: Prefer `brew install <package>` — Homebrew manages the PATH automatically.
-- **Raspberry Pi 5 (Debian Trixie)**: Same convention as Fedora — download to `~/.local/bin/`:
+  Create `~/.local/bin/` first if it does not exist. If the tool provides a `dnf` package or official installer, that is also acceptable.
+- **macOS (Apple Silicon)**: Prefer `brew install <package>` — Homebrew manages the PATH automatically. If no Homebrew formula exists, fall back to `~/.local/bin/`.
+- **Raspberry Pi 5 (Debian Trixie)**: Prefer downloading to `~/.local/bin/`:
   ```bash
   curl -sSfL <download-url> -o ~/.local/bin/<command> && chmod +x ~/.local/bin/<command>
   ```
+  If the tool provides an `apt` package or official installer, that is also acceptable.
 
 If the tool requires or creates configuration files under the home directory:
 - Add them to `~/.dotfiles` using the GNU Stow symlink method.
@@ -113,3 +118,19 @@ Host mapping:
 | Raspberry Pi 5 (Debian) | `~/todo/rpi/TODO.md` |
 
 Only append to hosts that were included in the user's requested OS list and are not the current host. Commit changes to `~/todo` only after explicit user confirmation.
+
+### 5. Commit and push all affected repos
+
+After the user confirms, commit and push changes in every repository that was modified. The affected repos for a typical install are:
+
+- `~/.dotfiles` — cheat sheet added under `home/cheats/`
+- `~/todo` — TODO entries appended
+- `~/skills` — SKILL.md updated (if modified during the session)
+
+For each repo:
+1. `cd` into the repo root
+2. Stage only the relevant files (not `git add -A`)
+3. Commit with a short message describing the change (e.g. `chore: install lfk cheat sheet`)
+4. Push to the remote
+
+**Important — `~/.dotfiles` uses gitsign (Sigstore/browser OAuth).** Remind the user that commits in `~/.dotfiles` require a browser window to complete signing and will fail over SSH without a display.
