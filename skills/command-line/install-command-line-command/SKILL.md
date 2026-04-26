@@ -1,3 +1,8 @@
+---
+name: install-command-line-command
+description: Prompts me for required information before installing a command line tool and then generates a cheat sheet for it
+---
+
 # Install a command-line tool
 
 Install a command-line tool (script or binary; assume a single file unless clarified) using the information the user provides. Then:

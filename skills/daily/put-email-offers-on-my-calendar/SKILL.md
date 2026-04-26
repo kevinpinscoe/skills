@@ -1,3 +1,8 @@
+---
+name: put-email-offers-on-my-calendar
+description: Checks my gmail for emails that look like time-boxed offers and puts them on to my Google Calendar as an all-day event
+---
+
 # Put Email Offers on My Calendar
 
 > Scans the Gmail inbox for promotional offers and deal emails, then creates all-day Google Calendar events on Kevin's personal calendar covering the offer's validity window.

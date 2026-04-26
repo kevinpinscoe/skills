@@ -1,3 +1,8 @@
+---
+name: check-for-or-upgrade-docker-containers-on-this-system
+description: Checks the current version or SHA of Docker images in the containers I have setup and reports if an upgrade can be performed and what version going to what upgrade version
+---
+
 # Check for and Upgrade Docker Container Images
 
 > Run the container update check script, report which images have updates available, ask the user which containers to update, then apply the selected updates following each container's documented procedure.
