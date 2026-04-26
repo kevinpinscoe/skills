@@ -29,21 +29,30 @@ _Omit CONTAINERS to check and offer updates for all containers._
 
 3. If no `[UPDATE]` or `[NEW]` lines exist, report "All containers are up to date." and stop.
 
-4. Present the results to the user in a clear table:
-   - List each container with an update available
-   - Include the container name and a note if it has any special post-update requirements (see Notes)
+4. For each container with an `[UPDATE]` or `[NEW]`, look up the current and available versions:
+   ```bash
+   # Current local image reference and version label
+   sudo docker inspect <name> --format '{{.Config.Image}} | {{index .Config.Labels "org.opencontainers.image.version"}}'
+   # Remote image version (use the image reference from above)
+   skopeo inspect docker://<image-ref> | python3 -c "import json,sys; d=json.load(sys.stdin); v=d.get('Labels',{}).get('org.opencontainers.image.version','') or d.get('Labels',{}).get('build_version','') or d['Digest'][:19]; print(v)"
+   ```
+   Use whatever version info is available — OCI version label preferred, short digest as fallback.
+
+5. Present the results to the user in a clear table with columns: **Container**, **Current Version**, **New Version**, **Notes**:
+   - Populate Current Version and New Version from step 4 (show short digest if no version label is available)
+   - Add a note in the Notes column if the container has special post-update requirements (see Notes section)
    - Ask: "Which containers would you like to update? Reply with a comma-separated list of names, `all`, or `none`."
 
-5. Wait for the user's reply. If the user says `none`, stop.
+6. Wait for the user's reply. If the user says `none`, stop.
 
-6. For each container the user selected, apply the update using the procedure in `/opt/containers/UPDATE.md`. Read that file first, then follow the container's specific section. The general pattern for most containers is:
+7. For each container the user selected, apply the update using the procedure in `/opt/containers/UPDATE.md`. Read that file first, then follow the container's specific section. The general pattern for most containers is:
    ```bash
    cd /opt/containers/<name>
    sudo docker compose pull
    sudo systemctl restart <name>
    ```
 
-7. For containers with special post-update requirements, perform the additional steps documented below **after** restarting the service:
+8. For containers with special post-update requirements, perform the additional steps documented below **after** restarting the service:
 
    **openbao** — The container starts sealed after every restart. After `systemctl restart openbao`, unseal manually with 3 of the 5 unseal keys. Ask the user to provide 3 unseal keys, then run:
    ```bash
@@ -69,11 +78,17 @@ _Omit CONTAINERS to check and offer updates for all containers._
    sudo systemctl restart woodpecker-ci
    ```
 
-8. After each container update, verify the service is healthy:
+9. After each container update, verify the service is healthy:
    - Check `sudo docker ps --filter name=<container> --format 'table {{.Names}}\t{{.Status}}'` — status should be `Up ... (healthy)` or `Up ...`
    - Run the health check for that container as documented in its `RUNBOOK.md` or `UPDATE.md`
 
-9. Report a final summary table: container name, old image digest (from script output), new status (Updated / Failed / Skipped).
+10. Report a final summary table: **Container**, **From Version**, **To Version**, **Status** (Updated / Failed / Skipped).
+
+11. Re-run the update check script to confirm all updated containers are now current:
+    ```bash
+    sudo bash /usr/local/sbin/automation/check-container-updates.sh 2>&1
+    ```
+    All previously-updated containers should now show `[OK]`. If any still show `[UPDATE]`, flag them for the user.
 
 ## Success Criteria
 
