@@ -1,3 +1,8 @@
+---
+name: skill-directory-name
+description: One sentence describing what this skill does.
+---
+
 # <Skill Name>
 
 > One sentence describing what this skill does.
@@ -14,15 +19,13 @@
 |------|-------------|---------|
 | `PARAM` | What it controls | `value` |
 
-_Remove this section if the skill takes no inputs._
+_Omit this section if the skill takes no parameters._
 
 ## Instructions
 
-Step-by-step instructions for Claude to follow. Be explicit:
-
-1. Do X by running Y
-2. If condition Z, then do W
-3. Report the result as: ...
+1. **Step label** — describe what to do and how (be explicit; include exact commands or MCP calls).
+2. **Step label** — if condition Z, then do W; otherwise do X.
+3. **Report** — output results as: ...
 
 ## Success Criteria
 
