@@ -102,6 +102,6 @@ If a skill installs or configures something on this host, **ask the user** wheth
 ## Claude's role
 
 - Human-authored skills are the norm; Claude may create skills when explicitly asked
-- When creating a skill, follow the template in `skills/template.md` exactly, placing it at `skills/<category>/<skill-name>/SKILL.md`; YAML frontmatter is required; use existing `SKILL.md` files as style reference
+- **When creating a new skill: read `skills/template.md` first, then follow it exactly.** Place the new file at `skills/<category>/<skill-name>/SKILL.md`. YAML frontmatter is required. Use existing `SKILL.md` files as additional style reference, but `template.md` is the authoritative source of truth for structure.
 - Do not modify existing skills unless asked
 - When executing a skill, follow its Instructions section precisely and report against its Success Criteria
