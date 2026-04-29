@@ -15,6 +15,9 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
 ├── skills                  # Compiled Go binary (from github.com/kevinpinscoe/skills-tui)
 └── skills/
     ├── template.md         # Template for new skill files
+    ├── app/
+    │   └── install-desktop-app/
+    │       └── SKILL.md
     ├── command-line/
     │   └── install-command-line-command/
     │       ├── SKILL.md
