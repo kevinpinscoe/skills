@@ -15,8 +15,8 @@ Runs the `read-my-gmail-for-tldr-articles` skill daily at 10:30am. Searches Gmai
 
 | File | Installed path | Collection point copy |
 |---|---|---|
-| Service | `/etc/systemd/system/read-my-gmail-for-tldr-articles.service` | `./read-my-gmail-for-tldr-articles.service` |
-| Timer | `/etc/systemd/system/read-my-gmail-for-tldr-articles.timer` | `./read-my-gmail-for-tldr-articles.timer` |
+| Service | `~/.config/systemd/user/read-my-gmail-for-tldr-articles.service` | `./read-my-gmail-for-tldr-articles.service` |
+| Timer | `~/.config/systemd/user/read-my-gmail-for-tldr-articles.timer` | `./read-my-gmail-for-tldr-articles.timer` |
 
 ## Timer schedule
 
@@ -24,7 +24,9 @@ Runs the `read-my-gmail-for-tldr-articles` skill daily at 10:30am. Searches Gmai
 
 ## User
 
-Runs as `kinscoe`. The Claude Code CLI and Gmail MCP credentials are scoped to this user.
+Runs as `kinscoe` (user service). The Claude Code CLI and Gmail MCP credentials are scoped to this user.
+
+> **Note:** This must be a user service (`~/.config/systemd/user/`), not a system service (`/etc/systemd/system/`). A system service with `User=kinscoe` cannot execute scripts from `/home/` under SELinux enforcing mode — the `user_home_t` context is silently denied by a `dontaudit` rule with no AVC logged.
 
 ## WorkingDirectory
 
@@ -41,46 +43,46 @@ SKILL_DIR=/home/kinscoe/skills/skills/daily/read-my-gmail-for-tldr-articles
 
 chmod +x "$SKILL_DIR/run.sh"
 
-sudo -A cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.service" /etc/systemd/system/
-sudo -A cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.timer"   /etc/systemd/system/
+cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.service" ~/.config/systemd/user/
+cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.timer"   ~/.config/systemd/user/
 
-sudo -A systemctl daemon-reload
-sudo -A systemctl enable --now read-my-gmail-for-tldr-articles.timer
+systemctl --user daemon-reload
+systemctl --user enable --now read-my-gmail-for-tldr-articles.timer
 ```
 
 After any change to the unit files in this directory, re-copy and reload:
 
 ```sh
-sudo -A cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.service" /etc/systemd/system/
-sudo -A cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.timer"   /etc/systemd/system/
-sudo -A systemctl daemon-reload
-sudo -A systemctl restart read-my-gmail-for-tldr-articles.timer
+cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.service" ~/.config/systemd/user/
+cp "$SKILL_DIR/read-my-gmail-for-tldr-articles.timer"   ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user restart read-my-gmail-for-tldr-articles.timer
 ```
 
 ## Enable / disable
 
 ```sh
 # Enable (start on boot)
-sudo -A systemctl enable --now read-my-gmail-for-tldr-articles.timer
+systemctl --user enable --now read-my-gmail-for-tldr-articles.timer
 
 # Disable (stop scheduled runs)
-sudo -A systemctl disable --now read-my-gmail-for-tldr-articles.timer
+systemctl --user disable --now read-my-gmail-for-tldr-articles.timer
 ```
 
 ## Start / stop
 
 ```sh
 # Run immediately without waiting for 10:30am
-sudo -A systemctl start read-my-gmail-for-tldr-articles.service
+systemctl --user start read-my-gmail-for-tldr-articles.service
 
 # Stop a currently running job
-sudo -A systemctl stop read-my-gmail-for-tldr-articles.service
+systemctl --user stop read-my-gmail-for-tldr-articles.service
 ```
 
 ## Next trigger
 
 ```sh
-systemctl list-timers read-my-gmail-for-tldr-articles.timer
+systemctl --user list-timers read-my-gmail-for-tldr-articles.timer
 ```
 
 ## Health check
@@ -98,13 +100,13 @@ The article count should be 40–60 on a normal day across all TLDR editions.
 
 ```sh
 # Most recent run
-journalctl -u read-my-gmail-for-tldr-articles.service -n 100
+journalctl --user -u read-my-gmail-for-tldr-articles.service -n 100
 
 # Follow in real time
-journalctl -u read-my-gmail-for-tldr-articles.service -f
+journalctl --user -u read-my-gmail-for-tldr-articles.service -f
 
 # All historical runs
-journalctl -u read-my-gmail-for-tldr-articles.service
+journalctl --user -u read-my-gmail-for-tldr-articles.service
 ```
 
 ## Monitoring
@@ -117,7 +119,8 @@ No external monitoring configured. Check logs and output file after the first fe
 |---|---|---|
 | No output file created | Gmail MCP auth expired | Re-authenticate Gmail MCP interactively, then restart the service |
 | Output file has 0 articles | TLDR emails not yet delivered at 10:30am | Run manually later in the day; emails typically arrive 11am–2pm |
-| Timer not firing | Machine was off; `Persistent=true` will catch up on next boot | Check `systemctl list-timers` |
+| Timer not firing | Machine was off; `Persistent=true` will catch up on next boot | Check `systemctl --user list-timers` |
+| Permission denied on run.sh | Installed as system service instead of user service | Remove from `/etc/systemd/system/`, install to `~/.config/systemd/user/`, reload with `systemctl --user` |
 | Claude CLI not found | Path issue in non-interactive shell | Confirm `~/.local/bin/claude` exists; update `run.sh` if path changed |
 
 ## Additional notes

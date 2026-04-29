@@ -7,4 +7,5 @@ SKILL_FILE="$SKILL_DIR/SKILL.md"
 
 exec "$HOME/.local/bin/claude" \
   --dangerously-skip-permissions \
-  -p "$(cat "$SKILL_FILE")"
+  -p \
+  -- "$(cat "$SKILL_FILE")"

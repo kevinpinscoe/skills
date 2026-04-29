@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=kinscoe
 ExecStart=/home/kinscoe/skills/skills/daily/read-my-gmail-for-tldr-articles/run.sh
 StandardOutput=journal
 StandardError=journal
