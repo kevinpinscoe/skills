@@ -1,0 +1,11 @@
+[Unit]
+Description=Read TLDR newsletter emails and save articles to Personal Journal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=kinscoe
+ExecStart=/home/kinscoe/skills/skills/daily/read-my-gmail-for-tldr-articles/run.sh
+StandardOutput=journal
+StandardError=journal
