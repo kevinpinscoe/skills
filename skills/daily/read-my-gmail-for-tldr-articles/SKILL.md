@@ -86,6 +86,10 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
     ```
     Also print this summary to the console after each file is written.
 
+11. **Label all processed threads** — after all date groups have been processed (all output files written), ensure the Gmail labels `claude` and `tldr` exist by calling `mcp__claude_ai_Gmail__list_labels` and creating any that are missing with `mcp__claude_ai_Gmail__create_label`. Then call `mcp__claude_ai_Gmail__label_thread` for every thread ID found in step 1, applying both labels to each thread.
+
+12. **Archive all processed threads** — for each thread ID found in step 1, call `mcp__claude_ai_Gmail__unlabel_thread` with label name `INBOX` to remove it from the inbox (this is the Gmail archive action). Do this after labeling in step 11.
+
 ## Success Criteria
 
 - One `TLDR-<MM-DD-YYYY>.md` file exists per day of emails found within the lookback window.
@@ -97,6 +101,8 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 - No duplicate article sections exist within a single day's file.
 - Each output file ends with a `## Run summary` section showing editions scanned, articles written, and duplicates skipped.
 - The same summary is printed to the console.
+- All processed threads have both the `claude` and `tldr` Gmail labels applied.
+- All processed threads are archived (removed from inbox).
 
 ## Notes
 
