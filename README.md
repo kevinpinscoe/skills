@@ -14,13 +14,22 @@ Skills are three levels deep: **category directory** → **skill directory** →
 
 ```
 ~/skills/skills/
+├── app/
+│   └── install-desktop-app/
+│       └── SKILL.md
 ├── command-line/
 │   └── install-command-line-command/
 │       └── SKILL.md
 ├── daily/
-│   └── put-email-offers-on-my-calendar/
+│   ├── put-email-offers-on-my-calendar/
+│   │   └── SKILL.md
+│   ├── read-my-gmail-for-tldr-articles/
+│   │   └── SKILL.md
+│   └── run-through-my-os-todos/
 │       └── SKILL.md
-└── task-management/
+└── docker/
+    └── check-for-or-upgrade-docker-containers-on-this-system/
+        └── SKILL.md
 ```
 
 The `skill` command reads `~/skills/skills` by default (overridable via `SKILLS_DIR`). It only lists directories that contain a `SKILL.md` file.
