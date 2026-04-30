@@ -21,12 +21,13 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 | Name | Description | Default |
 |------|-------------|---------|
 | `SERVICE_NAME` | Name of the new service — used as container directory name, DNS subdomain (`<name>.kevininscoe.com`), and backup path | _(required — ask the user)_ |
+| `DOCS_URL` | URL of the official documentation for the software being installed (e.g. Docker Hub page, project README, or official install guide) — used when writing RUNBOOK.md and configuring the container | _(required — ask the user)_ |
 
 ## Instructions
 
 1. Read `~/ai/directives/when-creating-a-docker-container-for-self-hosting.md` in full before taking any action.
 
-2. Ask the user for the service name if not already provided. Confirm it before proceeding.
+2. Ask the user for the service name if not already provided. Then ask for the documentation URL. Confirm both before proceeding.
 
 3. Follow the directive's Steps 1–12 in order. Do not skip steps or deviate from any practice without flagging it to the user and getting explicit approval first.
 
