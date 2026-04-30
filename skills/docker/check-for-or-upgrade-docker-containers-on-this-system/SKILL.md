@@ -11,7 +11,7 @@ description: Checks the current version or SHA of Docker images in the container
 
 - `skopeo` installed (`skopeo --version`)
 - Docker Engine running (`sudo docker ps`)
-- `/usr/local/sbin/automation/check-container-updates.sh` present and executable
+- `~/admin/check-container-updates.sh` present and executable
 - `/opt/containers/UPDATE.md` present (per-container update procedures)
 - `sudo` access (required to restart systemd services and run Docker commands)
 
@@ -27,7 +27,7 @@ _Omit CONTAINERS to check and offer updates for all containers._
 
 1. Run the update check script and capture its output:
    ```bash
-   sudo bash /usr/local/sbin/automation/check-container-updates.sh 2>&1
+   sudo bash ~/admin/check-container-updates.sh 2>&1
    ```
 
 2. Parse the output. Collect every line tagged `[UPDATE]` — these are containers where the remote digest differs from the local image. Also note any `[NEW]` lines (image exists remotely but not pulled locally). Ignore `[OK]` and `[SKIP]` lines.
@@ -91,7 +91,7 @@ _Omit CONTAINERS to check and offer updates for all containers._
 
 11. Re-run the update check script to confirm all updated containers are now current:
     ```bash
-    sudo bash /usr/local/sbin/automation/check-container-updates.sh 2>&1
+    sudo bash ~/admin/check-container-updates.sh 2>&1
     ```
     All previously-updated containers should now show `[OK]`. If any still show `[UPDATE]`, flag them for the user.
 
