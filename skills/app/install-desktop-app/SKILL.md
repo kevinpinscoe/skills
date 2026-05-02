@@ -93,9 +93,9 @@ If yes:
 - Create `~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md` using the same format as Step 3, populated for macOS.
 - Append a TODO entry to `~/todo/mac/TODO.md` in the format used by that file:
   ```
-  YYYY-MM-DD <install command>  # install <App Name> on macOS (see <docs URL>, runbook: ~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md)
+  YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md)
   ```
-  Use today's date. Keep the entry on a single line.
+  Use today's date. Keep the entry on a single line. The `cd ~/.dotfiles && git pull &&` prefix ensures the runbook is present before the install runs.
 
 **5b) Raspberry Pi 5 inquiry**
 
@@ -107,9 +107,9 @@ If yes:
 - Create `~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md` using the same format as Step 3, populated for Debian Trixie on ARM64.
 - Append a TODO entry to `~/todo/rpi/TODO.md` in the format used by that file:
   ```
-  YYYY-MM-DD <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, runbook: ~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md)
+  YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md)
   ```
-  Use today's date. Keep the entry on a single line.
+  Use today's date. Keep the entry on a single line. The `cd ~/.dotfiles && git pull &&` prefix ensures the runbook is present before the install runs.
 
 ### 6) Commit and push all changed repos
 
