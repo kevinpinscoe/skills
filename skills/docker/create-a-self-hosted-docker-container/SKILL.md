@@ -29,7 +29,28 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 
 2. Ask the user for the service name if not already provided. Then ask for the documentation URL. Confirm both before proceeding.
 
-3. Follow the directive's Steps 1–12 in order. Do not skip steps or deviate from any practice without flagging it to the user and getting explicit approval first.
+3. Follow the directive's Steps 1–13 in order. Do not skip steps or deviate from any practice without flagging it to the user and getting explicit approval first.
+
+4. After all files under `/opt/containers/<service-name>/` have been created or modified, ensure the `/opt/containers` repo git-tracks them:
+   - Inspect the repo's `.gitignore` (if it exists). For each of the following patterns that is not already whitelisted, add a negation entry:
+     ```
+     !*.md
+     !*.yml
+     !*.sh
+     !*.service
+     !*.timer
+     !scripts/**
+     ```
+   - Stage, commit, and push all new or modified files matching those patterns in the service subdirectory:
+     ```bash
+     cd /opt/containers
+     git add <service-name>/*.md <service-name>/*.yml <service-name>/*.sh \
+             <service-name>/*.service <service-name>/*.timer \
+             <service-name>/scripts/ 2>/dev/null || true
+     git commit -m "chore(<service-name>): track config, scripts, and docs"
+     git push
+     ```
+   - Confirm the push succeeded and the files appear in `git log --stat HEAD`.
 
 ## Success Criteria
 
