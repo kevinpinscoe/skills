@@ -18,7 +18,7 @@ Before doing anything, read:
 ## Requirements
 
 - You must have official installation documentation (or a reputable source) for the application and platform.
-- You must create a runbook (`RUNBOOK.md`) describing what you did.
+- You must create a runbook (`RUNBOOK.md`) describing what you did — **for every platform the app is confirmed for**, including the current host.
 
 ## Actions to take
 
@@ -49,7 +49,7 @@ Where:
 - `<platform>` maps into already defined directories in `~/.dotfiles/desktop-setup/` (e.g. `fedora-kde`, `MacOS`, `rpi5`). Choose the platform directory that matches the platform gathered in Step 1.
 - `<app-slug>` is the application name lowercased, with spaces replaced by hyphens (e.g. `it-commander`).
 
-### 3) Create the runbook
+### 3) Create the runbook for the current platform
 
 Create:
 
@@ -79,12 +79,50 @@ Ask the user to verify:
 
 If there are issues, record symptoms and the resolution steps in the `## Troubleshooting` section of the runbook.
 
-### 5) Commit and push affected repos
+### 5) Cross-platform inquiry
 
-After the user confirms the application works:
+Ask one question at a time and wait for each answer before asking the next.
 
-- Ask whether they want you to commit and push changes in each repository you modified (typically `~/.dotfiles`). Do not commit/push unless they explicitly say yes.
-- Stage only relevant files (avoid `git add -A`)
-- Use a short commit message (e.g. `chore: add <app> runbook`)
+**5a) macOS inquiry**
+
+Ask: "Should this app also be installed on macOS?"
+
+If yes:
+- Ask: "Do you have an installation documentation link for macOS?"
+- If the user provides a link, use it. If not, research and find a reputable official source.
+- Create `~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md` using the same format as Step 3, populated for macOS.
+- Append a TODO entry to `~/todo/mac/TODO.md` in the format used by that file:
+  ```
+  YYYY-MM-DD <install command>  # install <App Name> on macOS (see <docs URL>, runbook: ~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md)
+  ```
+  Use today's date. Keep the entry on a single line.
+
+**5b) Raspberry Pi 5 inquiry**
+
+Ask: "Should this app also be installed on Raspberry Pi 5 (Debian Trixie)?"
+
+If yes:
+- Ask: "Do you have an installation documentation link for Raspberry Pi 5 / Debian Trixie?"
+- If the user provides a link, use it. If not, research and find a reputable official source.
+- Create `~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md` using the same format as Step 3, populated for Debian Trixie on ARM64.
+- Append a TODO entry to `~/todo/rpi/TODO.md` in the format used by that file:
+  ```
+  YYYY-MM-DD <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, runbook: ~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md)
+  ```
+  Use today's date. Keep the entry on a single line.
+
+### 6) Commit and push all changed repos
+
+This step is **required** — the skill is not complete until every file changed by this skill has been committed and pushed. Do not skip or defer.
+
+For each repository modified (`~/.dotfiles`, `~/todo`, or both):
+
+1. Show the user a summary of files changed and the proposed commit message.
+2. Ask for explicit confirmation before committing.
+3. Once confirmed, stage only the relevant files (never `git add -A`), commit, and push to origin.
+
+Commit message format: `chore: add <app-slug> runbook` (for `~/.dotfiles`), `chore: add <app-slug> TODO entries` (for `~/todo`).
 
 Important: `~/.dotfiles` uses `gitsign` (Sigstore/browser OAuth). Remind the user that signing may require a browser window and can fail over SSH without a display.
+
+Do not mark the skill complete until `git push` has succeeded for every repository that was modified.
