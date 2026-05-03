@@ -25,7 +25,6 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
     ├── daily/
     │   └── put-email-offers-on-my-calendar/
     │       ├── SKILL.md
-    │       └── resume.sh
     ├── docker/
     │   └── check-for-or-upgrade-docker-containers-on-this-system/
     │       └── SKILL.md
@@ -33,8 +32,6 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
 ```
 
 Skills are organized three levels deep: **category directory** → **skill directory** → `SKILL.md`. The `skill` CLI only lists skill directories that contain a `SKILL.md` file.
-
-Each skill directory may also contain a `resume.sh` that resumes a prior Claude Code session for that skill (`claude --resume <session-id>`).
 
 ## The `skill` CLI
 
@@ -82,7 +79,7 @@ A skill directory may contain a `.claude/settings.local.json` to grant skill-spe
 
 ## Session resumption
 
-After every session, a `resume.sh` script is saved to the repo root containing the command to resume the last Claude session. This file is git-ignored and should never be committed.
+Some tools may generate small helper scripts to resume prior sessions. Keep these untracked and out of documentation.
 
 ## Committing side-effect changes
 

@@ -13,7 +13,7 @@ The [`skill` TUI](https://github.com/kevinpinscoe/skills-tui) lets you browse an
 Skills are three levels deep: **category directory** → **skill directory** → **`SKILL.md`**.
 
 ```
-~/skills/skills/
+skills/
 ├── app/
 │   └── install-desktop-app/
 │       └── SKILL.md
@@ -27,10 +27,20 @@ Skills are three levels deep: **category directory** → **skill directory** →
 │   │   └── SKILL.md
 │   └── run-through-my-os-todos/
 │       └── SKILL.md
-└── docker/
-    └── check-for-or-upgrade-docker-containers-on-this-system/
-        └── SKILL.md
+├── docker/
+│   ├── check-for-or-upgrade-docker-containers-on-this-system/
+│   │   └── SKILL.md
+│   └── create-a-self-hosted-docker-container/
+│       └── SKILL.md
+├── food/
+│   └── make-me-a-bagel/
+│       └── SKILL.md
+├── git/
+│   ├── clone-a-repo/
+│   │   └── SKILL.md
+│   └── create-a-repo/
+│       └── SKILL.md
+└── template.md
 ```
 
-The `skill` command reads `~/skills/skills` by default (overridable via `SKILLS_DIR`). It only lists directories that contain a `SKILL.md` file.
-
+In this repo, the skills live under `skills/` (so if you clone this repo to `~/skills`, that directory is `~/skills/skills`). The `skill` command reads `~/skills/skills` by default (overridable via `SKILLS_DIR`) and only lists directories that contain a `SKILL.md` file.
