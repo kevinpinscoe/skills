@@ -90,6 +90,25 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 
 12. **Archive all processed threads** — for each thread ID found in step 1, call `mcp__claude_ai_Gmail__unlabel_thread` with label name `INBOX` to remove it from the inbox (this is the Gmail archive action). Do this after labeling in step 11.
 
+13. **Append git commit reminder to fedora TODO** — after all files are written and threads are processed:
+
+    a. Run the following shell command to list untracked and modified TLDR files in the journal:
+       ```
+       git -C "/home/kinscoe/Journal/Personal Journal" status --short -- 'DAILY/TLDR*.md'
+       ```
+
+    b. Collect every filename from the output (lines beginning with `??` for untracked or `M`/`A` for modified/staged). If there are no such files, skip this step.
+
+    c. For each file found, strip the leading status prefix and whitespace to get the bare relative path (e.g. `DAILY/TLDR-05-03-2026.md`).
+
+    d. Append one line to `~/todo/fedora/TODO.md` in the format:
+       ```
+       YYYY-MM-DD cd "/home/kinscoe/Journal/Personal Journal" && git add <file1> [<file2> ...] && git commit -m "Update daily TLDRs" && git push  # commit TLDR files created by read-my-gmail-for-tldr-articles
+       ```
+       where `YYYY-MM-DD` is today's date and `<file1> [<file2> ...]` is the space-separated list of relative paths from step (c).
+
+    e. After appending, run `cd ~/todo && git add fedora/TODO.md && git commit -m "todo: add TLDR journal commit reminder" && git push` to persist the new TODO entry to the remote.
+
 ## Success Criteria
 
 - One `TLDR-<MM-DD-YYYY>.md` file exists per day of emails found within the lookback window.
@@ -103,6 +122,7 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 - The same summary is printed to the console.
 - All processed threads have both the `claude` and `tldr` Gmail labels applied.
 - All processed threads are archived (removed from inbox).
+- If any TLDR files were created or modified, a dated git commit/push command has been appended to `~/todo/fedora/TODO.md` listing those files, and the todo repo has been committed and pushed.
 
 ## Notes
 
