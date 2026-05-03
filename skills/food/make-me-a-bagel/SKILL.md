@@ -3,7 +3,7 @@ name: make-me-a-bagel
 description: Produces one excellent bagel using a stern, procedural tone with subtle human humor (and a completely necessary Wi‑Fi bagel slicer profile).
 ---
 
-# Make Me A Bagel (Serious Documentation, Unserious Reality)
+# Make Me A Bagel
 
 > Produce one (1) excellent, chew-forward everything bagel so Kevin can eat it immediately and heroically return to coding. This is written like a regulated procedure to help everyone feel safe while the kitchen becomes lightly feral.
 
