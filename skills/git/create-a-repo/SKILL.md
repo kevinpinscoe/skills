@@ -83,6 +83,11 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 
 12. **Verify** — Confirm the push succeeded by running `git -C <clone-dir> log --oneline -3` and reporting the output to the user.
 
+13. **Rebuild gitme cache** — Run `gitme --rebuild-cache` to register the new repo in the local gitme index:
+    ```bash
+    gitme --rebuild-cache
+    ```
+
 ## Success Criteria
 
 - Remote repo exists on the correct forge (GitHub or Gitea) with the correct name, visibility, and About/description set
