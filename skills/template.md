@@ -18,6 +18,7 @@ description: One sentence describing what this skill does.
 | Name | Description | Default |
 |------|-------------|---------|
 | `PARAM` | What it controls | `value` |
+| `REQUIRED_PARAM` | What it controls | _(required — ask the user)_ |
 
 _Omit this section if the skill takes no parameters._
 

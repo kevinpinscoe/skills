@@ -3,126 +3,70 @@ name: install-desktop-app
 description: Install a desktop application on the current host and create a runbook in ~/.dotfiles.
 ---
 
-# Install a desktop app
+# Install a Desktop App
 
-Install a desktop application on the current host (for example: Fedora KDE Plasma, macOS Tahoe on Apple Silicon, or Debian Trixie+ on Raspberry Pi 5/ARM).
+> Install a desktop application on the current host (Fedora KDE Plasma, macOS, or Raspberry Pi 5/Debian), create a platform runbook in ~/.dotfiles, and optionally document install steps for other platforms.
 
-Before proceeding, determine the current host platform (OS + architecture). Do not guess.
+## Prerequisites
 
-## Grounding and background
+- Official installation documentation (or a reputable source) for the application and target platform
+- `~/.dotfiles` repo accessible and writable
+- `~/todo/mac/TODO.md` and `~/todo/rpi/TODO.md` writable (for cross-platform TODO entries)
 
-Before doing anything, read:
+## Instructions
 
-- `~/.dotfiles/CLAUDE.md` — install paths, `gitsign` warning, and GNU Stow conventions (if relevant)
+1. **Read directive** — read `~/.dotfiles/CLAUDE.md` in full before taking any other action (install paths, `gitsign` warning, GNU Stow conventions).
 
-## Requirements
+2. **Detect current platform** — run `uname -s` and `uname -m`; on Linux also read `/etc/os-release`. Use the result to choose the matching platform directory under `~/.dotfiles/desktop-setup/`:
+   - `fedora-kde` for Fedora KDE Plasma
+   - `MacOS` for macOS
+   - `rpi5` for Raspberry Pi 5 (Debian Trixie)
 
-- You must have official installation documentation (or a reputable source) for the application and platform.
-- You must create a runbook (`RUNBOOK.md`) describing what you did — **for every platform the app is confirmed for**, including the current host.
+3. **Gather information** — ask one question at a time; wait for each answer before asking the next:
+   - Application name → derive `<app-slug>` (lowercase, spaces → hyphens, e.g. `it-commander`)
+   - Primary website link
+   - Installation documentation link for this OS/platform
+   - Preferred install method (package manager / vendor download / Flatpak / Snap / Homebrew, etc.)
 
-## Actions to take
+4. **Create the runbook** — write `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md` with:
+   - `# <App Name>`
+   - `## Summary` — brief description of what the app does
+   - `## Links` — unordered list: main website, install docs, source repo (if applicable), community/support links (if applicable)
+   - `## Operation` — exact install steps/commands, config file locations, post-install setup
+   - `## Troubleshooting` — leave blank unless issues occur
 
-### 1) Detect the current host platform
+5. **Install and verify** — install the application, then ask the user to confirm the app is installed and launches without errors. Record any issues and resolutions in `## Troubleshooting`.
 
-Detect platform using:
+6. **Cross-platform inquiry** — ask one question at a time; wait for each answer before asking the next:
 
-- `uname -s` and `uname -m`
-- On Linux: `/etc/os-release`
+   **macOS**: "Should this app also be installed on macOS?"
+   - If yes: ask for the macOS install docs URL (research if not provided); create `~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md` (same format as step 4, populated for macOS); append a TODO entry to `~/todo/mac/TODO.md`:
+     ```
+     YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md)
+     ```
 
-Use that information to choose (or create) the correct directory under:
+   **Raspberry Pi 5**: "Should this app also be installed on Raspberry Pi 5 (Debian Trixie)?"
+   - If yes: ask for the RPi5 install docs URL (research if not provided); create `~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md` (same format, populated for Debian Trixie ARM64); append a TODO entry to `~/todo/rpi/TODO.md`:
+     ```
+     YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md)
+     ```
 
-- `~/.dotfiles/desktop-setup/<platform>/<app-slug>/`
+7. **Commit and push all changed repos** — do not mark the skill complete until every modified repo is pushed. For each repo (`~/.dotfiles`, `~/todo`, or both):
+   1. Show a summary of files changed and the proposed commit message.
+   2. Ask for explicit confirmation before committing.
+   3. Stage only the relevant files (never `git add -A`), commit, and push to origin.
+   - Commit message: `chore: add <app-slug> runbook` (for `~/.dotfiles`), `chore: add <app-slug> TODO entries` (for `~/todo`)
+   - **`~/.dotfiles` uses gitsign (Sigstore/browser OAuth)** — signing requires a browser window and will fail over SSH without a display.
 
-### 2) Gather information (ask one question at a time)
+## Success Criteria
 
-Ask questions one at a time — do not present multiple questions at once. Wait for the user's answer before asking the next question.
+- `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md` exists and is populated
+- The app is confirmed installed and launches without errors on the current host
+- Cross-platform runbooks created (if requested) and TODO entries appended (if requested)
+- All modified repos committed and pushed
 
-- Application name
-- Primary website link
-- Installation documentation link for *this* OS/platform (if different)
-- Any preferred install method (package manager vs. vendor download vs. Flatpak/Snap/Homebrew, etc.)
+## Notes
 
-Use the application name given by the user to create an `<app-slug>`.
-
-Where:
-
-- `<platform>` maps into already defined directories in `~/.dotfiles/desktop-setup/` (e.g. `fedora-kde`, `MacOS`, `rpi5`). Choose the platform directory that matches the platform gathered in Step 1.
-- `<app-slug>` is the application name lowercased, with spaces replaced by hyphens (e.g. `it-commander`).
-
-### 3) Create the runbook for the current platform
-
-Create:
-
-- `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md`
-
-Populate `RUNBOOK.md` with:
-
-- `# <App Name>`
-- `## Summary` — brief, informative description of what the app does
-- `## Links` — unordered list (`-`) including:
-  - Main website
-  - Installation docs
-  - Source repo (GitHub/GitLab/Gitea/etc.), if applicable
-  - Community/support links, if applicable
-- `## Operation` — include:
-  - Exact install steps/commands for this OS/platform
-  - Where configuration files live and their names
-  - Any post-install setup steps
-- `## Troubleshooting` — leave blank unless issues occur
-
-### 4) Verify application function
-
-Ask the user to verify:
-
-- The app is installed
-- The app launches without errors
-
-If there are issues, record symptoms and the resolution steps in the `## Troubleshooting` section of the runbook.
-
-### 5) Cross-platform inquiry
-
-Ask one question at a time and wait for each answer before asking the next.
-
-**5a) macOS inquiry**
-
-Ask: "Should this app also be installed on macOS?"
-
-If yes:
-- Ask: "Do you have an installation documentation link for macOS?"
-- If the user provides a link, use it. If not, research and find a reputable official source.
-- Create `~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md` using the same format as Step 3, populated for macOS.
-- Append a TODO entry to `~/todo/mac/TODO.md` in the format used by that file:
-  ```
-  YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md)
-  ```
-  Use today's date. Keep the entry on a single line. The `cd ~/.dotfiles && git pull &&` prefix ensures the runbook is present before the install runs.
-
-**5b) Raspberry Pi 5 inquiry**
-
-Ask: "Should this app also be installed on Raspberry Pi 5 (Debian Trixie)?"
-
-If yes:
-- Ask: "Do you have an installation documentation link for Raspberry Pi 5 / Debian Trixie?"
-- If the user provides a link, use it. If not, research and find a reputable official source.
-- Create `~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md` using the same format as Step 3, populated for Debian Trixie on ARM64.
-- Append a TODO entry to `~/todo/rpi/TODO.md` in the format used by that file:
-  ```
-  YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md)
-  ```
-  Use today's date. Keep the entry on a single line. The `cd ~/.dotfiles && git pull &&` prefix ensures the runbook is present before the install runs.
-
-### 6) Commit and push all changed repos
-
-This step is **required** — the skill is not complete until every file changed by this skill has been committed and pushed. Do not skip or defer.
-
-For each repository modified (`~/.dotfiles`, `~/todo`, or both):
-
-1. Show the user a summary of files changed and the proposed commit message.
-2. Ask for explicit confirmation before committing.
-3. Once confirmed, stage only the relevant files (never `git add -A`), commit, and push to origin.
-
-Commit message format: `chore: add <app-slug> runbook` (for `~/.dotfiles`), `chore: add <app-slug> TODO entries` (for `~/todo`).
-
-Important: `~/.dotfiles` uses `gitsign` (Sigstore/browser OAuth). Remind the user that signing may require a browser window and can fail over SSH without a display.
-
-Do not mark the skill complete until `git push` has succeeded for every repository that was modified.
+- Always use today's date (not a relative date) in TODO entries.
+- Keep each TODO entry on a single line. The `cd ~/.dotfiles && git pull &&` prefix ensures the runbook is present on the target host before the install runs.
+- `gitsign` commits in `~/.dotfiles` require a browser window for Sigstore OAuth — remind the user if they're over SSH without a display.
