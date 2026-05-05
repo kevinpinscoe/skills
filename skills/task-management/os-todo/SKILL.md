@@ -27,9 +27,13 @@ description: Append a dated TODO entry to one or more platform TODO files (fedor
    - `~/todo/CLAUDE.md` — TODO entry format and platform-to-file mapping
 
 2. **Gather information** — ask one question at a time; wait for each answer before asking the next:
+   - Which platform is this for? Present the three options by name:
+     1. `fedora`
+     2. `mac`
+     3. `rpi`
+     (User may also say `all` to target all three.)
    - What is the TODO task — the exact shell command or action the user needs to perform on the target machine?
    - What is the reason or comment to append after the `#` in the entry?
-   - Which platform(s) should this be added to? Options: `fedora`, `mac`, `rpi`, or `all`.
 
 3. **Detect install tasks and build the full command** — if the task installs a command-line tool, software package, or desktop application, prepend the appropriate pull step to ensure local files are up to date before the install runs:
    - If the install depends on `~/tools`: prepend `cd ~/tools && git pull && `
