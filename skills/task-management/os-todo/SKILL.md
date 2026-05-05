@@ -22,7 +22,9 @@ description: Append a dated TODO entry to one or more platform TODO files (fedor
 
 ## Instructions
 
-1. **Read grounding file** — read `~/todo/CLAUDE.md` in full before doing anything else to confirm the current entry format and platform-to-file mapping.
+1. **Read directives** — read the following files in full before doing anything else:
+   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules, confirmation requirements, and guardrails that apply because `~/todo` is a git repo
+   - `~/todo/CLAUDE.md` — TODO entry format and platform-to-file mapping
 
 2. **Gather information** — ask one question at a time; wait for each answer before asking the next:
    - What is the TODO task — the exact shell command or action the user needs to perform on the target machine?
