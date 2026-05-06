@@ -25,7 +25,9 @@ skills/
 │   │   └── SKILL.md
 │   ├── read-my-gmail-for-tldr-articles/
 │   │   └── SKILL.md
-│   └── run-through-my-os-todos/
+│   ├── run-through-my-os-todos/
+│   │   └── SKILL.md
+│   └── today/
 │       └── SKILL.md
 ├── docker/
 │   ├── check-for-or-upgrade-docker-containers-on-this-system/
