@@ -29,7 +29,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - `~/tools`
    - `~/ai`
    - `~/.environment`
-   - `~/private-tool`
+   - `~/private-tools
    - `~/bin`
    - `~/Journal/Professional`
    - `~/Journal/Personal Journal`
