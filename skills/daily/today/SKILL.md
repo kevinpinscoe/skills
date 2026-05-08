@@ -23,27 +23,24 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - `~/ai/directives/when-creating-or-cloning-a-git-repo.md`
    - `~/ai/directives/storing-secrets.md`, if it exists
 
-2. **Visit daily repos** — process each path below in order. If a path does not exist, skip it silently.
-   - `~/.dotfiles`
-   - `~/todo`
-   - `~/tools`
-   - `~/ai`
-   - `~/.environment`
-   - `~/private-tools
-   - `~/bin`
-   - `~/Journal/Professional`
-   - `~/Journal/Personal Journal`
-   - `~/skills`
-   - `~/WorkKnowledgeVault`
-   - `~/KnowledgeVault`
+2. **Detect the host OS** — run `uname -s` and record the result:
+   - Output is `Darwin` → macOS; set `$OS_LABEL=mac`
+   - Output is `Linux` → check `/etc/os-release` for `ID=fedora` → `$OS_LABEL=fedora`; `ID=debian` → `$OS_LABEL=rpi`
+   - If the platform cannot be determined, report the command outputs and stop.
 
-3. **Check repo state** — for each existing path:
+3. **Run check-git-repos** — discover repos that need attention:
+   - If `$OS_LABEL=mac`, run: `~/bin/check-git-repos --ignore-prefix`
+   - Otherwise, run: `~/bin/check-git-repos`
+   - Capture each repo path from the output. These are the only repos to process in the steps below.
+   - If the command produces no output, report that all repos are clean and skip ahead to the TODO steps.
+
+4. **Check repo state** — for each path flagged by `check-git-repos`:
    - Confirm it is a git repo. If it is not a git repo, skip it silently.
    - Check for nested `.git/` directories below the repo root. If found, warn the user and ask which repo should receive any changes before proceeding in that path.
    - Run `git status --short --branch` and tell the user about modified, deleted, renamed, and untracked files before taking action.
    - Stage only files relevant to this daily sync work. Never use `git add -A`.
 
-4. **Pull safely** — fetch and inspect upstream before merging:
+5. **Pull safely** — fetch and inspect upstream before merging:
    - Run `git fetch --prune`.
    - Determine the current branch and its upstream with `git rev-parse --abbrev-ref HEAD` and `git rev-parse --abbrev-ref --symbolic-full-name @{u}`.
    - If there is no upstream, report that path as skipped and continue to the next repo.
@@ -57,7 +54,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
      ```
      Then ask whether to merge the remote changes into the local branch. Do not merge until the user confirms.
 
-5. **Resolve divergence** — when the user approves a merge:
+6. **Resolve divergence** — when the user approves a merge:
    - Run `git merge @{u}`.
    - If conflicts occur, show the conflicted files with `git status --short` and show conflict diffs with `git diff`.
    - Ask the user how each conflict should be resolved before editing conflicted files.
@@ -67,19 +64,13 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
      ```
    - If the merge completes without conflicts and Git created the merge commit automatically, report the commit hash.
 
-6. **Push when needed** — after pull or merge handling:
+7. **Push when needed** — after pull or merge handling:
    - Run `git status --short --branch`.
    - If the local branch is ahead of upstream, ask the user whether to push.
    - If approved, run `git push`.
    - If the working tree has changes that should be committed, show the diffs, ask the user what should be included, stage only approved files, commit with a clear message, then ask separately before pushing.
 
-7. **Detect the current platform** — after all repos are processed, identify the platform:
-   - `Darwin` from `uname -s` -> `mac`
-   - `Linux` with `ID=fedora` in `/etc/os-release` -> `fedora`
-   - `Linux` with `ID=debian` in `/etc/os-release` -> `rpi`
-   - If the platform cannot be determined, report the command outputs and stop.
-
-8. **Open the platform TODO file** — use the detected platform to select:
+8. **Open the platform TODO file** — using `$OS_LABEL` detected in step 2, select:
    - `mac` -> `~/todo/mac/TODO.md`
    - `fedora` -> `~/todo/fedora/TODO.md`
    - `rpi` -> `~/todo/rpi/TODO.md`
@@ -110,7 +101,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
 
 ## Success Criteria
 
-- Every existing git repo in the daily list was fetched and either pulled, merged with user approval, pushed with user approval, or explicitly reported as skipped because it lacked an upstream or had an unresolved issue.
+- Every repo flagged by `check-git-repos` was fetched and either pulled, merged with user approval, pushed with user approval, or explicitly reported as skipped because it lacked an upstream or had an unresolved issue.
 - No missing directory produced a complaint during processing.
 - No divergent files were merged before the user saw the differences and confirmed the merge.
 - Merge conflict resolutions were committed after approval.
