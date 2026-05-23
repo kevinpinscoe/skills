@@ -15,7 +15,9 @@ description: Install a desktop application on the current host and create a runb
 
 ## Instructions
 
-1. **Read directive** — read `~/.dotfiles/CLAUDE.md` in full before taking any other action (install paths, `gitsign` warning, GNU Stow conventions).
+1. **Read directives** — read the following files in full before taking any other action:
+   - `~/.dotfiles/CLAUDE.md` — install paths, `gitsign` warning, GNU Stow conventions
+   - `~/ai/directives/when-creating-a-runbook.md` — runbook structure and template (required before step 4)
 
 2. **Detect current platform** — run `uname -s` and `uname -m`; on Linux also read `/etc/os-release`. Use the result to choose the matching platform directory under `~/.dotfiles/desktop-setup/`:
    - `fedora-kde` for Fedora KDE Plasma
@@ -28,7 +30,7 @@ description: Install a desktop application on the current host and create a runb
    - Installation documentation link for this OS/platform
    - Preferred install method (package manager / vendor download / Flatpak / Snap / Homebrew, etc.)
 
-4. **Create the runbook** — write `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md` with:
+4. **Create the runbook** — write `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md`. Use `~/ai/directives/runbook-template.md` as the base structure, adapting it to desktop app documentation. At minimum include:
    - `# <App Name>`
    - `## Summary` — brief description of what the app does
    - `## Links` — unordered list: main website, install docs, source repo (if applicable), community/support links (if applicable)

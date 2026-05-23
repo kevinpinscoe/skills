@@ -18,10 +18,16 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 - `~/ai/directives/when-creating-or-cloning-a-git-repo.md` readable
 - `~/ai/directives/gitea.md` readable
 - `~/ai/directives/resume-sh.md` readable
+- `~/ai/directives/when-creating-a-readme.md` readable
+- `~/ai/directives/when-generating-code-or-updating-code-in-an-outside-repo.md` readable
 
 ## Instructions
 
-1. **Read directive** — Read `~/ai/directives/when-creating-or-cloning-a-git-repo.md` and `~/ai/directives/resume-sh.md` in full before taking any other action. This step is mandatory at every invocation.
+1. **Read directives** — Read the following directives in full before taking any other action. This step is mandatory at every invocation:
+   - `~/ai/directives/when-creating-or-cloning-a-git-repo.md`
+   - `~/ai/directives/resume-sh.md`
+   - `~/ai/directives/when-creating-a-readme.md`
+   - `~/ai/directives/when-generating-code-or-updating-code-in-an-outside-repo.md` (for GitHub repos)
 
 2. **Determine forge** — Ask the user: "Will this repo be private?" If yes, it will be created on Gitea. If no, it will be created on GitHub. Do not proceed without this answer.
 
@@ -29,19 +35,22 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 
 4. **Get About summary** — Ask the user for a short GitHub-style About/description for the repo. GitHub's About field has a 350-character limit. If the summary exceeds this limit, tell the user it is too long, suggest an edited version, and wait for them to confirm or supply their own edit. Do not move on until a correctly sized summary is accepted.
 
-5. **Get repo purpose** — Ask the user for the purpose of this new repo. This information is required to generate the initial README.md content.
+5. **Select a license (GitHub repos only)** — For GitHub repos, conduct the license interview from `~/ai/directives/when-creating-or-cloning-a-git-repo.md` step 4. Confirm the license with the user before proceeding. Have the canonical full license text ready (copyright holder: **Kevin P. Inscoe**) to write as `LICENSE` (no `.md` extension) in the repo root after cloning. Skip this step for Gitea repos.
 
-6. **Propose README.md contents** — Based on the user's stated purpose, draft the full contents of the initial README.md. Present the proposed content to the user and wait for their confirmation or edits. Do not proceed until the README.md content is agreed upon.
+6. **Get repo purpose** — Ask the user for the purpose of this new repo. This information is required to generate the initial README.md content.
 
-7. **Confirm all details** — Present a full summary and ask the user to confirm before taking any action:
+7. **Propose README.md contents** — Based on the user's stated purpose, draft the full contents of the initial README.md following `~/ai/directives/when-creating-a-readme.md`. Present the proposed content to the user and wait for their confirmation or edits. Do not proceed until the README.md content is agreed upon.
+
+8. **Confirm all details** — Present a full summary and ask the user to confirm before taking any action:
    - Visibility: public or private
    - Forge: GitHub (`https://github.com/kevinpinscoe`) or Gitea (`https://git.kevininscoe.com`)
    - Normalized repo name
    - About/description text
+   - License SPDX ID (GitHub repos only)
    - Repo purpose
    - Proposed README.md contents
 
-8. **Create the repo** — Create the repo on the confirmed forge:
+9. **Create the repo** — Create the repo on the confirmed forge:
    - **GitHub (public)**:
      ```bash
      gh repo create kevinpinscoe/<repo-name> --public --description "<about-summary>"
@@ -49,6 +58,10 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
      If the description was not accepted at creation time, set it with:
      ```bash
      gh repo edit kevinpinscoe/<repo-name> --description "<about-summary>"
+     ```
+     Set the license on the GitHub repo:
+     ```bash
+     gh repo edit kevinpinscoe/<repo-name> --license <spdx-id>
      ```
    - **Gitea (private)**:
      ```bash
@@ -62,28 +75,48 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
        -d '{"description": "<about-summary>"}'
      ```
 
-9. **Clone the repo** — Clone into the correct local directory per the directive. Create the parent directory with `mkdir -p` if it does not exist.
-   - **GitHub (public)** — clone via SSH into `~/Projects/public/<repo-name>`:
-     ```bash
-     git clone git@github.com:kevinpinscoe/<repo-name>.git ~/Projects/public/<repo-name>
-     ```
-   - **Gitea (private)** — clone via SSH into `~/Projects/private/<repo-name>`:
-     ```bash
-     git clone ssh://git@git.kevininscoe.com:2223/kinscoe/<repo-name>.git ~/Projects/private/<repo-name>
-     ```
+10. **Clone the repo** — Clone into the correct local directory per the directive. Create the parent directory with `mkdir -p` if it does not exist.
+    - **GitHub (public)** — clone via SSH into `~/Projects/public/<repo-name>`:
+      ```bash
+      git clone git@github.com:kevinpinscoe/<repo-name>.git ~/Projects/public/<repo-name>
+      ```
+    - **Gitea (private)** — clone via SSH into `~/Projects/private/<repo-name>`:
+      ```bash
+      git clone ssh://git@git.kevininscoe.com:2223/kinscoe/<repo-name>.git ~/Projects/private/<repo-name>
+      ```
 
-10. **Apply .gitignore** — Create a root `.gitignore` in the cloned repo that blocks common OS cruft and AI/tool working dirs at all directory depths (e.g., `.DS_Store`, `.claude`, `.codex`, `.trash/`, `.obsidian/workspace.json`), plus any per-session helper scripts generated by assistants/tools.
+11. **Update parent directory README** — Add an entry for the new repo to the parent directory's README using the confirmed About text as the description:
+    - GitHub repos → `~/Projects/public/README.md` (under the appropriate category table)
+    - Gitea repos → `~/Projects/private/README.md` (under the appropriate category table)
 
-11. **Create and push README.md** — Write the agreed-upon content to `<clone-dir>/README.md`, then commit and push both new files:
+12. **Apply .gitignore** — Create a root `.gitignore` in the cloned repo that blocks common OS cruft and AI/tool working dirs at all directory depths (e.g., `.DS_Store`, `.claude`, `.codex`, `.trash/`, `.obsidian/workspace.json`), plus any per-session helper scripts generated by assistants/tools.
+
+13. **Scaffold `mise.toml`** — Create a `mise.toml` at the repo root. Even if no tools are pinned yet, scaffold the file so the repo is mise-ready:
+    ```toml
+    [tools]
+    # python = "3.12"
+    # ruby = "3.3"
+    # go = "1.23"
+    # node = "22"
+    ```
+    For GitHub repos with a known primary language, uncomment and pin the relevant tool version. Run `mise install` after adding entries.
+
+14. **Create and push initial files** — Write the agreed-upon content to `<clone-dir>/README.md`. For GitHub repos, also write the `LICENSE` file (canonical full text, no `.md` extension). Then commit and push all new files:
     ```bash
-    git -C <clone-dir> add README.md .gitignore
-    git -C <clone-dir> commit -m "Initial commit: README and .gitignore"
+    # GitHub repos
+    git -C <clone-dir> add README.md .gitignore mise.toml LICENSE
+    git -C <clone-dir> commit -m "Initial commit: README, .gitignore, mise.toml, and LICENSE"
+    git -C <clone-dir> push
+
+    # Gitea repos
+    git -C <clone-dir> add README.md .gitignore mise.toml
+    git -C <clone-dir> commit -m "Initial commit: README, .gitignore, and mise.toml"
     git -C <clone-dir> push
     ```
 
-12. **Verify** — Confirm the push succeeded by running `git -C <clone-dir> log --oneline -3` and reporting the output to the user.
+15. **Verify** — Confirm the push succeeded by running `git -C <clone-dir> log --oneline -3` and reporting the output to the user.
 
-13. **Rebuild gitme cache** — Run `gitme --rebuild-cache` to register the new repo in the local gitme index:
+16. **Rebuild gitme cache** — Run `gitme --rebuild-cache` to register the new repo in the local gitme index:
     ```bash
     gitme --rebuild-cache
     ```
@@ -91,8 +124,10 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 ## Success Criteria
 
 - Remote repo exists on the correct forge (GitHub or Gitea) with the correct name, visibility, and About/description set
+- GitHub repos: `LICENSE` file is present, committed, pushed, and the license is set on GitHub via `gh repo edit --license`
 - Local clone exists at `~/Projects/public/<repo-name>` or `~/Projects/private/<repo-name>`
-- `README.md` and `.gitignore` are present, committed, and pushed on the `main` branch
+- Parent directory README (`~/Projects/public/README.md` or `~/Projects/private/README.md`) has an entry for the new repo
+- `README.md`, `.gitignore`, and `mise.toml` are present, committed, and pushed on the `main` branch
 - `git -C <clone-dir> log` shows the initial commit
 - No uncommitted or unpushed changes remain
 
@@ -101,5 +136,7 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 - The directive path is `~/ai/directives/` (plural) — a common typo is `~/ai/directive/` (singular) which does not exist.
 - Gitea SSH uses non-standard port 2223 — always use the full `ssh://git@git.kevininscoe.com:2223/kinscoe/` prefix.
 - All new repos default to the `main` branch, never `master`.
-- GitHub About field limit is 350 characters — enforce this during Step 4.
+- GitHub About field limit is 350 characters — enforce this during step 4.
+- For GitHub repos, never create without a LICENSE file — always conduct the license interview in step 5.
+- `mise.toml` is scaffolded for all repos; for Go repos, pin the Go version to match `go.mod` once the module is initialized.
 - Related skill: `clone-a-repo` — for cloning an existing repo without creating it.

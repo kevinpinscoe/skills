@@ -21,6 +21,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - `~/ai/directives/gitea.md`
    - `~/ai/directives/resume-sh.md`
    - `~/ai/directives/when-creating-or-cloning-a-git-repo.md`
+   - `~/ai/directives/when-creating-a-runbook.md`
    - `~/ai/directives/storing-secrets.md`, if it exists
 
 2. **Detect the host OS** — run `uname -s` and record the result:

@@ -18,6 +18,7 @@ description: Prompts me for required information before installing a command lin
 1. **Read grounding files** — read the following files in full before taking any other action:
    - `~/.dotfiles/CLAUDE.md` — binary install paths, gitsign warning, stow structure
    - `~/todo/CLAUDE.md` — TODO entry format and folder mapping
+   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules and guardrails that apply to all commits in `~/.dotfiles` and `~/todo`
 
 2. **Gather information** — ask one question at a time; wait for each answer before asking the next:
    - Command name → check for collisions with `command -v`, `type -a`, and a direct check of `~/.local/bin`; if the name collides, ask the user to rename it (or suggest a rename)

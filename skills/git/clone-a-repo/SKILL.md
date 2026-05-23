@@ -41,11 +41,18 @@ description: Asks for a git repo URL, determines the correct local clone directo
 
 6. **Verify** — Confirm the clone succeeded by checking that `<TARGET_DIR>/.git` exists and reporting the output of `git -C <TARGET_DIR> log --oneline -3`.
 
+7. **Update parent directory README** — For repos cloned into `~/Projects/private/` or `~/Projects/public/`, add an entry to the parent directory's README:
+   - `~/Projects/private/<repo-name>` → add to `~/Projects/private/README.md` under the appropriate category table
+   - `~/Projects/public/<repo-name>` → add to `~/Projects/public/README.md` under the appropriate category table
+   - `~/Projects/3rd-party-repos/<repo-name>` or `~/Projects/acst/<repo-name>` → no parent README update needed
+   - Use the repo's About text (retrieve with `gh repo view <org>/<repo> --json description -q .description` or `tea repo view`) as the description. If unavailable, ask the user for a brief description.
+
 ## Success Criteria
 
 - `<TARGET_DIR>/.git` exists on disk
 - `git -C <TARGET_DIR> log` returns at least one commit (or reports an empty repo for a freshly initialized remote)
 - The destination directory matches the path specified by the directive and confirmed by the user
+- If cloned into `~/Projects/private/` or `~/Projects/public/`, an entry has been added to the corresponding parent README
 
 ## Notes
 

@@ -14,7 +14,8 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 - `~/tools/free-port` present and executable
 - `~/admin/create-kevin-dns-alias.sh` present
 - `~/admin/certbot-request.sh` present
-- Linode DNS API key at `~/.secrets/linode.ini`
+- Linode DNS API key (certbot-dns-linode format) at `~/.secrets/certbot.ini`
+- Linode Personal Access Token at `~/.secrets/kevin-linode.pat`
 
 ## Parameters
 
@@ -25,7 +26,7 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 
 ## Instructions
 
-1. Read `~/ai/directives/when-creating-a-docker-container-for-self-hosting.md` in full before taking any action.
+1. Read `~/ai/directives/when-self-hosting-a-docker-container.md` in full before taking any action.
 
 2. Ask the user for the service name if not already provided. Then ask for the documentation URL. Confirm both before proceeding.
 
@@ -62,7 +63,7 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 
 ## Notes
 
-- The directive at `~/ai/directives/when-creating-a-docker-container-for-self-hosting.md` is the authoritative source for all creation steps and standards. Always read it in full before starting.
+- The directive at `~/ai/directives/when-self-hosting-a-docker-container.md` is the authoritative source for all creation steps and standards. Always read it in full before starting.
 - Use `sudo -A` (not plain `sudo`) for all file operations under `/opt/containers/`, which is root-owned.
 - Docker Compose only — no bare `docker run` commands.
 - Secrets and credentials go in `.env` files. Never hardcode them.
