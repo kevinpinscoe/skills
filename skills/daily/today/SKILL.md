@@ -30,8 +30,9 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - If the platform cannot be determined, report the command outputs and stop.
 
 3. **Run check-git-repos** — discover repos that need attention:
-   - If `$OS_LABEL=mac`, run: `~/bin/check-git-repos --ignore-prefix`
-   - Otherwise, run: `~/bin/check-git-repos`
+   - Locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
+   - If `$OS_LABEL=mac`, run: `check-git-repos --ignore-prefix`
+   - Otherwise, run: `check-git-repos`
    - Capture each repo path from the output. These are the only repos to process in the steps below.
    - If the command produces no output, report that all repos are clean and skip ahead to the TODO steps.
 
