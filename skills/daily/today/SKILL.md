@@ -67,6 +67,8 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - If the merge completes without conflicts and Git created the merge commit automatically, report the commit hash.
 
 7. **Push when needed** — after pull or merge handling:
+   - Check whether the push remote is `no_push`: `git remote get-url --push origin 2>/dev/null`.
+   - If the push remote is `no_push`, skip the push prompt entirely — note the repo in the final report (step 12) and move on.
    - Run `git status --short --branch`.
    - If the local branch is ahead of upstream, ask the user whether to push.
    - If approved, run `git push`.
@@ -136,6 +138,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
     - Repos pulled cleanly
     - Repos merged after user approval
     - Repos pushed after user approval
+    - Repos with a `no_push` remote: pulled normally, push skipped automatically
     - Repos on a non-default branch: whether switched, kept, or skipped; and whether any branches were deleted
     - TODO items completed and removed
     - TODO items skipped and left in place
