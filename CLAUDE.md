@@ -28,7 +28,9 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
     ├── docker/
     │   └── check-for-or-upgrade-docker-containers-on-this-system/
     │       └── SKILL.md
-    └── task-management/    # placeholder category, no skills yet
+    └── task-management/
+    │   └── human-todos/
+    │       └── SKILL.md
 ```
 
 Skills are organized three levels deep: **category directory** → **skill directory** → `SKILL.md`. The `skill` CLI only lists skill directories that contain a `SKILL.md` file.
