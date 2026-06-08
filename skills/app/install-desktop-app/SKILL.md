@@ -1,11 +1,11 @@
 ---
 name: install-desktop-app
-description: Install a desktop application on the current host and create a runbook in ~/.dotfiles.
+description: Install a desktop application on the current host and create a runbook in ~/.dotfiles/desktop-apps-configuration-and-runbooks.
 ---
 
 # Install a Desktop App
 
-> Install a desktop application on the current host (Fedora KDE Plasma, macOS, or Raspberry Pi 5/Debian), create a platform runbook in ~/.dotfiles, and optionally document install steps for other platforms.
+> Install a desktop application on the current host (Fedora KDE Plasma, macOS, or Raspberry Pi 5/Debian), create a platform runbook in ~/.dotfiles/desktop-apps-configuration-and-runbooks, and optionally document install steps for other platforms.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ description: Install a desktop application on the current host and create a runb
    - `~/.dotfiles/CLAUDE.md` — install paths, `gitsign` warning, GNU Stow conventions
    - `~/ai/directives/when-creating-a-runbook.md` — runbook structure and template (required before step 4)
 
-2. **Detect current platform** — run `uname -s` and `uname -m`; on Linux also read `/etc/os-release`. Use the result to choose the matching platform directory under `~/.dotfiles/desktop-setup/`:
+2. **Detect current platform** — run `uname -s` and `uname -m`; on Linux also read `/etc/os-release`. Use the result to choose the matching platform directory under `~/.dotfiles/desktop-apps-configuration-and-runbooks/`:
    - `fedora-kde` for Fedora KDE Plasma
    - `MacOS` for macOS
    - `rpi5` for Raspberry Pi 5 (Debian Trixie)
@@ -30,7 +30,7 @@ description: Install a desktop application on the current host and create a runb
    - Installation documentation link for this OS/platform
    - Preferred install method (package manager / vendor download / Flatpak / Snap / Homebrew, etc.)
 
-4. **Create the runbook** — write `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md`. Use `~/ai/directives/runbook-template.md` as the base structure, adapting it to desktop app documentation. At minimum include:
+4. **Create the runbook** — write `~/.dotfiles/desktop-apps-configuration-and-runbooks/<platform>/<app-slug>/RUNBOOK.md`. Use `~/ai/directives/runbook-template.md` as the base structure, adapting it to desktop app documentation. At minimum include:
    - `# <App Name>`
    - `## Summary` — brief description of what the app does
    - `## Links` — unordered list: main website, install docs, source repo (if applicable), community/support links (if applicable)
@@ -42,15 +42,15 @@ description: Install a desktop application on the current host and create a runb
 6. **Cross-platform inquiry** — ask one question at a time; wait for each answer before asking the next:
 
    **macOS**: "Should this app also be installed on macOS?"
-   - If yes: ask for the macOS install docs URL (research if not provided); create `~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md` (same format as step 4, populated for macOS); append a TODO entry to `~/todo/mac/TODO.md`:
+   - If yes: ask for the macOS install docs URL (research if not provided); create `~/.dotfiles/desktop-apps-configuration-and-runbooks/MacOS/<app-slug>/RUNBOOK.md` (same format as step 4, populated for macOS); append a TODO entry to `~/todo/mac/TODO.md`:
      ```
-     YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/MacOS/<app-slug>/RUNBOOK.md)
+     YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/.dotfiles/desktop-apps-configuration-and-runbooks/MacOS/<app-slug>/RUNBOOK.md)
      ```
 
    **Raspberry Pi 5**: "Should this app also be installed on Raspberry Pi 5 (Debian Trixie)?"
-   - If yes: ask for the RPi5 install docs URL (research if not provided); create `~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md` (same format, populated for Debian Trixie ARM64); append a TODO entry to `~/todo/rpi/TODO.md`:
+   - If yes: ask for the RPi5 install docs URL (research if not provided); create `~/.dotfiles/desktop-apps-configuration-and-runbooks/rpi5/<app-slug>/RUNBOOK.md` (same format, populated for Debian Trixie ARM64); append a TODO entry to `~/todo/rpi/TODO.md`:
      ```
-     YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/.dotfiles/desktop-setup/rpi5/<app-slug>/RUNBOOK.md)
+     YYYY-MM-DD cd ~/.dotfiles && git pull && <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/.dotfiles/desktop-apps-configuration-and-runbooks/rpi5/<app-slug>/RUNBOOK.md)
      ```
 
 7. **Commit and push all changed repos** — do not mark the skill complete until every modified repo is pushed. For each repo (`~/.dotfiles`, `~/todo`, or both):
@@ -62,7 +62,7 @@ description: Install a desktop application on the current host and create a runb
 
 ## Success Criteria
 
-- `~/.dotfiles/desktop-setup/<platform>/<app-slug>/RUNBOOK.md` exists and is populated
+- `~/.dotfiles/desktop-apps-configuration-and-runbooks/<platform>/<app-slug>/RUNBOOK.md` exists and is populated
 - The app is confirmed installed and launches without errors on the current host
 - Cross-platform runbooks created (if requested) and TODO entries appended (if requested)
 - All modified repos committed and pushed
