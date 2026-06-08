@@ -17,6 +17,8 @@ description: Install a desktop application on the current host and create a runb
 
 1. **Read directives** — read the following files in full before taking any other action:
    - `~/.dotfiles/CLAUDE.md` — install paths, `gitsign` warning, GNU Stow conventions
+   - `~/todo/CLAUDE.md` — TODO entry format and folder mapping
+   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules and guardrails that apply to all commits in `~/.dotfiles` and `~/todo`
    - `~/ai/directives/when-creating-a-runbook.md` — runbook structure and template (required before step 4)
 
 2. **Detect current platform** — run `uname -s` and `uname -m`; on Linux also read `/etc/os-release`. Use the result to choose the matching platform directory under `~/.dotfiles/desktop-apps-configuration-and-runbooks/`:
@@ -36,6 +38,8 @@ description: Install a desktop application on the current host and create a runb
    - `## Links` — unordered list: main website, install docs, source repo (if applicable), community/support links (if applicable)
    - `## Operation` — exact install steps/commands, config file locations, post-install setup
    - `## Troubleshooting` — leave blank unless issues occur
+
+   Follow all rules in `~/ai/directives/when-creating-a-runbook.md`.
 
 5. **Install and verify** — install the application, then ask the user to confirm the app is installed and launches without errors. Record any issues and resolutions in `## Troubleshooting`.
 
