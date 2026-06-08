@@ -1,6 +1,6 @@
 ---
 name: install-command-line-command
-description: Prompts me for required information before installing a command line tool and then generates a cheat sheet for it
+description: Prompts me for required information before installing a command line tool, generates a cheat sheet, and creates a runbook in ~/.dotfiles/desktop-apps-configuration-and-runbooks
 ---
 
 # Install a Command-Line Tool
@@ -19,6 +19,7 @@ description: Prompts me for required information before installing a command lin
    - `~/.dotfiles/CLAUDE.md` — binary install paths, gitsign warning, stow structure
    - `~/todo/CLAUDE.md` — TODO entry format and folder mapping
    - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules and guardrails that apply to all commits in `~/.dotfiles` and `~/todo`
+   - `~/ai/directives/when-creating-a-runbook.md` — runbook structure and template (required before step 5)
 
 2. **Gather information** — ask one question at a time; wait for each answer before asking the next:
    - Command name → check for collisions with `command -v`, `type -a`, and a direct check of `~/.local/bin`; if the name collides, ask the user to rename it (or suggest a rename)
@@ -67,14 +68,24 @@ description: Prompts me for required information before installing a command lin
 
    Fill in the "Command options" section by reading the tool's `--help` output or documentation.
 
-5. **Append TODO entries for other hosts** — for each non-current host in the user's requested OS list, append one line to `~/todo/<os>/TODO.md`:
+5. **Create the runbook** — write `~/.dotfiles/desktop-apps-configuration-and-runbooks/<command-name>/RUNBOOK.md` using `~/ai/directives/runbook-template.md` as the base structure. At minimum include:
+   - `# <command-name>` as the title
+   - `## Purpose` — the short summary from step 2
+   - `## Prerequisites` — any dependencies or requirements to run the tool
+   - `## Step-by-Step Procedure` — the install command(s) used in step 3, with expected output and any post-install config steps
+   - `## Verification` — `which <command>` and a version check command with expected output
+   - `## Related Runbooks` — leave blank unless related tools are documented under `~/.dotfiles/desktop-apps-configuration-and-runbooks/`
+
+   Follow all rules in `~/ai/directives/when-creating-a-runbook.md`.
+
+6. **Append TODO entries for other hosts** — for each non-current host in the user's requested OS list, append one line to `~/todo/<os>/TODO.md`:
    ```
    YYYY-MM-DD <shell command to install the tool>  # install <command_name>: <one-line summary>
    ```
    Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora → `~/todo/fedora/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`.
 
-6. **Commit and push all affected repos** — ask for explicit confirmation before committing each repo. Stage only the relevant files (never `git add -A`):
-   - `~/.dotfiles` — cheat sheet added under `home/cheats/`; commit message: `chore: install <command_name> cheat sheet`
+7. **Commit and push all affected repos** — ask for explicit confirmation before committing each repo. Stage only the relevant files (never `git add -A`):
+   - `~/.dotfiles` — cheat sheet under `home/cheats/` and runbook under `desktop-apps-configuration-and-runbooks/<command-name>/`; commit message: `chore: install <command_name> cheat sheet and runbook`
    - `~/todo` — TODO entries appended; commit message: `chore: add <command_name> TODO entries`
    - **`~/.dotfiles` uses gitsign (Sigstore/browser OAuth)** — signing requires a browser window and will fail over SSH without a display.
 
@@ -82,6 +93,7 @@ description: Prompts me for required information before installing a command lin
 
 - Tool is installed and `which <command>` returns the expected path on the current host
 - Cheat sheet file exists at the correct path under `~/cheats/`
+- Runbook exists at `~/.dotfiles/desktop-apps-configuration-and-runbooks/<command-name>/RUNBOOK.md` and is populated
 - TODO entries appended for all non-current hosts in the user's requested OS list
 - All modified repos committed and pushed
 
