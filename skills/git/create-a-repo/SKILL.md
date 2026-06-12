@@ -15,10 +15,10 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 - SSH key in place for GitHub (`ssh -T git@github.com`)
 - SSH key in place for Gitea (`ssh -T git@git.kevininscoe.com -p 2223`)
 - `~/.config/gitea/api` present (Gitea API token for description update)
+- `~/ai/directives/root-directive.md` readable
 - `~/ai/directives/when-creating-or-cloning-a-git-repo.md` readable
 - `~/ai/directives/gitea.md` readable
 - `~/ai/directives/gitignore.md` readable
-- `~/ai/directives/resume-sh.md` readable
 - `~/ai/directives/when-creating-a-readme.md` readable
 - `~/ai/directives/when-creating-a-runbook.md` readable
 - `~/ai/directives/runbook-template.md` readable
@@ -31,9 +31,9 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
    - If **no**: Continue to Step 2.
 
 2. **Read directives** — Read the following directives in full before taking any other action. This step is mandatory at every invocation:
+   - `~/ai/directives/root-directive.md` (dispatcher — follow any additional directives it points to that apply to this task)
    - `~/ai/directives/when-creating-or-cloning-a-git-repo.md`
    - `~/ai/directives/gitignore.md`
-   - `~/ai/directives/resume-sh.md`
    - `~/ai/directives/when-creating-a-readme.md`
    - `~/ai/directives/when-creating-a-runbook.md`
    - `~/ai/directives/runbook-template.md`
