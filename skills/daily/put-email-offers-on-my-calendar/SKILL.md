@@ -9,8 +9,8 @@ description: Checks my gmail for emails that look like time-boxed offers and put
 
 ## Prerequisites
 
-- Gmail MCP (`mcp__claude_ai_Gmail__authenticate`) must be authenticated
-- Google Calendar MCP (`mcp__claude_ai_Google_Calendar__*`) must be authenticated
+- Gmail MCP (`mcp__claude_ai_Gmail__*`) must be available
+- Google Calendar MCP (`mcp__claude_ai_Google_Calendar__*`) must be available
 - Target calendar ID: read from `~/.config/skills/google/calendar/personal`
 
 ## Parameters
@@ -21,7 +21,7 @@ description: Checks my gmail for emails that look like time-boxed offers and put
 
 ## Instructions
 
-1. **Authenticate** — call `mcp__claude_ai_Gmail__authenticate` and `mcp__claude_ai_Google_Calendar__gcal_list_calendars` to confirm both connections are live. If either fails, stop and report the error.
+1. **Confirm connections** — call `mcp__claude_ai_Gmail__list_labels` and `mcp__claude_ai_Google_Calendar__list_calendars` as lightweight probes to confirm both MCPs are live. If either fails, stop and report the error.
 
 2. **Fetch offer emails** — search Gmail for messages received within the last `LOOKBACK_DAYS` days that look like promotional offers. Use **two** searches and combine the results (deduplicating by thread ID):
    - **Subject search**: `subject:(sale OR offer OR discount OR coupon OR savings OR deal OR "valid until" OR expires OR "limited time" OR rebate OR refund OR tires OR tyre OR auto OR clearance OR "free item" OR "buy one" OR financing OR "special financing" OR fest OR springfest OR fallfest OR summerfest)`
@@ -36,9 +36,9 @@ description: Checks my gmail for emails that look like time-boxed offers and put
    - **End date** — the last day the offer is valid (the "valid until" / expiry date). If no explicit end date is stated in the email, you MUST default to exactly 7 days after the email's received date — do not infer end dates from context clues like "end of month", "April savings", or similar phrasing. Note this assumption in the event description.
    - **Description** — a concise summary of what the offer includes (bullet points are fine), plus the sender/brand name and any promo codes.
 
-4. **Deduplicate** — before creating any event, call `mcp__claude_ai_Google_Calendar__gcal_list_events` on the target calendar for the relevant date range and check whether an event with the same title already exists. If a matching event is found, report it as Skipped-duplicate in the summary and do nothing — do not update, modify, or delete the existing event.
+4. **Deduplicate** — before creating any event, call `mcp__claude_ai_Google_Calendar__list_events` on the target calendar for the relevant date range and check whether an event with the same title already exists. If a matching event is found, report it as Skipped-duplicate in the summary and do nothing — do not update, modify, or delete the existing event.
 
-5. **Create calendar events** — for each new offer, call `mcp__claude_ai_Google_Calendar__gcal_create_event` with:
+5. **Create calendar events** — for each new offer, call `mcp__claude_ai_Google_Calendar__create_event` with:
    - `calendarId`: read from `~/.config/skills/google/calendar/personal`
    - `summary`: the offer title from step 3
    - `start`: `{ "date": "<YYYY-MM-DD>" }` (all-day, no time)

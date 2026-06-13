@@ -22,12 +22,12 @@ description: Asks for a git repo URL, determines the correct local clone directo
 
 1. **Read directive** — Read `~/ai/directives/when-creating-or-cloning-a-git-repo.md` in full before taking any other action. This step is mandatory at every invocation.
 
-2. **Ask for the URL** — Ask the user: "What is the URL of the git repo you want to clone?" This is mandatory — do not proceed without a URL supplied directly by the user.
+2. **Ask for the URL** — Ask the user: "What is the SSH URL of the git repo you want to clone?" SSH is the only protocol used for git on this system. This is mandatory — do not proceed without a URL supplied directly by the user.
 
 3. **Determine clone directory** — Using the URL provided and the location rules in the directive's "Cloned repos" section, determine the full target path:
-   - `https://git.kevininscoe.com/` → `~/Projects/private/<repo-name>`
-   - `https://github.com/kevinpinscoe` → `~/Projects/public/<repo-name>`
-   - `https://github.com/acst` → `~/Projects/acst/<repo-name>`
+   - URL contains `git.kevininscoe.com` → `~/Projects/private/<repo-name>`
+   - URL contains `github.com` and `kevinpinscoe` → `~/Projects/public/<repo-name>`
+   - URL contains `github.com` and `acst` → `~/Projects/acst/<repo-name>`
    - Anything else → `~/Projects/3rd-party-repos/<repo-name>`
 
    Derive `<repo-name>` from the last path segment of the URL, stripping any `.git` suffix.
