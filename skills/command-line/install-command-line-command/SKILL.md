@@ -1,6 +1,6 @@
 ---
 name: install-command-line-command
-description: Prompts me for required information before installing a command line tool, generates a cheat sheet, and creates a runbook in ~/.dotfiles/desktop-apps-configuration-and-runbooks
+description: Prompts me for required information before installing a command line tool, generates a cheat sheet, and creates a runbook in ~/Projects/private/app-configuration
 ---
 
 # Install a Command-Line Tool
@@ -9,6 +9,7 @@ description: Prompts me for required information before installing a command lin
 
 ## Prerequisites
 
+- `~/Projects/private/app-configuration` repo accessible and writable
 - `~/.dotfiles` repo accessible and writable (`~/cheats` is a GNU Stow symlink into `~/.dotfiles/home/cheats/`)
 - `~/todo/<os>/TODO.md` writable for each target OS
 - Network access to download the tool or its documentation
@@ -68,13 +69,13 @@ description: Prompts me for required information before installing a command lin
 
    Fill in the "Command options" section by reading the tool's `--help` output or documentation.
 
-5. **Create the runbook** — write `~/.dotfiles/desktop-apps-configuration-and-runbooks/<command-name>/RUNBOOK.md` using `~/ai/directives/runbook-template.md` as the base structure. At minimum include:
+5. **Create the runbook** — write `~/Projects/private/app-configuration/<command-name>/RUNBOOK.md` using `~/ai/directives/runbook-template.md` as the base structure. At minimum include:
    - `# <command-name>` as the title
    - `## Purpose` — the short summary from step 2
    - `## Prerequisites` — any dependencies or requirements to run the tool
    - `## Step-by-Step Procedure` — the install command(s) used in step 3, with expected output and any post-install config steps
    - `## Verification` — `which <command>` and a version check command with expected output
-   - `## Related Runbooks` — leave blank unless related tools are documented under `~/.dotfiles/desktop-apps-configuration-and-runbooks/`
+   - `## Related Runbooks` — leave blank unless related tools are documented under `~/Projects/private/app-configuration/`
 
    Follow all rules in `~/ai/directives/when-creating-a-runbook.md`.
 
@@ -85,15 +86,15 @@ description: Prompts me for required information before installing a command lin
    Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora → `~/todo/fedora/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`.
 
 7. **Commit and push all affected repos** — ask for explicit confirmation before committing each repo. Stage only the relevant files (never `git add -A`):
-   - `~/.dotfiles` — cheat sheet under `home/cheats/` and runbook under `desktop-apps-configuration-and-runbooks/<command-name>/`; commit message: `chore: install <command_name> cheat sheet and runbook`
+   - `~/Projects/private/app-configuration` — runbook under `<command-name>/RUNBOOK.md`; commit message: `chore: add <command_name> runbook`
+   - `~/.dotfiles` — cheat sheet under `home/cheats/`; commit message: `chore: add <command_name> cheat sheet`
    - `~/todo` — TODO entries appended; commit message: `chore: add <command_name> TODO entries`
-   - **`~/.dotfiles` uses gitsign (Sigstore/browser OAuth)** — signing requires a browser window and will fail over SSH without a display.
 
 ## Success Criteria
 
 - Tool is installed and `which <command>` returns the expected path on the current host
 - Cheat sheet file exists at the correct path under `~/cheats/`
-- Runbook exists at `~/.dotfiles/desktop-apps-configuration-and-runbooks/<command-name>/RUNBOOK.md` and is populated
+- Runbook exists at `~/Projects/private/app-configuration/<command-name>/RUNBOOK.md` and is populated
 - TODO entries appended for all non-current hosts in the user's requested OS list
 - All modified repos committed and pushed
 
@@ -101,4 +102,3 @@ description: Prompts me for required information before installing a command lin
 
 - Prefer `~/.local/bin/` for third-party tools; only use a system package manager if it is the tool's standard/recommended install method.
 - If the tool requires config files, add them to `~/.dotfiles` via GNU Stow symlinking.
-- `gitsign` commits in `~/.dotfiles` require a browser window for Sigstore OAuth — remind the user if they're over SSH without a display.
