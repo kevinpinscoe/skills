@@ -133,10 +133,15 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 
 18. **Verify** — Confirm the push succeeded by running `git -C <clone-dir> log --oneline -3` and reporting the output to the user.
 
-19. **Rebuild gitme cache** — Run `gitme --rebuild-cache` to register the new repo in the local gitme index:
-    ```bash
-    gitme --rebuild-cache
-    ```
+19. **Rebuild gitme cache** — `gitme --rebuild-cache` must be run by the user in their own
+    interactive terminal session. The AI must NOT run this command directly — it calls a
+    shell function (`_gitme_build_cache`) sourced from `.zshrc` that is not available in a
+    non-interactive shell, so the command will silently fail. Remind the user to run it
+    themselves:
+    > Please run this in your own terminal to register the new repo in gitme:
+    > ```bash
+    > gitme --rebuild-cache
+    > ```
 
 ## Success Criteria
 
