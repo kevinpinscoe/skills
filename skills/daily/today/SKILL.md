@@ -42,6 +42,34 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - Run `git status --short --branch` and tell the user about modified, deleted, renamed, and untracked files before taking action.
    - Stage only files relevant to this daily sync work. Never use `git add -A`.
 
+4a. **Forked repos in `~/Projects/public/`** — many repos under `~/Projects/public/` are forks
+    of upstream open-source projects. Personal changes live on a `personal` branch; upstream
+    contributions go via PR to the original project. Apply these rules to any `~/Projects/public/`
+    repo flagged by `check-git-repos`:
+
+    **Pull rules:**
+    - Do NOT run `git pull` on a forked repo unless the currently checked-out branch is a
+      personal branch (e.g. `personal`). Pulling on `main` would silently overwrite local
+      personal work.
+    - If the repo is BEHIND on `main`: report it but do not pull unless the user explicitly
+      requests it.
+
+    **UNTRACKED files:**
+    1. Run `git branch --list personal` to check for a `personal` branch.
+    2. If a `personal` branch exists: tell the user, switch to it, then ask the user to confirm
+       which untracked files to stage before doing so.
+    3. If no `personal` branch exists: warn the user — do not commit untracked files to `main`.
+
+    **UNSTAGED files:**
+    - If on `personal` branch: proceed normally through steps 5–7.
+    - If on `main` or default branch: warn the user and do not stage or commit until the user
+      clarifies whether to create a `personal` branch or commit directly.
+
+    **AHEAD commits:**
+    - AHEAD commits represent personal work intended for an upstream PR when ready. Do not push
+      automatically. Ask the user whether to push to their fork remote, and remind them that
+      contributing to the original project requires opening a PR from the fork to upstream.
+
 5. **Pull safely** — fetch and inspect upstream before merging:
    - Run `git fetch --prune`.
    - Determine the current branch and its upstream with `git rev-parse --abbrev-ref HEAD` and `git rev-parse --abbrev-ref --symbolic-full-name @{u}`.
