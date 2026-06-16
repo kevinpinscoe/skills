@@ -1,0 +1,226 @@
+---
+name: first-moc-level
+description: Creates a first-level Map of Content (MOC) file in both the personal knowledge base and personal context management vaults, with LCC classification in frontmatter.
+---
+
+# Create First-Level MOC
+
+> Creates a first-level Map of Content (MOC) markdown file in both knowledge vaults, performs an LCC classification lookup, confirms the correct category with the human, and adds a navigation link to each vault's home.md.
+
+## Prerequisites
+
+- `~/KnowledgeVault/personal-knowledge-base/` must exist and contain a `lcc/` directory with LCC outline files (`lcco-a.md` through `lcco-z.md`)
+- `~/Projects/private/personal-context-management-private/` must exist
+- Both vaults must have `templates/moc-note-template.md` and `moc/` directories
+
+## Parameters
+
+| Name | Description | Default |
+|------|-------------|---------|
+| `SUBJECT` | The topic this MOC will cover | _(required — ask the user)_ |
+| `DISPLAY_TITLE` | Human-readable title as it should appear in home.md links | _(required — ask the user)_ |
+| `LCC_CODE` | LCC classification code (determined via lookup + human confirmation) | _(required — derived via lookup)_ |
+
+## Background: What These Vaults Are
+
+This skill writes to two separate knowledge-management repositories. Both follow the same structural conventions, so an AI unfamiliar with them can apply this skill correctly.
+
+### Vault 1 — Personal Knowledge Base
+Path: `~/KnowledgeVault/personal-knowledge-base/`
+
+A long-term technical knowledge base organized around MOCs, shallow folders, links, and LCC classification. Core principle: folders are for storage, MOCs are for navigation, links are for relationships.
+
+Key directories:
+- `moc/` — Map of Content files (navigation hubs). First-level MOCs are broad topic maps (AI, Linux, Tools, Health, etc.)
+- `lcc/` — Library of Congress Classification outlines (`lcco-a.md` through `lcco-z.md`); used to determine classification codes and labels for frontmatter
+- `notes/` — Evergreen notes, often prefixed with LCC codes (e.g. `qa76-linux-systemd-timers.md`)
+- `home.md` — The vault front door; contains a `## Main Indexes` section with wiki-links to each first-level MOC
+
+Template: `templates/moc-note-template.md`
+```yaml
+---
+title: "{{title}}"
+aliases:
+  - "moc {{title}}"
+type: moc
+classification:
+classification_label:
+classification_source: lcc
+primary_moc:
+related_mocs: []
+tags: []
+created: {{date}}
+updated: {{date}}
+---
+
+# {{title}} MOC
+
+## Overview
+
+<!-- What does this map cover? -->
+
+## Notes
+
+- [[]]
+
+## Related MOCs
+
+- [[]]
+```
+
+Existing first-level MOC examples (filename → classification):
+- `moc/ai.md` → classification: QA76, label: "Computer science"
+- `moc/tools.md` → classification: T, label: "Technology"
+- `moc/linux.md` → classification: QA76, label: "Computer science"
+- `moc/health.md` → classification: R, label: "Medicine"
+
+### Vault 2 — Personal Context Management (private)
+Path: `~/Projects/private/personal-context-management-private/`
+
+An operational layer for the PCM workflow — holds ingest pipeline configuration, AI conversation exports, and Obsidian-ready distilled output. Its `moc/` directory mirrors the same structure as the KnowledgeVault but starts empty.
+
+Key directories:
+- `moc/` — same role as in the KnowledgeVault
+- `lcc/` — exists but is empty; use the KnowledgeVault's `lcc/` for all lookups
+- `home.md` — currently contains only quick links to directories; add a `## Maps of Content` section if one does not already exist
+
+Template: `templates/moc-note-template.md`
+```yaml
+---
+title: "{{title}}"
+type: moc
+tags: []
+created: {{date}}
+updated: {{date}}
+---
+
+# {{title}}
+
+## Overview
+
+<!-- What does this map cover? -->
+
+## Notes
+
+- [[]]
+
+## Related MOCs
+
+- [[]]
+```
+
+Note: The PCM template does not include classification fields by default. **Add them anyway** — the human has requested LCC classification in frontmatter for both vaults.
+
+## Naming Rules (both vaults)
+
+- **Filename**: lowercase, hyphen-separated, no spaces. Derived from the subject name. Example: "Compute Infrastructure" → `compute-infrastructure.md`
+- **Title, aliases, classification labels, and display names in home.md** may use normal capitalization, spaces, and punctuation
+- **File must live in** `moc/`
+
+## Instructions
+
+1. **Ask for subject name** — Ask the human: "What is the subject of this MOC?" Wait for their answer before proceeding.
+
+2. **Ask for display title and link text** — Ask: "How should the title and link name appear in home.md for each vault? (For example: `[[linux|Linux]]` uses `Linux` as the display text.)" Wait for their answer.
+
+3. **Determine the filename slug** — Convert the subject name to a lowercase, hyphen-separated slug. Example: "Compute Infrastructure" → `compute-infrastructure`. This will be the filename in both vaults: `moc/<slug>.md`.
+
+4. **Search the LCC catalog** — Read the LCC outline files in `~/KnowledgeVault/personal-knowledge-base/lcc/`. The files are named `lcco-a.md`, `lcco-b.md`, ..., `lcco-z.md` and contain the Library of Congress Classification hierarchy. Search for classes that plausibly match the subject. Common top-level classes:
+   - A: General Works
+   - B: Philosophy, Psychology, Religion
+   - G: Geography, Anthropology, Recreation
+   - H: Social Sciences
+   - J: Political Science
+   - K: Law
+   - L: Education
+   - M: Music
+   - N: Fine Arts
+   - P: Language and Literature
+   - Q: Science (QA = Mathematics/Computer Science, QB = Astronomy, QC = Physics, QD = Chemistry, QH = Biology, QK = Botany, QL = Zoology, QM = Anatomy, QP = Physiology, QR = Microbiology)
+   - R: Medicine
+   - S: Agriculture
+   - T: Technology (TA = Engineering, TH = Building, TJ = Mechanical, TK = Electrical, TL = Motor Vehicles, TT = Handicrafts, TX = Home Economics)
+   - U: Military Science
+   - V: Naval Science
+   - Z: Bibliography, Library Science
+
+5. **Present candidates and confirm** — Present 2–4 candidate LCC codes and labels that could match the subject. Be explicit about potential ambiguities. Examples of disambiguation to include:
+   - "Tools" could mean: T (Technology broadly), TJ (Mechanical engineering and machinery), TT (Handicrafts/Arts and crafts — hand tools), or QA76 (Computer software — software tools/utilities)
+   - "Radio" could mean: TK (Electrical engineering and electronics) or P (Language and Literature — broadcasting)
+   - "Finance" could mean: HG (Finance) or HJ (Public finance)
+   
+   Ask: "Which LCC classification best matches your intent? [list candidates with codes and labels]" Wait for confirmation before continuing.
+
+6. **Get today's date** — Run `date +%Y-%m-%d` to get the current date in YYYY-MM-DD format.
+
+7. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` using the KnowledgeVault template. Fill in:
+   - `title`: the display title the human provided (or a sensible title from the subject name)
+   - `aliases`: `["moc <title>"]` — lowercase alias
+   - `type`: `moc`
+   - `classification`: the confirmed LCC code (e.g. `T`, `QA76`, `R`)
+   - `classification_label`: the LCC class label (e.g. `"Technology"`, `"Computer science"`, `"Medicine"`)
+   - `classification_source`: `lcc`
+   - `primary_moc`: leave blank (this is itself a first-level MOC)
+   - `related_mocs`: `[]`
+   - `tags`: `["moc"]`
+   - `created`: today's date
+   - `updated`: today's date
+   - Body: fill `# <title> MOC` heading; write a one-sentence overview describing what the map covers
+
+8. **Create the PCM MOC file** — Write `~/Projects/private/personal-context-management-private/moc/<slug>.md` using the PCM template. Use the same title, date, and classification fields as the KnowledgeVault file. The PCM template omits classification fields; add them in the same order and format as the KnowledgeVault version:
+   ```yaml
+   ---
+   title: "..."
+   aliases:
+     - "moc ..."
+   type: moc
+   classification: ...
+   classification_label: "..."
+   classification_source: lcc
+   related_mocs: []
+   tags:
+     - moc
+   created: YYYY-MM-DD
+   updated: YYYY-MM-DD
+   ---
+   ```
+   Body: same heading and overview as the KnowledgeVault file.
+
+9. **Update KnowledgeVault home.md** — Open `~/KnowledgeVault/personal-knowledge-base/home.md`. Add a new entry under `## Main Indexes` in the format:
+   ```
+   - [[<slug>|<Display Title>]]
+   ```
+   where `<slug>` is the filename without `.md` and `<Display Title>` is what the human specified. Keep the list alphabetically ordered or append at the end if ordering is unclear.
+
+10. **Update PCM home.md** — Open `~/Projects/private/personal-context-management-private/home.md`. If a `## Maps of Content` section already exists, add:
+    ```
+    - [[<slug>|<Display Title>]]
+    ```
+    If no `## Maps of Content` section exists, add one after `## Quick Links`:
+    ```markdown
+    ## Maps of Content
+
+    - [[<slug>|<Display Title>]]
+    ```
+
+11. **Report completion** — Summarize:
+    - Files created: list both full paths
+    - LCC classification applied: code + label
+    - home.md entries added: show the exact lines added in each file
+
+## Success Criteria
+
+- `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with correct YAML frontmatter including `classification`, `classification_label`, and `classification_source: lcc`
+- `~/Projects/private/personal-context-management-private/moc/<slug>.md` exists with the same frontmatter fields
+- Both `home.md` files contain a new `[[<slug>|<Display Title>]]` link
+- Filename is lowercase, hyphen-separated, no spaces, ends in `.md`
+- `type: moc` is set in both files
+- `created` and `updated` are set to today's date in `YYYY-MM-DD` format
+
+## Notes
+
+- The PCM vault's `lcc/` directory is intentionally empty — always use `~/KnowledgeVault/personal-knowledge-base/lcc/` for classification lookups
+- When the subject is ambiguous (e.g. "tools", "radio", "security"), always surface the ambiguity before choosing a classification — do not guess
+- The `primary_moc` field in the KnowledgeVault template is left blank for first-level MOCs; second-level MOCs (child MOCs) would set this to their parent
+- If the `.gitkeep` file is the only file in `moc/` of the PCM vault, it can remain in place — git will still track the directory with real content present
+- Related skills: `second-moc-level` (for child MOCs), `third-moc-level` (for leaf MOCs), `create-km-note` (for individual notes)
