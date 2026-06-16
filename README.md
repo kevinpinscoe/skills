@@ -43,6 +43,8 @@ skills/
 │   └── create-a-repo/
 │       └── SKILL.md
 ├── knowledge/
+│   ├── create-km-note/
+│   │   └── SKILL.md
 │   ├── first-moc-level/
 │   │   └── SKILL.md
 │   ├── second-moc-level/
