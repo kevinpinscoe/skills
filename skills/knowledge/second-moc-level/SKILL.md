@@ -162,7 +162,7 @@ updated: {{date}}
        if end == -1:
            continue
        fm = content[3:end]
-       primary = re.search(r'^primary_moc:\s*(\S.*)?$', fm, re.MULTILINE)
+       primary = re.search(r'^primary_moc:[ \t]*(\S.*)?$', fm, re.MULTILINE)
        if primary and primary.group(1) and primary.group(1).strip():
            continue  # has a parent — is second-level or deeper, skip
        title_m = re.search(r'^title:\s*"?([^"\n]+)"?', fm, re.MULTILINE)

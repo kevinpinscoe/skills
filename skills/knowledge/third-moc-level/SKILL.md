@@ -126,7 +126,7 @@ updated: {{date}}
            continue
        fm = content[3:end]
        # Second-level MOCs have a non-empty primary_moc field
-       primary = re.search(r'^primary_moc:\s*(\S.*)?$', fm, re.MULTILINE)
+       primary = re.search(r'^primary_moc:[ \t]*(\S.*)?$', fm, re.MULTILINE)
        if not primary or not primary.group(1) or not primary.group(1).strip():
            continue  # no parent — this is first-level, skip
        parent_val = primary.group(1).strip().strip('"')
