@@ -1,49 +1,53 @@
 ---
 name: third-moc-level
-description: Creates a third-level Map of Content (MOC) file nested under a chosen second-level parent, with LCC classification in frontmatter, using an interactive Python chooser to select the parent.
+description: Creates a third-level Map of Content (MOC) by first choosing a first-level MOC, then choosing a second-level MOC under it, then asking for a further focus area within that subtopic.
 ---
 
 # Create Third-Level MOC
 
-> Creates a third-level Map of Content (MOC) in both knowledge vaults under a human-selected second-level parent MOC, with LCC classification in frontmatter, and links the new MOC into its parent.
+> Runs two sequential Python choosers — first to select a first-level parent, then to select a second-level parent under it — then asks for a further focus area within that subtopic, looks up a deeper LCC classification if one exists, and writes the third-level MOC in both knowledge vaults.
+
+## How This Skill Chains
+
+Both Python choosers run **inline as Steps 1 and 3** of this skill. Claude runs each script, presents the numbered list, waits for the human to pick a number, then continues. There is no separate launcher. The entire flow — chooser 1 → chooser 2 → focus area question → LCC lookup → file creation → commit — happens in one sequential Claude session.
 
 ## Prerequisites
 
-- `~/KnowledgeVault/personal-knowledge-base/moc/` must contain at least one second-level MOC file (a file with a non-empty `primary_moc:` field)
+- `~/KnowledgeVault/personal-knowledge-base/moc/` must contain at least one first-level MOC and at least one second-level MOC
 - `~/Projects/private/personal-context-management-private/moc/` must exist
 - Both vaults must have `templates/moc-note-template.md`
-- Python 3 must be available (`python3`)
+- Python 3 available (`python3`)
 
 ## Parameters
 
 | Name | Description | Default |
 |------|-------------|---------|
-| `SUBJECT` | The topic this MOC will cover | _(required — ask the user)_ |
-| `DISPLAY_TITLE` | Human-readable title as it should appear in the parent MOC and links | _(required — ask the user)_ |
-| `PARENT_MOC` | The second-level MOC this MOC belongs under | _(required — selected via chooser)_ |
-| `LCC_CODE` | LCC classification code (determined via lookup + human confirmation) | _(required — derived via lookup)_ |
+| `GRANDPARENT_MOC` | The first-level MOC (narrows the second-level chooser) | _(resolved via chooser in Step 1)_ |
+| `PARENT_MOC` | The second-level MOC this lives under | _(resolved via chooser in Step 3)_ |
+| `FOCUS_AREA` | The further subdivision or focus area within the parent subtopic | _(asked after parent is chosen)_ |
+| `DISPLAY_TITLE` | Title as it should appear in parent MOC links | _(asked after focus area is known)_ |
+| `LCC_CODE` | Classification code — deeper than parent if one exists, otherwise reuse parent's | _(derived via lookup)_ |
 
 ## Background: What These Vaults Are
 
-This skill writes to two knowledge-management repositories that share the same structural conventions.
+This skill writes to two knowledge-management repositories that share structural conventions.
 
 ### MOC Hierarchy
 
-MOCs (Maps of Content) are navigation hubs organized in levels:
-- **First-level MOCs**: Broad topic maps (AI, Linux, Tools). `primary_moc:` is empty.
-- **Second-level MOCs**: Sub-topic maps nested under a first-level parent. `primary_moc:` is set to the parent slug or title. Example: "AWS" under "Compute Cloud Hosting"; "Outdoor Lawn and Garden Maintenance" under "Tools".
-- **Third-level MOCs**: Narrowly focused maps nested under a second-level parent. `primary_moc:` is set to the second-level parent slug or title.
+- **First-level MOCs**: Broad subject maps (AI, Linux, Tools, Software). `primary_moc:` is blank.
+- **Second-level MOCs**: Sub-topic maps under a first-level parent. `primary_moc:` is set to the parent slug or title.
+- **Third-level MOCs**: Narrowly focused maps under a second-level parent. `primary_moc:` is set to the second-level parent's slug.
 
-Parent MOCs list their children in a `## Child MOCs`, `## Second-level MOCs`, or `## Third-level MOCs` section (detect what the parent already uses).
+A parent MOC lists its children in a `## Child MOCs`, `## Second-level MOCs`, or `## Third-level MOCs` section (detect and match what the parent already uses).
 
 ### Vault 1 — Personal Knowledge Base
 Path: `~/KnowledgeVault/personal-knowledge-base/`
 
-- `moc/` — all MOC files at all levels; use this directory for the parent chooser
+- `moc/` — all MOC files at all levels; source of truth for both choosers
 - `lcc/` — LCC outline files (`lcco-a.md` through `lcco-z.md`) for classification lookup
-- `home.md` — **do not modify** for third-level MOCs
+- `home.md` — **do not modify**; only first-level MOCs appear there
 
-Template: `templates/moc-note-template.md`
+Template (`templates/moc-note-template.md`):
 ```yaml
 ---
 title: "{{title}}"
@@ -78,11 +82,11 @@ updated: {{date}}
 ### Vault 2 — Personal Context Management (private)
 Path: `~/Projects/private/personal-context-management-private/`
 
-- `moc/` — mirrors the KnowledgeVault; may have fewer files
-- `lcc/` — empty; always use the KnowledgeVault's `lcc/` for lookups
-- `home.md` — **do not modify** for third-level MOCs
+- `moc/` — mirrors the KnowledgeVault; may be empty or partial
+- `lcc/` — empty; always use the KnowledgeVault's `lcc/` for all lookups
+- `home.md` — **do not modify**
 
-Template: `templates/moc-note-template.md` (add classification fields even though they are absent from the template):
+Template (`templates/moc-note-template.md`) — simpler; add classification fields explicitly:
 ```yaml
 ---
 title: "{{title}}"
@@ -93,19 +97,15 @@ updated: {{date}}
 ---
 ```
 
-### Naming Rules (both vaults)
+### Naming Rules
 
-- **Filename**: lowercase, hyphen-separated, no spaces. Example: "Digital Ocean Droplets" → `digital-ocean-droplets.md`
-- **Title, aliases, frontmatter labels**: may use normal capitalization and spaces
-- **File must live in** `moc/`
+- **Filename**: lowercase, hyphen-separated, no spaces. Example: "Package Managers" → `package-managers.md`
+- **Frontmatter values** (title, labels, aliases): normal capitalization and spaces are fine
+- **Files must live in** `moc/`
 
 ## Instructions
 
-1. **Ask for subject name** — Ask: "What is the subject of this third-level MOC?" Wait for their answer.
-
-2. **Ask for display title** — Ask: "How should the title and link name appear in the parent MOC? (e.g. `[[digital-ocean-droplets|Digital Ocean Droplets]]`)" Wait for their answer.
-
-3. **Run the parent MOC chooser** — Write and run this Python script to list all second-level MOCs from `~/KnowledgeVault/personal-knowledge-base/moc/`:
+1. **Run the first-level MOC chooser** — Run this Python script immediately, before asking the human anything:
 
    ```python
    import os, re
@@ -125,75 +125,127 @@ updated: {{date}}
        if end == -1:
            continue
        fm = content[3:end]
-       # Second-level MOCs have a non-empty primary_moc field
        primary = re.search(r'^primary_moc:[ \t]*(\S.*)?$', fm, re.MULTILINE)
-       if not primary or not primary.group(1) or not primary.group(1).strip():
-           continue  # no parent — this is first-level, skip
-       parent_val = primary.group(1).strip().strip('"')
+       if primary and primary.group(1) and primary.group(1).strip():
+           continue  # has a parent — skip
        title_m = re.search(r'^title:\s*"?([^"\n]+)"?', fm, re.MULTILINE)
        title = title_m.group(1).strip() if title_m else fname[:-3]
-       results.append((fname[:-3], title, parent_val))
+       results.append((fname[:-3], title))
 
-   for i, (slug, title, parent) in enumerate(results, 1):
-       print(f"{i}. {title}  (parent: {parent}, file: {slug})")
+   for i, (slug, title) in enumerate(results, 1):
+       print(f"{i}. {title}  ({slug})")
    ```
 
-   Present the numbered list output to the human and ask: "Which second-level MOC is the parent for this new MOC? Enter the number." Wait for their selection and record the parent's slug and title.
+   Present the numbered list and ask: "Which first-level MOC contains the second-level MOC you want to nest under? Enter the number." Wait for their answer. Record the selected first-level MOC's **slug** and **title**.
 
-4. **Determine the filename slug** — Convert the subject name to a lowercase, hyphen-separated slug. Example: "Digital Ocean Droplets" → `digital-ocean-droplets`.
+2. **Read the first-level MOC's frontmatter** — Open `~/KnowledgeVault/personal-knowledge-base/moc/<grandparent-slug>.md` and extract its `title`.
 
-5. **Search the LCC catalog** — Read the relevant LCC outline file(s) in `~/KnowledgeVault/personal-knowledge-base/lcc/`. Files are named `lcco-a.md` through `lcco-z.md`. Common top-level classes:
-   - Q: Science (QA = Mathematics/Computer Science, QH = Biology)
-   - R: Medicine
-   - S: Agriculture (SB = Plant culture)
-   - T: Technology (TA = Engineering, TH = Building, TJ = Mechanical, TK = Electrical, TL = Motor Vehicles, TN = Mining, TP = Chemical, TR = Photography, TS = Manufactures, TT = Handicrafts, TX = Home Economics)
-   - H: Social Sciences (HG = Finance)
-   - B: Philosophy, Psychology, Religion
+3. **Run the second-level MOC chooser** — Run this Python script, substituting the selected grandparent slug and title:
 
-6. **Present candidates and confirm** — List 2–4 plausible LCC codes and labels. Call out ambiguity explicitly. Ask: "Which classification best matches your intent?" Wait for confirmation.
+   ```python
+   import os, re
 
-7. **Get today's date** — Run `date +%Y-%m-%d`.
+   moc_dir = os.path.expanduser("~/KnowledgeVault/personal-knowledge-base/moc")
+   grandparent_slug = "<grandparent-slug>"   # substitute from step 1
+   grandparent_title = "<Grandparent Title>" # substitute from step 1
+   results = []
 
-8. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md`:
-   - `title`: display title
-   - `aliases`: `["moc <title lowercase>"]`
-   - `type`: `moc`
-   - `classification`: confirmed LCC code
-   - `classification_label`: LCC class label
-   - `classification_source`: `lcc`
-   - `primary_moc`: parent slug (e.g. `compute-cloud-hosting`) — use the slug for machine-readability
-   - `related_mocs`: list containing the parent's display title
-   - `tags`: `["moc"]`
-   - `created` / `updated`: today's date
-   - Body: `# <title> MOC`, one-sentence Overview, `## Notes` with empty `[[]]`, `## Related MOCs` linking to parent
+   for fname in sorted(os.listdir(moc_dir)):
+       if not fname.endswith(".md"):
+           continue
+       path = os.path.join(moc_dir, fname)
+       with open(path) as f:
+           content = f.read()
+       if not content.startswith("---"):
+           continue
+       end = content.find("---", 3)
+       if end == -1:
+           continue
+       fm = content[3:end]
+       primary = re.search(r'^primary_moc:[ \t]*(\S.*)?$', fm, re.MULTILINE)
+       if not primary or not primary.group(1) or not primary.group(1).strip():
+           continue  # no parent — first-level, skip
+       parent_val = primary.group(1).strip().strip('"').strip("'")
+       if parent_val.lower() not in (grandparent_slug.lower(), grandparent_title.lower()):
+           continue  # belongs to a different first-level MOC
+       title_m = re.search(r'^title:\s*"?([^"\n]+)"?', fm, re.MULTILINE)
+       title = title_m.group(1).strip() if title_m else fname[:-3]
+       class_m = re.search(r'^classification:[ \t]*(\S.*)?$', fm, re.MULTILINE)
+       cls = class_m.group(1).strip() if class_m and class_m.group(1) else ""
+       results.append((fname[:-3], title, cls))
 
-9. **Create the PCM MOC file** — Write `~/Projects/private/personal-context-management-private/moc/<slug>.md` with the same content. Add all classification fields explicitly:
-   ```yaml
-   ---
-   title: "..."
-   aliases:
-     - "moc ..."
-   type: moc
-   classification: ...
-   classification_label: "..."
-   classification_source: lcc
-   primary_moc: <parent-slug>
-   related_mocs:
-     - "<Parent Display Title>"
-   tags:
-     - moc
-   created: YYYY-MM-DD
-   updated: YYYY-MM-DD
-   ---
+   if not results:
+       print("No second-level MOCs found under this parent. Create one first with the second-moc-level skill.")
+   else:
+       for i, (slug, title, cls) in enumerate(results, 1):
+           print(f"{i}. {title}  (classification: {cls}, file: {slug})")
    ```
 
-10. **Update the parent MOC in both vaults** — In each vault, open the parent second-level MOC file (`moc/<parent-slug>.md`):
-    - Find a section named `## Child MOCs`, `## Third-level MOCs`, or similar. If no such section exists, add one before `## Related MOCs` (or before `## Notes` if there is no Related MOCs section).
-    - Add: `- [[<slug>|<Display Title>]]`
-    - Update the `updated:` frontmatter field to today's date in both files.
-    - If the parent MOC file does not yet exist in the PCM vault, create it first using the KnowledgeVault version as a reference before adding the child link.
+   If the output reports no second-level MOCs under that parent, stop and tell the human to run the `second-moc-level` skill first.
 
-11. **Commit and push in both vaults** — For each vault repo, stage the new MOC file and the updated parent MOC, then commit and push:
+   Otherwise, present the numbered list and ask: "Which second-level MOC is the parent for this new third-level MOC? Enter the number." Wait for their answer. Record the selected second-level MOC's **slug**, **title**, **classification code**, and **classification_label**.
+
+4. **Read the second-level MOC's frontmatter** — Open `~/KnowledgeVault/personal-knowledge-base/moc/<parent-slug>.md` and extract:
+   - `title` — the parent's display title
+   - `classification` — the parent's LCC code (baseline for this MOC)
+   - `classification_label` — the parent's LCC label
+
+5. **Ask for the focus area** — Ask: "What further focus area or subdivision within **[Parent Title]** do you want to map?" Wait for their answer. This becomes the subject of the new third-level MOC.
+
+6. **Ask for the display title** — Ask: "How should this appear as a title and link in the parent MOC? (e.g. `[[package-managers|Package Managers]]`)" Wait for their answer.
+
+7. **Determine the filename slug** — Convert the focus area to a lowercase, hyphen-separated slug. Example: "Package Managers" → `package-managers`.
+
+8. **Search for a deeper LCC classification** — Read the relevant LCC outline file from `~/KnowledgeVault/personal-knowledge-base/lcc/` starting from the parent's LCC class. Look for a sub-class that more precisely matches the focus area.
+
+   **If a more specific sub-class exists**: use it.
+
+   **If no more specific sub-class fits**: reuse the parent's classification code and label unchanged. Do not force a classification that doesn't fit.
+
+   Call out ambiguities before confirming. Ask: "Which classification best matches your intent: [list candidates]?" Wait for confirmation.
+
+9. **Get today's date** — Run `date +%Y-%m-%d`.
+
+10. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md`:
+    - `title`: the display title
+    - `aliases`: `["moc <title lowercase>"]`
+    - `type`: `moc`
+    - `classification`: confirmed LCC code (deeper or reused)
+    - `classification_label`: LCC label
+    - `classification_source`: `lcc`
+    - `primary_moc`: the second-level parent's slug
+    - `related_mocs`: list with the second-level parent's display title
+    - `tags`: `["moc"]`
+    - `created` / `updated`: today's date
+    - Body: `# <title> MOC`, one-sentence Overview describing what focus area this covers, `## Notes` with `- [[]]`, `## Related MOCs` linking back to parent
+
+11. **Create the PCM MOC file** — Write `~/Projects/private/personal-context-management-private/moc/<slug>.md` with the same content. Add all classification fields explicitly since the PCM template omits them:
+    ```yaml
+    ---
+    title: "..."
+    aliases:
+      - "moc ..."
+    type: moc
+    classification: ...
+    classification_label: "..."
+    classification_source: lcc
+    primary_moc: <parent-slug>
+    related_mocs:
+      - "<Parent Display Title>"
+    tags:
+      - moc
+    created: YYYY-MM-DD
+    updated: YYYY-MM-DD
+    ---
+    ```
+
+12. **Update the parent MOC in both vaults** — In each vault, open `moc/<parent-slug>.md`:
+    - Find a section named `## Child MOCs`, `## Third-level MOCs`, or similar. If no such section exists, add one immediately before `## Related MOCs` (or before `## Notes` if there is no Related MOCs section).
+    - Append: `- [[<slug>|<Display Title>]]`
+    - Update the `updated:` frontmatter field to today's date.
+    - If the parent MOC file does not yet exist in the PCM vault, create a minimal stub using the KnowledgeVault version as a reference before editing it.
+
+13. **Commit and push in both vaults** — For each vault repo, stage the new MOC file and the updated parent MOC, then commit and push:
 
     ```bash
     # KnowledgeVault
@@ -209,24 +261,25 @@ updated: {{date}}
 
     Report the commit hash from each repo after pushing.
 
-12. **Report completion** — Summarize:
+14. **Report completion** — Summarize:
     - Files created: both full paths
     - Parent MOC updated: both full paths, with the exact line added
-    - LCC classification applied: code + label
+    - LCC classification applied: code + label (note if reused from parent or deeper)
     - Commits pushed: hash and repo for each
 
 ## Success Criteria
 
-- `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with `primary_moc` set to the parent slug and `classification` filled
-- `~/Projects/private/personal-context-management-private/moc/<slug>.md` exists with the same frontmatter fields
-- Parent second-level MOC in both vaults has a new `[[<slug>|<Display Title>]]` entry in its child section
+- `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
+- `~/Projects/private/personal-context-management-private/moc/<slug>.md` exists with the same frontmatter
+- Second-level parent MOC in both vaults contains `[[<slug>|<Display Title>]]` in a child section
 - Neither `home.md` was modified
 - Filename is lowercase, hyphen-separated, no spaces
 
 ## Notes
 
-- **Do not modify `home.md`** in either vault — only first-level MOCs are listed there
+- **Do not modify `home.md`** — only first-level MOCs are listed there
 - The PCM vault's `lcc/` is empty — always look up classifications in `~/KnowledgeVault/personal-knowledge-base/lcc/`
-- If the chooser returns no results (no second-level MOCs exist yet), stop and tell the human to first create a second-level MOC using the `second-moc-level` skill
-- `primary_moc` in new files should use the parent's slug (lowercase, hyphenated) for consistency — existing files are inconsistent but new ones should be machine-readable slugs
-- Related skills: `first-moc-level` (top-level creation), `second-moc-level` (parent creation)
+- The second-level chooser matches `primary_moc` against both the grandparent slug and title (case-insensitive) to handle the inconsistency in existing files where some use slugs and some use display titles
+- Reusing the parent's classification is correct when no tighter LCC sub-class fits
+- If the chooser in Step 3 returns no results, stop and direct the human to the `second-moc-level` skill
+- Related skills: `first-moc-level` (top-level creation), `second-moc-level` (create the parent first)
