@@ -203,10 +203,27 @@ Note: The PCM template does not include classification fields by default. **Add 
     - [[<slug>|<Display Title>]]
     ```
 
-11. **Report completion** — Summarize:
+11. **Commit and push in both vaults** — For each vault repo, stage the new MOC file and the updated `home.md`, then commit and push:
+
+    ```bash
+    # KnowledgeVault
+    git -C ~/KnowledgeVault/personal-knowledge-base add moc/<slug>.md home.md
+    git -C ~/KnowledgeVault/personal-knowledge-base commit -m "moc: add <slug> first-level MOC"
+    git -C ~/KnowledgeVault/personal-knowledge-base push
+
+    # PCM vault
+    git -C ~/Projects/private/personal-context-management-private add moc/<slug>.md home.md
+    git -C ~/Projects/private/personal-context-management-private commit -m "moc: add <slug> first-level MOC"
+    git -C ~/Projects/private/personal-context-management-private push
+    ```
+
+    Report the commit hash from each repo after pushing.
+
+12. **Report completion** — Summarize:
     - Files created: list both full paths
     - LCC classification applied: code + label
     - home.md entries added: show the exact lines added in each file
+    - Commits pushed: hash and repo for each
 
 ## Success Criteria
 

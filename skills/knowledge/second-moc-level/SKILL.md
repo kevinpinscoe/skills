@@ -244,10 +244,27 @@ updated: {{date}}
     - Append: `- [[<slug>|<Display Title>]]`
     - Update the `updated:` frontmatter field to today's date.
 
-11. **Report completion** — State:
+11. **Commit and push in both vaults** — For each vault repo, stage the new MOC file and the updated parent MOC, then commit and push:
+
+    ```bash
+    # KnowledgeVault
+    git -C ~/KnowledgeVault/personal-knowledge-base add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/KnowledgeVault/personal-knowledge-base commit -m "moc: add <slug> second-level MOC under <parent-slug>"
+    git -C ~/KnowledgeVault/personal-knowledge-base push
+
+    # PCM vault
+    git -C ~/Projects/private/personal-context-management-private add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/Projects/private/personal-context-management-private commit -m "moc: add <slug> second-level MOC under <parent-slug>"
+    git -C ~/Projects/private/personal-context-management-private push
+    ```
+
+    Report the commit hash from each repo after pushing.
+
+12. **Report completion** — State:
     - Files created: both full paths
     - Parent updated: both full paths, with the exact line added
     - Classification applied: code + label (note if reused from parent or if a deeper one was found)
+    - Commits pushed: hash and repo for each
 
 ## Success Criteria
 

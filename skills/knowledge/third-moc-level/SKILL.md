@@ -193,10 +193,27 @@ updated: {{date}}
     - Update the `updated:` frontmatter field to today's date in both files.
     - If the parent MOC file does not yet exist in the PCM vault, create it first using the KnowledgeVault version as a reference before adding the child link.
 
-11. **Report completion** — Summarize:
+11. **Commit and push in both vaults** — For each vault repo, stage the new MOC file and the updated parent MOC, then commit and push:
+
+    ```bash
+    # KnowledgeVault
+    git -C ~/KnowledgeVault/personal-knowledge-base add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/KnowledgeVault/personal-knowledge-base commit -m "moc: add <slug> third-level MOC under <parent-slug>"
+    git -C ~/KnowledgeVault/personal-knowledge-base push
+
+    # PCM vault
+    git -C ~/Projects/private/personal-context-management-private add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/Projects/private/personal-context-management-private commit -m "moc: add <slug> third-level MOC under <parent-slug>"
+    git -C ~/Projects/private/personal-context-management-private push
+    ```
+
+    Report the commit hash from each repo after pushing.
+
+12. **Report completion** — Summarize:
     - Files created: both full paths
     - Parent MOC updated: both full paths, with the exact line added
     - LCC classification applied: code + label
+    - Commits pushed: hash and repo for each
 
 ## Success Criteria
 
