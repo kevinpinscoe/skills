@@ -101,9 +101,20 @@ After confirmation, commit only the relevant files (not `git add -A`) and push t
 
 If a skill installs or configures something on this host, **ask the user** whether the same action should be added as a TODO for the other hosts (`~/todo/mac/TODO.md`, `~/todo/rpi/TODO.md`) before appending anything — the action may not be applicable on those platforms.
 
+## Keeping README.md current
+
+**Always update `README.md` when any of the following change in this repo:**
+
+- A new skill directory is added or removed
+- A new category directory is added or removed
+- A skill is renamed or moved
+
+The `## Structure` tree in `README.md` must exactly reflect the directories that contain a `SKILL.md` file. After updating skills, update the tree before committing — the README and the directory layout must never diverge.
+
 ## Claude's role
 
 - Human-authored skills are the norm; Claude may create skills when explicitly asked
 - **When creating a new skill: read `skills/template.md` first, then follow it exactly.** Place the new file at `skills/<category>/<skill-name>/SKILL.md`. YAML frontmatter is required. Use existing `SKILL.md` files as additional style reference, but `template.md` is the authoritative source of truth for structure.
+- **When creating or modifying any skill: update `README.md` to reflect the current directory layout before committing.**
 - Do not modify existing skills unless asked
 - When executing a skill, follow its Instructions section precisely and report against its Success Criteria

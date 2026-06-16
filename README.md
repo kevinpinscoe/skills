@@ -42,6 +42,21 @@ skills/
 │   │   └── SKILL.md
 │   └── create-a-repo/
 │       └── SKILL.md
+├── knowledge/
+│   ├── first-moc-level/
+│   │   └── SKILL.md
+│   ├── second-moc-level/
+│   │   └── SKILL.md
+│   └── third-moc-level/
+│       └── SKILL.md
+├── services/
+│   └── check-improvmx-logs/
+│       └── SKILL.md
+├── task-management/
+│   ├── human-todos/
+│   │   └── SKILL.md
+│   └── os-todo/
+│       └── SKILL.md
 └── template.md
 ```
 
