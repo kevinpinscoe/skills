@@ -248,14 +248,16 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
 
 6. **Ask for a one-line summary** (optional) — Ask: "Brief one-line summary for the note's Summary section? (Press Enter to leave blank.)" Wait for their answer.
 
-7. **Derive the filename** — Compute:
+7. **Ask about body content** — Ask: "Do you have content to add to this note now, or will you edit it later?" If they provide content, record it as `body_content` to write into the `## Details` section. If they say later / press Enter, leave `## Details` blank.
+
+8. **Derive the filename** — Compute:
    - `lcc_prefix`: lowercase `deepest_cls`, remove all dots. Examples: `SB` → `sb`, `QA76.75` → `qa7675`, `T58.5` → `t585`
    - `title_slug`: lowercase the note title, replace spaces and special characters with hyphens, collapse multiple hyphens. Example: "40V HP Brushless Bike Handle Brush Cutter" → `40v-hp-brushless-bike-handle-brush-cutter`
    - `filename`: `<lcc_prefix>-<title_slug>.md`
 
-8. **Get today's date** — Run `date +%Y-%m-%d` for the `created`/`updated` fields.
+9. **Get today's date** — Run `date +%Y-%m-%d` for the `created`/`updated` fields.
 
-9. **Create the KnowledgeVault note** — Write `~/KnowledgeVault/personal-knowledge-base/notes/<filename>`:
+10. **Create the KnowledgeVault note** — Write `~/KnowledgeVault/personal-knowledge-base/notes/<filename>`:
    ```yaml
    ---
    title: "<Note Title>"
@@ -280,20 +282,22 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
 
    ## Details
 
+   <body_content if provided, otherwise leave blank>
+
    ## Related
 
    - [[<deepest_slug>|<deepest_title>]]
    ```
 
-10. **Create the PCM note** — Write `~/Projects/private/personal-context-management-private/notes/<filename>` with identical content.
+11. **Create the PCM note** — Write `~/Projects/private/personal-context-management-private/notes/<filename>` with identical content.
 
-11. **Update the target MOC in both vaults** — In each vault, open `moc/<deepest_slug>.md`:
+12. **Update the target MOC in both vaults** — In each vault, open `moc/<deepest_slug>.md`:
     - Find the `## Notes` section. If it contains only `- [[]]`, replace that placeholder line with the new link. Otherwise append the link as a new list item.
     - Link format: `- [[<lcc_prefix>-<title_slug>|<Note Title>]]`
     - Update the `updated:` frontmatter field to today's date.
     - If the target MOC does not exist in the PCM vault, create a minimal stub using the KnowledgeVault version as a reference before editing it.
 
-12. **Commit and push in both vaults** — Stage the new note and updated MOC, then commit and push:
+13. **Commit and push in both vaults** — Stage the new note and updated MOC, then commit and push:
 
     ```bash
     # KnowledgeVault
@@ -309,7 +313,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
 
     Report the commit hash from each repo after pushing.
 
-13. **Report completion** — Summarize:
+14. **Report completion** — Summarize:
     - Note files created: both full paths
     - Target MOC updated: both full paths, with the exact line added
     - Classification applied: `deepest_cls` — `deepest_lbl`
