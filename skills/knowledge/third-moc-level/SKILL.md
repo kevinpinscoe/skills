@@ -267,6 +267,16 @@ updated: {{date}}
     - LCC classification applied: code + label (note if reused from parent or deeper)
     - Commits pushed: hash and repo for each
 
+15. **Offer to create a note under this MOC** — After the completion summary, ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
+    - **If yes**: execute the `create-km-note` skill at `~/skills/skills/knowledge/create-km-note/SKILL.md`, using **this third-level MOC as the target MOC** for the note. Read that file and follow its Instructions, but **skip the MOC chooser chain (Steps 1–4)** — the target is already known. Set the note's `deepest_*` values from the MOC just created here:
+      - `deepest_slug` = this MOC's `<slug>`
+      - `deepest_title` = this MOC's display title
+      - `deepest_cls` = this MOC's `classification`
+      - `deepest_lbl` = this MOC's `classification_label`
+
+      Then continue from Step 5 (ask for the note title) onward. The note will inherit this MOC's LCC classification and be linked back into its `## Notes` section.
+    - **If no**: stop. The skill is complete.
+
 ## Success Criteria
 
 - `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
