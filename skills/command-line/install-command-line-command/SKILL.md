@@ -69,7 +69,7 @@ description: Prompts me for required information before installing a command lin
 
    Fill in the "Command options" section by reading the tool's `--help` output or documentation.
 
-5. **Create the runbook** — write `~/Projects/private/app-configuration/<command-name>/RUNBOOK.md` using `~/ai/directives/runbook-template.md` as the base structure. At minimum include:
+5. **Create the runbook** — write `~/Projects/private/app-configuration/apps/<command-name>/RUNBOOK.md` using `~/ai/directives/runbook-template.md` as the base structure. Per-app/command runbooks live under `apps/<command-name>/` (the repo root `RUNBOOK.md` documents the repo itself, not individual tools). After writing the runbook, add the new `apps/<command-name>/` entry to the "Current apps" tree in `~/Projects/private/app-configuration/README.md`. At minimum include:
    - `# <command-name>` as the title
    - `## Purpose` — the short summary from step 2
    - `## Prerequisites` — any dependencies or requirements to run the tool
@@ -86,15 +86,15 @@ description: Prompts me for required information before installing a command lin
    Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora → `~/todo/fedora/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`.
 
 7. **Commit and push all affected repos** — ask for explicit confirmation before committing each repo. Stage only the relevant files (never `git add -A`):
-   - `~/Projects/private/app-configuration` — runbook under `<command-name>/RUNBOOK.md`; commit message: `chore: add <command_name> runbook`
-   - `~/.dotfiles` — cheat sheet under `home/cheats/`; commit message: `chore: add <command_name> cheat sheet`
+   - `~/Projects/private/app-configuration` — runbook under `apps/<command-name>/RUNBOOK.md` plus the `README.md` "Current apps" tree update; commit message: `chore: add <command_name> runbook`
+   - `~/.dotfiles` — cheat sheet under `home/cheats/` (cheat sheets continue to live in `~/.dotfiles` using that repo's existing layout, stowed to `~/cheats/`); commit message: `chore: add <command_name> cheat sheet`
    - `~/todo` — TODO entries appended; commit message: `chore: add <command_name> TODO entries`
 
 ## Success Criteria
 
 - Tool is installed and `which <command>` returns the expected path on the current host
 - Cheat sheet file exists at the correct path under `~/cheats/`
-- Runbook exists at `~/Projects/private/app-configuration/<command-name>/RUNBOOK.md` and is populated
+- Runbook exists at `~/Projects/private/app-configuration/apps/<command-name>/RUNBOOK.md` and is populated
 - TODO entries appended for all non-current hosts in the user's requested OS list
 - All modified repos committed and pushed
 
