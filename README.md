@@ -41,7 +41,8 @@ skills/
 │   ├── clone-a-repo/
 │   │   └── SKILL.md
 │   └── create-a-repo/
-│       └── SKILL.md
+│       ├── SKILL.md
+│       └── category-chooser.py   # runtime category chooser (reads profile.yml live)
 ├── knowledge/
 │   ├── create-km-note/
 │   │   └── SKILL.md
