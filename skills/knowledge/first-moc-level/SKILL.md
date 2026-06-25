@@ -239,6 +239,33 @@ Note: The PCM template does not include classification fields by default. **Add 
       Then continue from Step 5 (ask for the note title) onward. The note will inherit this MOC's LCC classification and be linked back into its `## Notes` section.
     - **If no**: stop. The skill is complete.
 
+## Unattended parameterized invocation
+
+This skill is normally interactive. When it is invoked **headlessly by
+`scripts/moc-navigator.py`** in the PCM repo (via `claude -p`), it runs UNATTENDED with
+parameters supplied in the prompt. In that mode, follow these rules instead of the
+interactive prompts in the numbered Instructions:
+
+- **No questions.** Do not pause for human input at any step. The root directive's
+  confirmation requirement is waived for this automated invocation — it declares itself
+  unattended/headless, equivalent to a systemd context.
+- **Parameters** (read from the invoking prompt):
+  - `MOC_NAME` — the subject of the MOC. Use it as `SUBJECT` (Step 1).
+  - `DISPLAY_TITLE` — the title/link text (Step 2). If absent, title-case `MOC_NAME`.
+  - (A first-level MOC has no parent.)
+- **Slug** — lowercase-hyphenate `MOC_NAME` per Step 3.
+- **LCC classification (Steps 4–5)** — perform the lookup, then **auto-select the single
+  best-matching class without asking.** If genuinely ambiguous, pick the most likely and
+  state the choice in the final report; do not block.
+- **Execute Steps 6–12 exactly as written** — create both vault files, update both
+  `home.md` files, commit and push in both repos.
+- **Skip Steps 13–14** (the interactive offers to create a second-level MOC or a note).
+- **Final line** — after the completion report, print exactly `MOC-CREATED <slug>` on its
+  own line so the caller can confirm success.
+
+When invoked interactively (no parameters in the prompt), ignore this section and follow
+the numbered Instructions above as usual.
+
 ## Success Criteria
 
 - `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with correct YAML frontmatter including `classification`, `classification_label`, and `classification_source: lcc`
