@@ -14,7 +14,7 @@ Both Python choosers run **inline as Steps 1 and 3** of this skill. Claude runs 
 ## Prerequisites
 
 - `~/KnowledgeVault/personal-knowledge-base/moc/` must contain at least one first-level MOC and at least one second-level MOC
-- `~/Projects/private/personal-context-management-private/moc/` must exist
+- `~/PCM/moc/` must exist
 - Both vaults must have `templates/moc-note-template.md`
 - Python 3 available (`python3`)
 
@@ -80,7 +80,7 @@ updated: {{date}}
 ```
 
 ### Vault 2 — Personal Context Management (private)
-Path: `~/Projects/private/personal-context-management-private/`
+Path: `~/PCM/`
 
 - `moc/` — mirrors the KnowledgeVault; may be empty or partial
 - `lcc/` — empty; always use the KnowledgeVault's `lcc/` for all lookups
@@ -219,7 +219,7 @@ updated: {{date}}
     - `created` / `updated`: today's date
     - Body: `# <title> MOC`, one-sentence Overview describing what focus area this covers, `## Notes` with `- [[]]`, `## Related MOCs` linking back to parent
 
-11. **Create the PCM MOC file** — Write `~/Projects/private/personal-context-management-private/moc/<slug>.md` with the same content. Add all classification fields explicitly since the PCM template omits them:
+11. **Create the PCM MOC file** — Write `~/PCM/moc/<slug>.md` with the same content. Add all classification fields explicitly since the PCM template omits them:
     ```yaml
     ---
     title: "..."
@@ -254,9 +254,9 @@ updated: {{date}}
     git -C ~/KnowledgeVault/personal-knowledge-base push
 
     # PCM vault
-    git -C ~/Projects/private/personal-context-management-private add moc/<slug>.md moc/<parent-slug>.md
-    git -C ~/Projects/private/personal-context-management-private commit -m "moc: add <slug> third-level MOC under <parent-slug>"
-    git -C ~/Projects/private/personal-context-management-private push
+    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/PCM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
+    git -C ~/PCM push
     ```
 
     Report the commit hash from each repo after pushing.
@@ -308,7 +308,7 @@ the numbered Instructions above as usual.
 ## Success Criteria
 
 - `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
-- `~/Projects/private/personal-context-management-private/moc/<slug>.md` exists with the same frontmatter
+- `~/PCM/moc/<slug>.md` exists with the same frontmatter
 - Second-level parent MOC in both vaults contains `[[<slug>|<Display Title>]]` in a child section
 - Neither `home.md` was modified
 - Filename is lowercase, hyphen-separated, no spaces

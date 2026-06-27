@@ -14,7 +14,7 @@ Three Python choosers run sequentially and conditionally — first-level always,
 ## Prerequisites
 
 - `~/KnowledgeVault/personal-knowledge-base/moc/` must contain at least one first-level MOC
-- `~/KnowledgeVault/personal-knowledge-base/notes/` and `~/Projects/private/personal-context-management-private/notes/` must exist
+- `~/KnowledgeVault/personal-knowledge-base/notes/` and `~/PCM/notes/` must exist
 - Both vaults must have `templates/note-template.md`
 - Python 3 available (`python3`)
 
@@ -99,7 +99,7 @@ updated: 2026-06-15
 | Vault | Notes dir | MOC dir |
 |---|---|---|
 | KnowledgeVault | `~/KnowledgeVault/personal-knowledge-base/notes/` | `~/KnowledgeVault/personal-knowledge-base/moc/` |
-| PCM | `~/Projects/private/personal-context-management-private/notes/` | `~/Projects/private/personal-context-management-private/moc/` |
+| PCM | `~/PCM/notes/` | `~/PCM/moc/` |
 
 The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowledge-base/lcc/` for any classification lookups.
 
@@ -289,7 +289,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
    - [[<deepest_slug>|<deepest_title>]]
    ```
 
-11. **Create the PCM note** — Write `~/Projects/private/personal-context-management-private/notes/<filename>` with identical content.
+11. **Create the PCM note** — Write `~/PCM/notes/<filename>` with identical content.
 
 12. **Update the target MOC in both vaults** — In each vault, open `moc/<deepest_slug>.md`:
     - Find the `## Notes` section. If it contains only `- [[]]`, replace that placeholder line with the new link. Otherwise append the link as a new list item.
@@ -306,9 +306,9 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
     git -C ~/KnowledgeVault/personal-knowledge-base push
 
     # PCM vault
-    git -C ~/Projects/private/personal-context-management-private add notes/<filename> moc/<deepest_slug>.md
-    git -C ~/Projects/private/personal-context-management-private commit -m "note: add <lcc_prefix>-<title_slug>"
-    git -C ~/Projects/private/personal-context-management-private push
+    git -C ~/PCM add notes/<filename> moc/<deepest_slug>.md
+    git -C ~/PCM commit -m "note: add <lcc_prefix>-<title_slug>"
+    git -C ~/PCM push
     ```
 
     Report the commit hash from each repo after pushing.

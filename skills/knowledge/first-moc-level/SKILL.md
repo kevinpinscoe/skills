@@ -10,7 +10,7 @@ description: Creates a first-level Map of Content (MOC) file in both the persona
 ## Prerequisites
 
 - `~/KnowledgeVault/personal-knowledge-base/` must exist and contain a `lcc/` directory with LCC outline files (`lcco-a.md` through `lcco-z.md`)
-- `~/Projects/private/personal-context-management-private/` must exist
+- `~/PCM/` must exist
 - Both vaults must have `templates/moc-note-template.md` and `moc/` directories
 
 ## Parameters
@@ -75,7 +75,7 @@ Existing first-level MOC examples (filename → classification):
 - `moc/health.md` → classification: R, label: "Medicine"
 
 ### Vault 2 — Personal Context Management (private)
-Path: `~/Projects/private/personal-context-management-private/`
+Path: `~/PCM/`
 
 An operational layer for the PCM workflow — holds ingest pipeline configuration, AI conversation exports, and Obsidian-ready distilled output. Its `moc/` directory mirrors the same structure as the KnowledgeVault but starts empty.
 
@@ -167,7 +167,7 @@ Note: The PCM template does not include classification fields by default. **Add 
    - `updated`: today's date
    - Body: fill `# <title> MOC` heading; write a one-sentence overview describing what the map covers
 
-8. **Create the PCM MOC file** — Write `~/Projects/private/personal-context-management-private/moc/<slug>.md` using the PCM template. Use the same title, date, and classification fields as the KnowledgeVault file. The PCM template omits classification fields; add them in the same order and format as the KnowledgeVault version:
+8. **Create the PCM MOC file** — Write `~/PCM/moc/<slug>.md` using the PCM template. Use the same title, date, and classification fields as the KnowledgeVault file. The PCM template omits classification fields; add them in the same order and format as the KnowledgeVault version:
    ```yaml
    ---
    title: "..."
@@ -192,7 +192,7 @@ Note: The PCM template does not include classification fields by default. **Add 
    ```
    where `<slug>` is the filename without `.md` and `<Display Title>` is what the human specified. Keep the list alphabetically ordered or append at the end if ordering is unclear.
 
-10. **Update PCM home.md** — Open `~/Projects/private/personal-context-management-private/home.md`. If a `## Maps of Content` section already exists, add:
+10. **Update PCM home.md** — Open `~/PCM/home.md`. If a `## Maps of Content` section already exists, add:
     ```
     - [[<slug>|<Display Title>]]
     ```
@@ -212,9 +212,9 @@ Note: The PCM template does not include classification fields by default. **Add 
     git -C ~/KnowledgeVault/personal-knowledge-base push
 
     # PCM vault
-    git -C ~/Projects/private/personal-context-management-private add moc/<slug>.md home.md
-    git -C ~/Projects/private/personal-context-management-private commit -m "moc: add <slug> first-level MOC"
-    git -C ~/Projects/private/personal-context-management-private push
+    git -C ~/PCM add moc/<slug>.md home.md
+    git -C ~/PCM commit -m "moc: add <slug> first-level MOC"
+    git -C ~/PCM push
     ```
 
     Report the commit hash from each repo after pushing.
@@ -269,7 +269,7 @@ the numbered Instructions above as usual.
 ## Success Criteria
 
 - `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with correct YAML frontmatter including `classification`, `classification_label`, and `classification_source: lcc`
-- `~/Projects/private/personal-context-management-private/moc/<slug>.md` exists with the same frontmatter fields
+- `~/PCM/moc/<slug>.md` exists with the same frontmatter fields
 - Both `home.md` files contain a new `[[<slug>|<Display Title>]]` link
 - Filename is lowercase, hyphen-separated, no spaces, ends in `.md`
 - `type: moc` is set in both files
