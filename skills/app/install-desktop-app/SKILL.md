@@ -32,7 +32,7 @@ description: Install a desktop application on the current host and create a runb
    - Installation documentation link for this OS/platform
    - Preferred install method (package manager / vendor download / Flatpak / Snap / Homebrew, etc.)
 
-4. **Create the runbook** — write `~/Projects/private/app-configuration/<app-slug>/RUNBOOK.md`. Use `~/ai/directives/runbook-template.md` as the base structure, adapting it to desktop app documentation. If the app has platform-specific config files, place them under `~/Projects/private/app-configuration/<app-slug>/<platform>/`. At minimum include:
+4. **Create the runbook** — write `~/Projects/private/app-configuration/apps/<app-slug>/RUNBOOK.md`. Use `~/ai/directives/runbook-template.md` as the base structure, adapting it to desktop app documentation. If the app has platform-specific config files, place them under `~/Projects/private/app-configuration/apps/<app-slug>/<platform>/`. At minimum include:
    - `# <App Name>`
    - `## Summary` — brief description of what the app does
    - `## Links` — unordered list: main website, install docs, source repo (if applicable), community/support links (if applicable)
@@ -46,15 +46,15 @@ description: Install a desktop application on the current host and create a runb
 6. **Cross-platform inquiry** — ask one question at a time; wait for each answer before asking the next:
 
    **macOS**: "Should this app also be installed on macOS?"
-   - If yes: ask for the macOS install docs URL (research if not provided); add a `## macOS` section to `~/Projects/private/app-configuration/<app-slug>/RUNBOOK.md` populated for macOS; append a TODO entry to `~/todo/mac/TODO.md`:
+   - If yes: ask for the macOS install docs URL (research if not provided); add a `## macOS` section to `~/Projects/private/app-configuration/apps/<app-slug>/RUNBOOK.md` populated for macOS; append a TODO entry to `~/todo/mac/TODO.md`:
      ```
-     YYYY-MM-DD <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/Projects/private/app-configuration/<app-slug>/RUNBOOK.md)
+     YYYY-MM-DD <install command>  # install <App Name> on macOS (see <docs URL>, consult runbook: ~/Projects/private/app-configuration/apps/<app-slug>/RUNBOOK.md)
      ```
 
    **Raspberry Pi 5**: "Should this app also be installed on Raspberry Pi 5 (Debian Trixie)?"
-   - If yes: ask for the RPi5 install docs URL (research if not provided); add a `## Raspberry Pi 5` section to `~/Projects/private/app-configuration/<app-slug>/RUNBOOK.md` populated for Debian Trixie ARM64; append a TODO entry to `~/todo/rpi/TODO.md`:
+   - If yes: ask for the RPi5 install docs URL (research if not provided); add a `## Raspberry Pi 5` section to `~/Projects/private/app-configuration/apps/<app-slug>/RUNBOOK.md` populated for Debian Trixie ARM64; append a TODO entry to `~/todo/rpi/TODO.md`:
      ```
-     YYYY-MM-DD <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/Projects/private/app-configuration/<app-slug>/RUNBOOK.md)
+     YYYY-MM-DD <install command>  # install <App Name> on Raspberry Pi 5 Debian Trixie (see <docs URL>, consult runbook: ~/Projects/private/app-configuration/apps/<app-slug>/RUNBOOK.md)
      ```
 
 7. **Commit and push all changed repos** — do not mark the skill complete until every modified repo is pushed. For each repo (`~/Projects/private/app-configuration`, `~/todo`, or both):
@@ -65,7 +65,7 @@ description: Install a desktop application on the current host and create a runb
 
 ## Success Criteria
 
-- `~/Projects/private/app-configuration/<app-slug>/RUNBOOK.md` exists and is populated
+- `~/Projects/private/app-configuration/apps/<app-slug>/RUNBOOK.md` exists and is populated
 - The app is confirmed installed and launches without errors on the current host
 - Cross-platform sections added to the runbook (if requested) and TODO entries appended (if requested)
 - All modified repos committed and pushed
@@ -74,4 +74,4 @@ description: Install a desktop application on the current host and create a runb
 
 - Always use today's date (not a relative date) in TODO entries.
 - Keep each TODO entry on a single line.
-- Platform-specific config files (scripts, assets) go in `~/Projects/private/app-configuration/<app-slug>/<platform>/`.
+- Platform-specific config files (scripts, assets) go in `~/Projects/private/app-configuration/apps/<app-slug>/<platform>/`.
