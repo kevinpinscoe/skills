@@ -5,12 +5,12 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 
 # Read My Gmail for TLDR Articles
 
-> Scans the Gmail inbox for TLDR newsletter emails from the last day, extracts non-sponsored article paragraphs (including Quick Links), deduplicates across all emails, and writes them to a dated Markdown file in the Personal Journal with read-tracking checkboxes.
+> Scans the Gmail inbox for TLDR newsletter emails from the last day, extracts non-sponsored article paragraphs (including Quick Links), deduplicates across all emails, and writes them to a dated Markdown file in the personal-journal with read-tracking checkboxes.
 
 ## Prerequisites
 
 - Gmail MCP (`mcp__claude_ai_Gmail__*`) must be authenticated
-- Journal directory `~/Journal/Personal Journal/DAILY/` must exist (create it if not)
+- Journal directory `~/Journal/personal-journal/DAILY/` must exist (create it if not)
 
 ## Parameters
 
@@ -26,11 +26,11 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
    ```
    Expect 5–8 threads per day covered. If none are found, report "No TLDR emails found in the last {LOOKBACK_DAYS} day(s)" and stop.
 
-2. **Group threads by received date** — use each message's received date (not today's date) to determine which daily file it belongs to. Group all thread IDs by their `MM-DD-YYYY` received date. Each date will produce one output file: `~/Journal/Personal Journal/DAILY/TLDR-<MM-DD-YYYY>.md`.
+2. **Group threads by received date** — use each message's received date (not today's date) to determine which daily file it belongs to. Group all thread IDs by their `MM-DD-YYYY` received date. Each date will produce one output file: `~/Journal/personal-journal/DAILY/TLDR-<MM-DD-YYYY>.md`.
 
 3. **Process each date group independently** — for each date, work through steps 4–8 below. This means a 7-day lookback produces up to 7 separate files, one per day.
 
-4. **Set output path for the current date** — the output file is `~/Journal/Personal Journal/DAILY/TLDR-<MM-DD-YYYY>.md` where the date matches the emails' received date. If the file already exists, read its existing `##`-level headings to seed the deduplication set for this date. If it does not exist, create it with a single `# TLDR <MM-DD-YYYY>` heading line, then proceed.
+4. **Set output path for the current date** — the output file is `~/Journal/personal-journal/DAILY/TLDR-<MM-DD-YYYY>.md` where the date matches the emails' received date. If the file already exists, read its existing `##`-level headings to seed the deduplication set for this date. If it does not exist, create it with a single `# TLDR <MM-DD-YYYY>` heading line, then proceed.
 
 5. **Fetch each thread** — for each thread ID in the current date group, call `mcp__claude_ai_Gmail__get_thread` to retrieve the full message body. Use the `plaintextBody` field — these emails always have a usable plaintext body.
 
@@ -94,7 +94,7 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 
     a. Run the following shell command to list untracked and modified TLDR files in the journal:
        ```
-       git -C "/home/kinscoe/Journal/Personal Journal" status --short -- 'DAILY/TLDR*.md'
+       git -C "/home/kinscoe/Journal/personal-journal" status --short -- 'DAILY/TLDR*.md'
        ```
 
     b. Collect every filename from the output (lines beginning with `??` for untracked or `M`/`A` for modified/staged). If there are no such files, skip this step.
@@ -103,7 +103,7 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 
     d. Append one line to `~/todo/fedora/TODO.md` in the format:
        ```
-       YYYY-MM-DD cd "/home/kinscoe/Journal/Personal Journal" && git add <file1> [<file2> ...] && git commit -m "Update daily TLDRs" && git push  # commit TLDR files created by read-my-gmail-for-tldr-articles
+       YYYY-MM-DD cd "/home/kinscoe/Journal/personal-journal" && git add <file1> [<file2> ...] && git commit -m "Update daily TLDRs" && git push  # commit TLDR files created by read-my-gmail-for-tldr-articles
        ```
        where `YYYY-MM-DD` is today's date and `<file1> [<file2> ...]` is the space-separated list of relative paths from step (c).
 
