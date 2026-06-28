@@ -13,7 +13,7 @@ Both Python choosers run **inline as Steps 1 and 3** of this skill. Claude runs 
 
 ## Prerequisites
 
-- `~/KnowledgeVault/personal-knowledge-base/moc/` must contain at least one first-level MOC and at least one second-level MOC
+- `~/KnowledgeVault/PKM/moc/` must contain at least one first-level MOC and at least one second-level MOC
 - `~/PCM/moc/` must exist
 - Both vaults must have `templates/moc-note-template.md`
 - Python 3 available (`python3`)
@@ -41,7 +41,7 @@ This skill writes to two knowledge-management repositories that share structural
 A parent MOC lists its children in a `## Child MOCs`, `## Second-level MOCs`, or `## Third-level MOCs` section (detect and match what the parent already uses).
 
 ### Vault 1 — Personal Knowledge Base
-Path: `~/KnowledgeVault/personal-knowledge-base/`
+Path: `~/KnowledgeVault/PKM/`
 
 - `moc/` — all MOC files at all levels; source of truth for both choosers
 - `lcc/` — LCC outline files (`lcco-a.md` through `lcco-z.md`) for classification lookup
@@ -103,6 +103,17 @@ updated: {{date}}
 - **Frontmatter values** (title, labels, aliases): normal capitalization and spaces are fine
 - **Files must live in** `moc/`
 
+## Canonical hierarchy — stacks.md
+
+`~/PCM/moc/stacks.md` is the single source of truth for the MOC hierarchy, shared by
+both vaults and maintained **only in PCM**. This skill must keep it in sync:
+
+- **Before creating**, review it: `~/PCM/scripts/moc-stacks-editor.sh --list`. Confirm
+  the chosen **second-level parent** appears in the tree.
+- **After creating** (in the commit step), register the node:
+  `~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent the parent's display title` then include
+  `moc/stacks.md` in the PCM commit. The tool is idempotent and refuses depth > 3 levels.
+
 ## Instructions
 
 1. **Run the first-level MOC chooser** — Run this Python script immediately, before asking the human anything:
@@ -110,7 +121,7 @@ updated: {{date}}
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/personal-knowledge-base/moc")
+   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -138,14 +149,14 @@ updated: {{date}}
 
    Present the numbered list and ask: "Which first-level MOC contains the second-level MOC you want to nest under? Enter the number." Wait for their answer. Record the selected first-level MOC's **slug** and **title**.
 
-2. **Read the first-level MOC's frontmatter** — Open `~/KnowledgeVault/personal-knowledge-base/moc/<grandparent-slug>.md` and extract its `title`.
+2. **Read the first-level MOC's frontmatter** — Open `~/KnowledgeVault/PKM/moc/<grandparent-slug>.md` and extract its `title`.
 
 3. **Run the second-level MOC chooser** — Run this Python script, substituting the selected grandparent slug and title:
 
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/personal-knowledge-base/moc")
+   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
    grandparent_slug = "<grandparent-slug>"   # substitute from step 1
    grandparent_title = "<Grandparent Title>" # substitute from step 1
    results = []
@@ -185,7 +196,7 @@ updated: {{date}}
 
    Otherwise, present the numbered list and ask: "Which second-level MOC is the parent for this new third-level MOC? Enter the number." Wait for their answer. Record the selected second-level MOC's **slug**, **title**, **classification code**, and **classification_label**.
 
-4. **Read the second-level MOC's frontmatter** — Open `~/KnowledgeVault/personal-knowledge-base/moc/<parent-slug>.md` and extract:
+4. **Read the second-level MOC's frontmatter** — Open `~/KnowledgeVault/PKM/moc/<parent-slug>.md` and extract:
    - `title` — the parent's display title
    - `classification` — the parent's LCC code (baseline for this MOC)
    - `classification_label` — the parent's LCC label
@@ -196,7 +207,7 @@ updated: {{date}}
 
 7. **Determine the filename slug** — Convert the focus area to a lowercase, hyphen-separated slug. Example: "Package Managers" → `package-managers`.
 
-8. **Search for a deeper LCC classification** — Read the relevant LCC outline file from `~/KnowledgeVault/personal-knowledge-base/lcc/` starting from the parent's LCC class. Look for a sub-class that more precisely matches the focus area.
+8. **Search for a deeper LCC classification** — Read the relevant LCC outline file from `~/KnowledgeVault/PKM/lcc/` starting from the parent's LCC class. Look for a sub-class that more precisely matches the focus area.
 
    **If a more specific sub-class exists**: use it.
 
@@ -206,7 +217,7 @@ updated: {{date}}
 
 9. **Get today's date** — Run `date +%Y-%m-%d`.
 
-10. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md`:
+10. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/PKM/moc/<slug>.md`:
     - `title`: the display title
     - `aliases`: `["moc <title lowercase>"]`
     - `type`: `moc`
@@ -249,12 +260,13 @@ updated: {{date}}
 
     ```bash
     # KnowledgeVault
-    git -C ~/KnowledgeVault/personal-knowledge-base add moc/<slug>.md moc/<parent-slug>.md
-    git -C ~/KnowledgeVault/personal-knowledge-base commit -m "moc: add <slug> third-level MOC under <parent-slug>"
-    git -C ~/KnowledgeVault/personal-knowledge-base push
+    git -C ~/KnowledgeVault/PKM add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/KnowledgeVault/PKM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
+    git -C ~/KnowledgeVault/PKM push
 
-    # PCM vault
-    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md
+    # PCM vault — also register the node in the canonical hierarchy
+    ~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent "<PARENT_DISPLAY_TITLE>"
+    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md moc/stacks.md
     git -C ~/PCM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
     git -C ~/PCM push
     ```
@@ -307,7 +319,7 @@ the numbered Instructions above as usual.
 
 ## Success Criteria
 
-- `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
+- `~/KnowledgeVault/PKM/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
 - `~/PCM/moc/<slug>.md` exists with the same frontmatter
 - Second-level parent MOC in both vaults contains `[[<slug>|<Display Title>]]` in a child section
 - Neither `home.md` was modified
@@ -316,7 +328,7 @@ the numbered Instructions above as usual.
 ## Notes
 
 - **Do not modify `home.md`** — only first-level MOCs are listed there
-- The PCM vault's `lcc/` is empty — always look up classifications in `~/KnowledgeVault/personal-knowledge-base/lcc/`
+- The PCM vault's `lcc/` is empty — always look up classifications in `~/KnowledgeVault/PKM/lcc/`
 - The second-level chooser matches `primary_moc` against both the grandparent slug and title (case-insensitive) to handle the inconsistency in existing files where some use slugs and some use display titles
 - Reusing the parent's classification is correct when no tighter LCC sub-class fits
 - If the chooser in Step 3 returns no results, stop and direct the human to the `second-moc-level` skill

@@ -9,7 +9,7 @@ description: Creates a first-level Map of Content (MOC) file in both the persona
 
 ## Prerequisites
 
-- `~/KnowledgeVault/personal-knowledge-base/` must exist and contain a `lcc/` directory with LCC outline files (`lcco-a.md` through `lcco-z.md`)
+- `~/KnowledgeVault/PKM/` must exist and contain a `lcc/` directory with LCC outline files (`lcco-a.md` through `lcco-z.md`)
 - `~/PCM/` must exist
 - Both vaults must have `templates/moc-note-template.md` and `moc/` directories
 
@@ -26,7 +26,7 @@ description: Creates a first-level Map of Content (MOC) file in both the persona
 This skill writes to two separate knowledge-management repositories. Both follow the same structural conventions, so an AI unfamiliar with them can apply this skill correctly.
 
 ### Vault 1 — Personal Knowledge Base
-Path: `~/KnowledgeVault/personal-knowledge-base/`
+Path: `~/KnowledgeVault/PKM/`
 
 A long-term technical knowledge base organized around MOCs, shallow folders, links, and LCC classification. Core principle: folders are for storage, MOCs are for navigation, links are for relationships.
 
@@ -117,6 +117,17 @@ Note: The PCM template does not include classification fields by default. **Add 
 - **Title, aliases, classification labels, and display names in home.md** may use normal capitalization, spaces, and punctuation
 - **File must live in** `moc/`
 
+## Canonical hierarchy — stacks.md
+
+`~/PCM/moc/stacks.md` is the single source of truth for the MOC hierarchy, shared by
+both vaults and maintained **only in PCM**. This skill must keep it in sync:
+
+- **Before creating**, review it: `~/PCM/scripts/moc-stacks-editor.sh --list`. Confirm
+  this is genuinely a new **top-level** MOC (not already a child of another MOC).
+- **After creating** (in the commit step), register the node:
+  `~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent "MOCs"` then include
+  `moc/stacks.md` in the PCM commit. The tool is idempotent and refuses depth > 3 levels.
+
 ## Instructions
 
 1. **Ask for subject name** — Ask the human: "What is the subject of this MOC?" Wait for their answer before proceeding.
@@ -125,7 +136,7 @@ Note: The PCM template does not include classification fields by default. **Add 
 
 3. **Determine the filename slug** — Convert the subject name to a lowercase, hyphen-separated slug. Example: "Compute Infrastructure" → `compute-infrastructure`. This will be the filename in both vaults: `moc/<slug>.md`.
 
-4. **Search the LCC catalog** — Read the LCC outline files in `~/KnowledgeVault/personal-knowledge-base/lcc/`. The files are named `lcco-a.md`, `lcco-b.md`, ..., `lcco-z.md` and contain the Library of Congress Classification hierarchy. Search for classes that plausibly match the subject. Common top-level classes:
+4. **Search the LCC catalog** — Read the LCC outline files in `~/KnowledgeVault/PKM/lcc/`. The files are named `lcco-a.md`, `lcco-b.md`, ..., `lcco-z.md` and contain the Library of Congress Classification hierarchy. Search for classes that plausibly match the subject. Common top-level classes:
    - A: General Works
    - B: Philosophy, Psychology, Religion
    - G: Geography, Anthropology, Recreation
@@ -153,7 +164,7 @@ Note: The PCM template does not include classification fields by default. **Add 
 
 6. **Get today's date** — Run `date +%Y-%m-%d` to get the current date in YYYY-MM-DD format.
 
-7. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` using the KnowledgeVault template. Fill in:
+7. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/PKM/moc/<slug>.md` using the KnowledgeVault template. Fill in:
    - `title`: the display title the human provided (or a sensible title from the subject name)
    - `aliases`: `["moc <title>"]` — lowercase alias
    - `type`: `moc`
@@ -186,7 +197,7 @@ Note: The PCM template does not include classification fields by default. **Add 
    ```
    Body: same heading and overview as the KnowledgeVault file.
 
-9. **Update KnowledgeVault home.md** — Open `~/KnowledgeVault/personal-knowledge-base/home.md`. Add a new entry under `## Main Indexes` in the format:
+9. **Update KnowledgeVault home.md** — Open `~/KnowledgeVault/PKM/home.md`. Add a new entry under `## Main Indexes` in the format:
    ```
    - [[<slug>|<Display Title>]]
    ```
@@ -207,12 +218,13 @@ Note: The PCM template does not include classification fields by default. **Add 
 
     ```bash
     # KnowledgeVault
-    git -C ~/KnowledgeVault/personal-knowledge-base add moc/<slug>.md home.md
-    git -C ~/KnowledgeVault/personal-knowledge-base commit -m "moc: add <slug> first-level MOC"
-    git -C ~/KnowledgeVault/personal-knowledge-base push
+    git -C ~/KnowledgeVault/PKM add moc/<slug>.md home.md
+    git -C ~/KnowledgeVault/PKM commit -m "moc: add <slug> first-level MOC"
+    git -C ~/KnowledgeVault/PKM push
 
-    # PCM vault
-    git -C ~/PCM add moc/<slug>.md home.md
+    # PCM vault — also register the node in the canonical hierarchy
+    ~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent "MOCs"
+    git -C ~/PCM add moc/<slug>.md home.md moc/stacks.md
     git -C ~/PCM commit -m "moc: add <slug> first-level MOC"
     git -C ~/PCM push
     ```
@@ -268,7 +280,7 @@ the numbered Instructions above as usual.
 
 ## Success Criteria
 
-- `~/KnowledgeVault/personal-knowledge-base/moc/<slug>.md` exists with correct YAML frontmatter including `classification`, `classification_label`, and `classification_source: lcc`
+- `~/KnowledgeVault/PKM/moc/<slug>.md` exists with correct YAML frontmatter including `classification`, `classification_label`, and `classification_source: lcc`
 - `~/PCM/moc/<slug>.md` exists with the same frontmatter fields
 - Both `home.md` files contain a new `[[<slug>|<Display Title>]]` link
 - Filename is lowercase, hyphen-separated, no spaces, ends in `.md`
@@ -277,7 +289,7 @@ the numbered Instructions above as usual.
 
 ## Notes
 
-- The PCM vault's `lcc/` directory is intentionally empty — always use `~/KnowledgeVault/personal-knowledge-base/lcc/` for classification lookups
+- The PCM vault's `lcc/` directory is intentionally empty — always use `~/KnowledgeVault/PKM/lcc/` for classification lookups
 - When the subject is ambiguous (e.g. "tools", "radio", "security"), always surface the ambiguity before choosing a classification — do not guess
 - The `primary_moc` field in the KnowledgeVault template is left blank for first-level MOCs; second-level MOCs (child MOCs) would set this to their parent
 - If the `.gitkeep` file is the only file in `moc/` of the PCM vault, it can remain in place — git will still track the directory with real content present

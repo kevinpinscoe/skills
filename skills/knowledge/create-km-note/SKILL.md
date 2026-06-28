@@ -13,8 +13,8 @@ Three Python choosers run sequentially and conditionally — first-level always,
 
 ## Prerequisites
 
-- `~/KnowledgeVault/personal-knowledge-base/moc/` must contain at least one first-level MOC
-- `~/KnowledgeVault/personal-knowledge-base/notes/` and `~/PCM/notes/` must exist
+- `~/KnowledgeVault/PKM/moc/` must contain at least one first-level MOC
+- `~/KnowledgeVault/PKM/notes/` and `~/PCM/notes/` must exist
 - Both vaults must have `templates/note-template.md`
 - Python 3 available (`python3`)
 
@@ -98,10 +98,10 @@ updated: 2026-06-15
 
 | Vault | Notes dir | MOC dir |
 |---|---|---|
-| KnowledgeVault | `~/KnowledgeVault/personal-knowledge-base/notes/` | `~/KnowledgeVault/personal-knowledge-base/moc/` |
+| KnowledgeVault | `~/KnowledgeVault/PKM/notes/` | `~/KnowledgeVault/PKM/moc/` |
 | PCM | `~/PCM/notes/` | `~/PCM/moc/` |
 
-The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowledge-base/lcc/` for any classification lookups.
+The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` for any classification lookups.
 
 ### MOC Level Detection
 
@@ -116,7 +116,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/personal-knowledge-base/moc")
+   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -155,7 +155,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/personal-knowledge-base/moc")
+   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
    parent_slug = "<l1_slug>"    # substitute
    parent_title = "<l1_title>"  # substitute
    results = []
@@ -201,7 +201,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/personal-knowledge-base/moc")
+   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
    parent_slug = "<l2_slug>"    # substitute
    parent_title = "<l2_title>"  # substitute
    results = []
@@ -257,7 +257,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
 
 9. **Get today's date** — Run `date +%Y-%m-%d` for the `created`/`updated` fields.
 
-10. **Create the KnowledgeVault note** — Write `~/KnowledgeVault/personal-knowledge-base/notes/<filename>`:
+10. **Create the KnowledgeVault note** — Write `~/KnowledgeVault/PKM/notes/<filename>`:
    ```yaml
    ---
    title: "<Note Title>"
@@ -301,9 +301,9 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
 
     ```bash
     # KnowledgeVault
-    git -C ~/KnowledgeVault/personal-knowledge-base add notes/<filename> moc/<deepest_slug>.md
-    git -C ~/KnowledgeVault/personal-knowledge-base commit -m "note: add <lcc_prefix>-<title_slug>"
-    git -C ~/KnowledgeVault/personal-knowledge-base push
+    git -C ~/KnowledgeVault/PKM add notes/<filename> moc/<deepest_slug>.md
+    git -C ~/KnowledgeVault/PKM commit -m "note: add <lcc_prefix>-<title_slug>"
+    git -C ~/KnowledgeVault/PKM push
 
     # PCM vault
     git -C ~/PCM add notes/<filename> moc/<deepest_slug>.md
@@ -330,7 +330,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowle
 ## Notes
 
 - The human may stop at any chooser level — if they skip the second-level or third-level chooser (by pressing Enter), the note targets the deepest MOC they did select
-- The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/personal-knowledge-base/lcc/` if any additional classification lookup is needed
+- The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` if any additional classification lookup is needed
 - `created` and `updated` use plain `YYYY-MM-DD` format (not the `YYYY-MM-DDThh:mm:ss` Obsidian template syntax — that is resolved by Obsidian's template engine, not here)
 - Leave `## Details` and `tags: []` blank for the human to fill in after creation
 - Related skills: `first-moc-level`, `second-moc-level`, `third-moc-level` (create MOC structure before adding notes)
