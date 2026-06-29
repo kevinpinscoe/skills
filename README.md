@@ -44,7 +44,9 @@ skills/
 │       ├── SKILL.md
 │       └── category-chooser.py   # runtime category chooser (reads profile.yml live)
 ├── knowledge/
-│   ├── create-km-note/
+│   ├── create-a-pcm-note/
+│   │   └── SKILL.md
+│   ├── create-a-pkm-note/
 │   │   └── SKILL.md
 │   ├── first-moc-level/
 │   │   └── SKILL.md

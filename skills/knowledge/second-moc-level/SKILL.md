@@ -120,7 +120,7 @@ updated: 2026-06-15
 Path: `~/PCM/`
 
 - `moc/` — mirrors the KnowledgeVault; may be empty or partial
-- `lcc/` — empty; always use the KnowledgeVault's `lcc/` for all lookups
+- `lcc/` — `~/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`; either path works for lookups
 - `home.md` — **do not modify**
 
 Template (`templates/moc-note-template.md`) — simpler; add classification fields explicitly:
@@ -283,14 +283,18 @@ both vaults and maintained **only in PCM**. This skill must keep it in sync:
     - **If no**: continue to Step 14.
 
 14. **Offer to create a note under this MOC** — Ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
-    - **If yes**: execute the `create-km-note` skill at `~/skills/skills/knowledge/create-km-note/SKILL.md`, using **this second-level MOC as the target MOC** for the note. Read that file and follow its Instructions, but **skip the MOC chooser chain (Steps 1–4)** — the target is already known. Set the note's `deepest_*` values from the MOC just created here:
+    - **If no**: stop. The skill is complete.
+    - **If yes**: ask which vault the note belongs in — "Which vault should this note live in: **PCM** or **PKM**? (A note lives in only one vault; MOCs may exist in both.)" Then execute the matching note skill, using **this second-level MOC as the target MOC** for the note:
+      - **PCM** → `~/skills/skills/knowledge/create-a-pcm-note/SKILL.md`
+      - **PKM** → `~/skills/skills/knowledge/create-a-pkm-note/SKILL.md`
+
+      Read that file and follow its Instructions, but **skip its MOC chooser chain** — the target is already known. Set the note's `deepest_*` values from the MOC just created here:
       - `deepest_slug` = this MOC's `<slug>`
       - `deepest_title` = this MOC's display title
       - `deepest_cls` = this MOC's `classification`
       - `deepest_lbl` = this MOC's `classification_label`
 
-      Then continue from Step 5 (ask for the note title) onward. The note will inherit this MOC's LCC classification and be linked back into its `## Notes` section.
-    - **If no**: stop. The skill is complete.
+      Then continue from the note skill's "ask for the note title" step onward. The note will inherit this MOC's LCC classification and be linked back into its `## Notes` section in the chosen vault.
 
 ## Unattended parameterized invocation
 
@@ -331,7 +335,7 @@ the numbered Instructions above as usual.
 ## Notes
 
 - **Do not modify `home.md`** — only first-level MOCs are listed there
-- The PCM vault's `lcc/` is empty — always look up classifications in `~/KnowledgeVault/PKM/lcc/`
+- The canonical LCC outlines live in `~/KnowledgeVault/PKM/lcc/`; `~/PCM/lcc/` is a symlink to it, so either path works for lookups
 - Reusing the parent's classification is correct and expected when no more specific LCC sub-class fits (e.g. AWS under Compute Cloud Hosting both use T58.5)
 - If the parent MOC does not yet exist in the PCM vault, create a minimal stub there using the KnowledgeVault version as a reference before editing it
 - Related skills: `first-moc-level` (create the parent first), `third-moc-level` (create a child of this MOC)

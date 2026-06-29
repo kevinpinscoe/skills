@@ -1,11 +1,15 @@
 ---
-name: create-km-note
-description: Creates a new knowledge-management note in both vaults by walking through the MOC hierarchy with Python choosers, inheriting LCC classification from the deepest selected MOC, and linking the note back into that MOC.
+name: create-a-pcm-note
+description: Creates a new note in the PCM vault only by walking the MOC hierarchy with Python choosers, inheriting LCC classification from the deepest selected MOC, and linking the note back into that MOC.
 ---
 
-# Create KM Note
+# Create a PCM Note
 
-> Walks through up to three levels of MOC choosers to place a note precisely in the hierarchy, then creates the note in both knowledge vaults with inherited LCC classification and links it back into the selected MOC.
+> Walks through up to three levels of MOC choosers to place a note precisely in the hierarchy, then creates the note in the **PCM vault only** (`~/PCM/`) with inherited LCC classification and links it back into the selected MOC.
+
+## Scope
+
+This skill writes the note to **PCM only** (`~/PCM/`). It does **not** touch the KnowledgeVault (PKM). Its sibling `create-a-pkm-note` is the PKM-only counterpart — a note lives in exactly one vault. MOCs may exist in both vaults (they are categories); notes must not.
 
 ## How This Skill Chains
 
@@ -13,9 +17,9 @@ Three Python choosers run sequentially and conditionally — first-level always,
 
 ## Prerequisites
 
-- `~/KnowledgeVault/PKM/moc/` must contain at least one first-level MOC
-- `~/KnowledgeVault/PKM/notes/` and `~/PCM/notes/` must exist
-- Both vaults must have `templates/note-template.md`
+- `~/PCM/moc/` must contain at least one first-level MOC
+- `~/PCM/notes/` must exist
+- `~/PCM/templates/note-template.md` must exist
 - Python 3 available (`python3`)
 
 ## Parameters
@@ -26,9 +30,7 @@ Three Python choosers run sequentially and conditionally — first-level always,
 | `NOTE_TITLE` | The full human-readable title of the note | _(asked after MOC selection)_ |
 | `FILENAME_SLUG` | Kebab-case note subject for the filename | _(derived from title)_ |
 
-## Background: What These Vaults Are
-
-This skill writes to two knowledge-management repositories that share the same structural conventions.
+## Background
 
 ### Note Filename Convention
 
@@ -40,68 +42,21 @@ Note filenames are prefixed with a lowercased LCC code (dots removed) followed b
 
 Examples:
 - Classification `SB` + title "40V HP Brushless Bike Handle Brush Cutter" → `sb-40v-hp-brushless-bike-handle-brush-cutter.md`
-- Classification `ZA` + title "Why use LCC Classifications?" → `za-why-use-lcc-classifications.md`
 - Classification `QA76` + title "Linux systemd Timers" → `qa76-linux-systemd-timers.md`
 - Classification `T58.5` + title "Cloud Hosting Overview" → `t585-cloud-hosting-overview.md`
 
 To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB` → `sb`, `QA76` → `qa76`, `QA76.75` → `qa7675`, `T58.5` → `t585`.
 
-### Note Template (identical in both vaults)
+### Vault Paths (PCM only)
 
-`templates/note-template.md`:
-```yaml
----
-title: "{{title}}"
-aliases: []
-type: note
-classification:
-classification_label:
-classification_source: lcc
-primary_moc:
-related_mocs: []
-tags: []
-created: "{{date:YYYY-MM-DD}}T{{time:HH:mm:ss}}"
-updated: "{{date:YYYY-MM-DD}}T{{time:HH:mm:ss}}"
----
+| Purpose | Path |
+|---|---|
+| Notes | `~/PCM/notes/` |
+| MOC files | `~/PCM/moc/` |
+| Note template | `~/PCM/templates/note-template.md` |
+| LCC outlines | `~/PCM/lcc/` (a symlink to `~/KnowledgeVault/PKM/lcc/`) |
 
-# {{title}}
-
-## Summary
-
-## Details
-
-## Related
-
-- [[]]
-```
-
-### Existing Note Example
-
-`notes/sb-40v-hp-brushless-bike-handle-brush-cutter.md`:
-```yaml
-title: "40V HP Brushless Bike Handle Brush Cutter"
-aliases:
-  - "brush cutter"
-type: note
-classification: SB
-classification_label: "Plant culture"
-classification_source: lcc
-primary_moc: outdoor-lawn-and-garden-maintenance
-related_mocs:
-  - "Outdoor Lawn and Garden Maintenance"
-tags: []
-created: 2026-06-15
-updated: 2026-06-15
-```
-
-### Vault Paths
-
-| Vault | Notes dir | MOC dir |
-|---|---|---|
-| KnowledgeVault | `~/KnowledgeVault/PKM/notes/` | `~/KnowledgeVault/PKM/moc/` |
-| PCM | `~/PCM/notes/` | `~/PCM/moc/` |
-
-The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` for any classification lookups.
+`~/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`, so classification lookups work from the PCM path directly.
 
 ### MOC Level Detection
 
@@ -116,7 +71,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` for a
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
+   moc_dir = os.path.expanduser("~/PCM/moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -155,7 +110,7 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` for a
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
+   moc_dir = os.path.expanduser("~/PCM/moc")
    parent_slug = "<l1_slug>"    # substitute
    parent_title = "<l1_title>"  # substitute
    results = []
@@ -196,55 +151,14 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` for a
    - If output is `NONE`: no second-level MOCs exist under this parent. Skip to Step 5 (note title).
    - If a list is printed: present it and ask: "Select a second-level MOC, or press Enter to use **[l1_title]** as the target MOC." If the human selects one, record: `l2_slug`, `l2_title`, `l2_cls`, `l2_lbl` and update `deepest_*` to these values. If they press Enter / skip, keep the first-level values as deepest.
 
-3. **Check for third-level MOCs** (only if a second-level MOC was selected) — Run this script substituting the selected second-level slug and title:
-
-   ```python
-   import os, re
-
-   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
-   parent_slug = "<l2_slug>"    # substitute
-   parent_title = "<l2_title>"  # substitute
-   results = []
-
-   for fname in sorted(os.listdir(moc_dir)):
-       if not fname.endswith(".md"):
-           continue
-       path = os.path.join(moc_dir, fname)
-       with open(path) as f:
-           content = f.read()
-       if not content.startswith("---"):
-           continue
-       end = content.find("---", 3)
-       if end == -1:
-           continue
-       fm = content[3:end]
-       primary = re.search(r'^primary_moc:[ \t]*(\S.*)?$', fm, re.MULTILINE)
-       if not primary or not primary.group(1) or not primary.group(1).strip():
-           continue
-       parent_val = primary.group(1).strip().strip('"').strip("'")
-       if parent_val.lower() not in (parent_slug.lower(), parent_title.lower()):
-           continue
-       title_m = re.search(r'^title:\s*"?([^"\n]+)"?', fm, re.MULTILINE)
-       title = title_m.group(1).strip() if title_m else fname[:-3]
-       cls_m = re.search(r'^classification:[ \t]*(\S.*)?$', fm, re.MULTILINE)
-       cls = cls_m.group(1).strip() if cls_m and cls_m.group(1) else ""
-       lbl_m = re.search(r'^classification_label:[ \t]*"?([^"\n]+)"?', fm, re.MULTILINE)
-       lbl = lbl_m.group(1).strip() if lbl_m and lbl_m.group(1) else ""
-       results.append((fname[:-3], title, cls, lbl))
-
-   if not results:
-       print("NONE")
-   else:
-       for i, (slug, title, cls, lbl) in enumerate(results, 1):
-           print(f"{i}. {title}  [{cls} — {lbl}]  ({slug})")
-   ```
+3. **Check for third-level MOCs** (only if a second-level MOC was selected) — Run the same script as Step 2, substituting the selected **second-level** slug and title for `parent_slug` / `parent_title`.
 
    - If output is `NONE`: no third-level MOCs exist. Keep `deepest_*` at the second-level values. Skip to Step 5.
    - If a list is printed: present it and ask: "Select a third-level MOC, or press Enter to use **[l2_title]** as the target MOC." If the human selects one, record: `l3_slug`, `l3_title`, `l3_cls`, `l3_lbl` and update `deepest_*` to these values.
 
 4. **Confirm the target MOC** — Tell the human: "The note will be linked to: **[deepest_title]** (classification: `deepest_cls` — deepest_lbl)." Proceed.
 
-5. **Ask for the note title** — Ask: "What is the title of this note?" Wait for their answer.
+5. **Ask for the note title** — Ask: "What is the title of this note?" Wait for their answer. Challenge any spelling/grammar problems and propose a corrected version before proceeding.
 
 6. **Ask for a one-line summary** (optional) — Ask: "Brief one-line summary for the note's Summary section? (Press Enter to leave blank.)" Wait for their answer.
 
@@ -252,85 +166,78 @@ The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` for a
 
 8. **Derive the filename** — Compute:
    - `lcc_prefix`: lowercase `deepest_cls`, remove all dots. Examples: `SB` → `sb`, `QA76.75` → `qa7675`, `T58.5` → `t585`
-   - `title_slug`: lowercase the note title, replace spaces and special characters with hyphens, collapse multiple hyphens. Example: "40V HP Brushless Bike Handle Brush Cutter" → `40v-hp-brushless-bike-handle-brush-cutter`
+   - `title_slug`: lowercase the note title, replace spaces and special characters with hyphens, collapse multiple hyphens.
    - `filename`: `<lcc_prefix>-<title_slug>.md`
 
 9. **Get today's date** — Run `date +%Y-%m-%d` for the `created`/`updated` fields.
 
-10. **Create the KnowledgeVault note** — Write `~/KnowledgeVault/PKM/notes/<filename>`:
-   ```yaml
-   ---
-   title: "<Note Title>"
-   aliases: []
-   type: note
-   classification: <deepest_cls>
-   classification_label: "<deepest_lbl>"
-   classification_source: lcc
-   primary_moc: <deepest_slug>
-   related_mocs:
-     - "<deepest_title>"
-   tags: []
-   created: YYYY-MM-DD
-   updated: YYYY-MM-DD
-   ---
+10. **Create the PCM note** — Write `~/PCM/notes/<filename>`:
+    ```yaml
+    ---
+    title: "<Note Title>"
+    aliases: []
+    type: note
+    classification: <deepest_cls>
+    classification_label: "<deepest_lbl>"
+    classification_source: lcc
+    primary_moc: <deepest_slug>
+    related_mocs:
+      - "<deepest_title>"
+    tags: []
+    created: YYYY-MM-DD
+    updated: YYYY-MM-DD
+    ---
 
-   # <Note Title>
+    # <Note Title>
 
-   ## Summary
+    ## Summary
 
-   <one-line summary if provided, otherwise leave blank>
+    <one-line summary if provided, otherwise leave blank>
 
-   ## Details
+    ## Details
 
-   <body_content if provided, otherwise leave blank>
+    <body_content if provided, otherwise leave blank>
 
-   ## Related
+    ## Related
 
-   - [[<deepest_slug>|<deepest_title>]]
-   ```
+    - [[<deepest_slug>|<deepest_title>]]
+    ```
 
-11. **Create the PCM note** — Write `~/PCM/notes/<filename>` with identical content.
-
-12. **Update the target MOC in both vaults** — In each vault, open `moc/<deepest_slug>.md`:
+11. **Update the target MOC in PCM** — Open `~/PCM/moc/<deepest_slug>.md`:
     - Find the `## Notes` section. If it contains only `- [[]]`, replace that placeholder line with the new link. Otherwise append the link as a new list item.
     - Link format: `- [[<lcc_prefix>-<title_slug>|<Note Title>]]`
     - Update the `updated:` frontmatter field to today's date.
-    - If the target MOC does not exist in the PCM vault, create a minimal stub using the KnowledgeVault version as a reference before editing it.
 
-13. **Commit and push in both vaults** — Stage the new note and updated MOC, then commit and push:
+12. **Commit and push in PCM** — Stage the new note and updated MOC, then commit and push:
 
     ```bash
-    # KnowledgeVault
-    git -C ~/KnowledgeVault/PKM add notes/<filename> moc/<deepest_slug>.md
-    git -C ~/KnowledgeVault/PKM commit -m "note: add <lcc_prefix>-<title_slug>"
-    git -C ~/KnowledgeVault/PKM push
-
-    # PCM vault
     git -C ~/PCM add notes/<filename> moc/<deepest_slug>.md
     git -C ~/PCM commit -m "note: add <lcc_prefix>-<title_slug>"
     git -C ~/PCM push
     ```
 
-    Report the commit hash from each repo after pushing.
+    Report the commit hash after pushing.
 
-14. **Report completion** — Summarize:
-    - Note files created: both full paths
-    - Target MOC updated: both full paths, with the exact line added
+13. **Report completion** — Summarize:
+    - Note file created: full path
+    - Target MOC updated: full path, with the exact line added
     - Classification applied: `deepest_cls` — `deepest_lbl`
-    - Commits pushed: hash and repo for each
+    - Commit pushed: hash
 
 ## Success Criteria
 
-- `notes/<filename>` exists in both vaults with `primary_moc` set to `deepest_slug` and `classification` filled
-- Target MOC in both vaults contains `[[<lcc_prefix>-<title_slug>|<Note Title>]]` in its `## Notes` section
+- `~/PCM/notes/<filename>` exists with `primary_moc` set to `deepest_slug` and `classification` filled
+- The note was **not** written to the KnowledgeVault (PKM)
+- Target MOC in PCM contains `[[<lcc_prefix>-<title_slug>|<Note Title>]]` in its `## Notes` section
 - Filename follows `<lcc_prefix>-<title_slug>.md` convention (lowercase, no dots in prefix, hyphens throughout)
-- Neither `home.md` was modified
-- Commits pushed in both repos
+- `home.md` was not modified
+- PCM commit pushed
 
 ## Notes
 
 - The human may stop at any chooser level — if they skip the second-level or third-level chooser (by pressing Enter), the note targets the deepest MOC they did select
-- The PCM vault's `lcc/` is empty — always use `~/KnowledgeVault/PKM/lcc/` if any additional classification lookup is needed
+- `~/PCM/lcc/` is a symlink to `~/KnowledgeVault/PKM/lcc/`; use it for any classification lookups
 - `created` and `updated` use plain `YYYY-MM-DD` format (not the `YYYY-MM-DDThh:mm:ss` Obsidian template syntax — that is resolved by Obsidian's template engine, not here)
 - Leave `## Details` and `tags: []` blank for the human to fill in after creation
-- Related skills: `first-moc-level`, `second-moc-level`, `third-moc-level` (create MOC structure before adding notes)
+- For saving a web article into PCM (with image archival), prefer the ingest pipeline `~/PCM/scripts/ingest-html-page.sh <url>` over this manual skill
+- Related skills: `create-a-pkm-note` (the PKM-only counterpart), `first-moc-level`, `second-moc-level`, `third-moc-level` (create MOC structure before adding notes)
