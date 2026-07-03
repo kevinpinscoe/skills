@@ -53,6 +53,55 @@ description: Creates a new self-hosted Docker container service under /opt/conta
      ```
    - Confirm the push succeeded and the files appear in `git log --stat HEAD`.
 
+5. **Register the FQDN on the tool-shed dashboard** (`~/Projects/private/tool-shed`). Only do this once the service is verified reachable at `https://<service-name>.kevininscoe.com` and has been tested.
+   - Ask the user for the card `icon` (emoji), `category`, and a one-sentence `description`. Do not guess these — ask directly.
+   - Append a `Service` entry to the `services` array in `src/services.ts`:
+     ```ts
+     { name: '<Service Name>', description: '<description>', url: 'https://<service-name>.kevininscoe.com', icon: '<emoji>', category: '<category>' },
+     ```
+     Confirm `<category>` already exists in the `categoryOrder` array; if not, add it there too — a card whose category is missing from `categoryOrder` will not render.
+   - Bump the `version` field in `package.json` by one patch level (repo convention: every tile change bumps the version; keep it in lockstep with the tag below).
+   - Type-check the build — this is the only gate: `pnpm build` (fails on any `vue-tsc` error).
+   - Commit only the changed files and push to `main`:
+     ```bash
+     cd ~/Projects/private/tool-shed
+     git add src/services.ts package.json
+     git commit -m "feat(services): add <Service Name> tile; bump <version>"
+     git push
+     ```
+   - Tag the **next available semver patch** and push the tag:
+     ```bash
+     cd ~/Projects/private/tool-shed
+     latest=$(git tag --sort=-v:refname | head -1)   # e.g. v1.1.5
+     # Increment ONLY the final (patch) number, keeping the v prefix -> e.g. v1.1.6
+     git tag <next-tag>
+     git push origin <next-tag>
+     ```
+     Compute `<next-tag>` from `$latest`. Confirm it does not already exist (`git tag | grep -Fx <next-tag>` returns nothing) before creating it.
+
+6. **Add the FQDN to Uptime Kuma monitoring** (`~/Projects/private/observability`). Default to an `http`-type monitor.
+   - Add a monitor entry to the `monitors:` list in `configs/central-stack/uptime-kuma/monitors.yaml`, placing it in the "tool-shed FQDN sites" section to match its dashboard grouping:
+     ```yaml
+     - name: <service-name>
+       type: http
+       url: https://<service-name>.kevininscoe.com
+     ```
+     The shared `defaults:` (interval, `accepted_statuscodes` of 200–399, `telegram-kevin` notification) apply automatically. If the site returns a strict `200` only, add `accepted_statuscodes: ["200-299"]` to the entry.
+   - Sync the YAML to `uptime.kevininscoe.com`. Dry-run is the default and changes nothing; `--apply` is what pushes the monitor live (requires OpenBao unsealed and Tailscale up — creds come from OpenBao `observability/uptime-kuma/admin`):
+     ```bash
+     cd ~/Projects/private/observability
+     # One-time only, if .venv is missing:
+     # python3 -m venv .venv && ./.venv/bin/pip install -r configs/central-stack/uptime-kuma/requirements.txt
+     ./.venv/bin/python scripts/sync-kuma-monitors.py            # preview (dry-run)
+     ./.venv/bin/python scripts/sync-kuma-monitors.py --apply    # create the monitor live
+     ```
+   - Confirm the new monitor goes green in the Kuma UI, then commit and push the YAML so git matches Kuma:
+     ```bash
+     git add configs/central-stack/uptime-kuma/monitors.yaml
+     git commit -m "feat(uptime-kuma): monitor <service-name>.kevininscoe.com"
+     git push
+     ```
+
 ## Success Criteria
 
 - Service is reachable at `https://<service-name>.kevininscoe.com` and returns a non-error HTTP response (verified with `curl` from the Apache host)
@@ -60,6 +109,8 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 - `RUNBOOK.md` and `AGENTS.md` created in `/opt/containers/<service-name>/`
 - Backup job runs successfully at least once manually and is added to `~/admin/check-all-backups.sh` (if the container holds persistent data)
 - DNS CNAME `<service-name>.kevininscoe.com` resolves correctly
+- A tile for the service appears in `~/Projects/private/tool-shed/src/services.ts`, `pnpm build` passes, and the change is pushed to `main` and tagged with the next semver patch (tag pushed to origin)
+- An `http` monitor for the FQDN exists in `~/Projects/private/observability/configs/central-stack/uptime-kuma/monitors.yaml`, has been applied live to `uptime.kevininscoe.com` (green in the Kuma UI), and the YAML is committed and pushed
 
 ## Notes
 
@@ -67,3 +118,4 @@ description: Creates a new self-hosted Docker container service under /opt/conta
 - Use `sudo -A` (not plain `sudo`) for all file operations under `/opt/containers/`, which is root-owned.
 - Docker Compose only — no bare `docker run` commands.
 - Secrets and credentials go in `.env` files. Never hardcode them.
+- Steps 5 and 6 touch two separate repos outside `/opt/containers`: the dashboard is `~/Projects/private/tool-shed` (data-driven from `src/services.ts`; see its CLAUDE.md), and the monitoring source of truth is `~/Projects/private/observability` (`configs/central-stack/uptime-kuma/monitors.yaml`; sync procedure in `runbooks/uptime-kuma/RUNBOOK.md`). Only run these two steps after the container is up, has its FQDN, and has been tested.
