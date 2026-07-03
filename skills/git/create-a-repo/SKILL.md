@@ -1,11 +1,11 @@
 ---
 name: create-a-repo
-description: Creates a new Git repository on either Gitea (private) or GitHub (public), clones it locally to the correct directory, scaffolds README.md, RUNBOOK.md, and .gitignore, and (GitHub only) assigns an area-* category topic chosen at runtime from the live profile.yml.
+description: Creates a new Git repository on either Gitea (visibility confirmed at runtime, default public) or GitHub (public), clones it locally to the correct directory, scaffolds README.md, RUNBOOK.md, and .gitignore, and (GitHub only) assigns an area-* category topic chosen at runtime from the live profile.yml.
 ---
 
 # Create a Git Repo
 
-> Interactively gather repo details, create the repo on the correct forge (Gitea for private, GitHub for public), clone it to the standard local path, and scaffold README.md, RUNBOOK.md, and .gitignore.
+> Interactively gather repo details, create the repo on the correct forge (Gitea or GitHub — for Gitea, confirm visibility, defaulting to public), clone it to the standard local path, and scaffold README.md, RUNBOOK.md, and .gitignore.
 
 ## Prerequisites
 
@@ -43,7 +43,9 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
    - `~/ai/directives/runbook-template.md`
    - `~/ai/directives/when-generating-code-or-updating-code-in-an-outside-repo.md` (for GitHub repos)
 
-3. **Determine forge** — Ask the user: "Will this repo be created on **git.kevininscoe.com** (Gitea — private) or **github.com/kevinpinscoe** (GitHub — public)?" Do not proceed without this answer.
+3. **Determine forge** — Ask the user: "Will this repo be created on **git.kevininscoe.com** (Gitea) or **github.com/kevinpinscoe** (GitHub — public)?" Do not proceed without this answer.
+   - **If Gitea:** Always confirm the repo's visibility with the user before proceeding: "Should this Gitea repo be **public** or **private**?" **The default is public** — unless the user explicitly says private, treat the repo as public. Capture the chosen visibility; it is used in Step 8 (confirmation) and Step 9 (creation).
+   - **If GitHub:** Repos are always public (no visibility question needed).
 
 4. **Get repo name** — Ask the user for the name of the new repo. Normalize it to lowercase-with-hyphens (e.g., "Repo Where Skills Live" → `repo-where-skills-live`). Present the normalized name to the user and ask them to confirm it before proceeding.
 
@@ -64,7 +66,8 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
      Capture the printed `area-*` topic — this is the GitHub topic that will be applied to the new repo in Step 9. Skip this step entirely for Gitea repos.
 
 8. **Confirm creation details** — Present a full summary and ask the user to confirm before taking any action:
-   - Forge: git.kevininscoe.com (Gitea, private) or github.com/kevinpinscoe (GitHub, public)
+   - Forge: git.kevininscoe.com (Gitea) or github.com/kevinpinscoe (GitHub, public)
+   - Visibility (Gitea repos): public (default) or private, as confirmed in Step 3
    - Normalized repo name
    - About/description text
    - License SPDX ID (GitHub repos only)
@@ -87,8 +90,11 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
      ```bash
      gh repo edit kevinpinscoe/<repo-name> --add-topic <area-topic>
      ```
-   - **Gitea (private)**:
+   - **Gitea**: Use the visibility confirmed in Step 3. **Default is public** — only add `--private` when the user explicitly chose private.
      ```bash
+     # Public (default)
+     tea repo create --name <repo-name>
+     # Private (only if the user chose private in Step 3)
      tea repo create --name <repo-name> --private
      ```
      Then set the description via the Gitea API:
@@ -99,16 +105,16 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
        -d '{"description": "<about-summary>"}'
      ```
 
-10. **Determine local clone path** — Decide where to clone based on the forge:
-   - **GitHub (public)**: `~/Projects/public/<repo-name>`
-   - **Gitea (private)**: `~/Projects/private/<repo-name>`
+10. **Determine local clone path** — Decide where to clone based on the forge. Note: this is a directory convention keyed to the **forge**, not the repo's visibility — Gitea repos always clone under `~/Projects/private/` even when the repo itself is public.
+   - **GitHub**: `~/Projects/public/<repo-name>`
+   - **Gitea**: `~/Projects/private/<repo-name>`
 
 11. **Clone the repo** — Clone via SSH into the path determined in Step 10. Create the parent directory with `mkdir -p` if it does not exist.
-    - **GitHub (public)**:
+    - **GitHub**:
       ```bash
       git clone git@github.com:kevinpinscoe/<repo-name>.git ~/Projects/public/<repo-name>
       ```
-    - **Gitea (private)**:
+    - **Gitea**:
       ```bash
       git clone ssh://git@git.kevininscoe.com:2223/kinscoe/<repo-name>.git ~/Projects/private/<repo-name>
       ```
@@ -219,6 +225,7 @@ description: Creates a new Git repository on either Gitea (private) or GitHub (p
 
 ## Notes
 
+- Gitea repo visibility is confirmed with the user at every invocation (Step 3). **The default is public** — the repo is created public unless the user explicitly asks for private, in which case `tea repo create` gets the `--private` flag. This is independent of the local clone path, which always lands under `~/Projects/private/` for Gitea repos.
 - The directive path is `~/ai/directives/` (plural) — a common typo is `~/ai/directive/` (singular) which does not exist.
 - Gitea SSH uses non-standard port 2223 — always use the full `ssh://git@git.kevininscoe.com:2223/kinscoe/` prefix.
 - SSH is the only protocol used for git on this system — never use HTTPS clone URLs.
