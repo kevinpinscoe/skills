@@ -1,3 +1,11 @@
+---
+title: Runbook: put-email-offers-on-my-calendar
+tags: [runbook, operations]
+vault_link: runbooks/home-kinscoe-skills-skills-daily-put-email-offers-on-my-calendar.md
+source_path: /home/kinscoe/skills/skills/daily/put-email-offers-on-my-calendar/RUNBOOK.md
+---
+
+> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills-skills-daily-put-email-offers-on-my-calendar.md` (symlink → this file).
 # Runbook: put-email-offers-on-my-calendar
 
 ## First-time setup

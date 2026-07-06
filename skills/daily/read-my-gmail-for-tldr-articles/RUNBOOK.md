@@ -1,3 +1,11 @@
+---
+title: Runbook: read-my-gmail-for-tldr-articles
+tags: [runbook, operations]
+vault_link: runbooks/home-kinscoe-skills-skills-daily-read-my-gmail-for-tldr-articles.md
+source_path: /home/kinscoe/skills/skills/daily/read-my-gmail-for-tldr-articles/RUNBOOK.md
+---
+
+> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills-skills-daily-read-my-gmail-for-tldr-articles.md` (symlink → this file).
 # Runbook: read-my-gmail-for-tldr-articles
 
 ## Purpose
