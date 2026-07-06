@@ -7,6 +7,26 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
 
 > Syncs daily working repos, resolves user-approved divergence, then walks through the current platform TODO file.
 
+---
+
+> # ⚠️ STOP — THESE REPOS ARE NOT FORKS ⚠️
+>
+> **`~/Projects/public/skills` and `~/Projects/public/vermilian` are NOT forks. They have
+> NEVER been forks. They are Kevin's OWN original repositories.**
+>
+> - **NEVER** call these repos "forks."
+> - **NEVER** assume a repo is a fork because it lives under `~/Projects/public/`.
+> - A repo is a fork **only** if `git remote -v` shows an `upstream` remote pointing at
+>   someone else's account. If the only remote is `origin` under `github.com/kevinpinscoe`,
+>   it is Kevin's own repo — **treat it as a normal repo** and pull it like any other.
+> - Location on disk (`~/Projects/public/`) does **NOT** make a repo a fork. Verify with
+>   `git remote -v`, never by guessing from the path.
+>
+> See section **4a** below for the full rules. This warning is repeated there and in the
+> Notes because it has been gotten wrong before.
+
+---
+
 ## Prerequisites
 
 - Git is installed
@@ -42,30 +62,47 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - Run `git status --short --branch` and tell the user about modified, deleted, renamed, and untracked files before taking action.
    - Stage only files relevant to this daily sync work. Never use `git add -A`.
 
-4a. **Forked repos in `~/Projects/public/`** — many repos under `~/Projects/public/` are forks
-    of upstream open-source projects. Personal changes live on a `personal` branch; upstream
-    contributions go via PR to the original project. Apply these rules to any `~/Projects/public/`
-    repo flagged by `check-git-repos`:
+4a. **Repos in `~/Projects/public/` — DO NOT assume they are forks.**
 
-    **Pull rules:**
-    - Do NOT run `git pull` on a forked repo unless the currently checked-out branch is a
+    > # ⚠️ NOT FORKS ⚠️
+    > **`~/Projects/public/skills` and `~/Projects/public/vermilian` are NOT forks and have
+    > never been forks. They are Kevin's OWN repositories.** Do not call them forks. Do not
+    > apply fork handling to them. Pull them like any other normal repo (steps 5–7).
+
+    **Living under `~/Projects/public/` does NOT make a repo a fork.** Most repos here are
+    Kevin's own original projects. Never infer "fork" from the directory location.
+
+    **How to decide if a repo is actually a fork — verify, do not guess:**
+    - Run `git remote -v`.
+    - It is a **fork ONLY IF** there is an `upstream` remote pointing at a *different* account
+      (i.e. not `github.com/kevinpinscoe`).
+    - If the only remote is `origin` under `github.com/kevinpinscoe`, it is **Kevin's own
+      repo** — treat it as a normal repo and process it through steps 5–7 like everything else.
+    - If you are ever unsure, ASK Kevin. Never label a repo a fork without confirming via the
+      remote.
+
+    **The fork-handling rules below apply ONLY to a repo you have confirmed is a real fork**
+    (has an `upstream` remote to a different account). They do NOT apply to Kevin's own repos:
+
+    **Pull rules (confirmed forks only):**
+    - Do NOT run `git pull` on a confirmed fork unless the currently checked-out branch is a
       personal branch (e.g. `personal`). Pulling on `main` would silently overwrite local
       personal work.
-    - If the repo is BEHIND on `main`: report it but do not pull unless the user explicitly
-      requests it.
+    - If the confirmed fork is BEHIND on `main`: report it but do not pull unless the user
+      explicitly requests it.
 
-    **UNTRACKED files:**
+    **UNTRACKED files (confirmed forks only):**
     1. Run `git branch --list personal` to check for a `personal` branch.
     2. If a `personal` branch exists: tell the user, switch to it, then ask the user to confirm
        which untracked files to stage before doing so.
     3. If no `personal` branch exists: warn the user — do not commit untracked files to `main`.
 
-    **UNSTAGED files:**
+    **UNSTAGED files (confirmed forks only):**
     - If on `personal` branch: proceed normally through steps 5–7.
     - If on `main` or default branch: warn the user and do not stage or commit until the user
       clarifies whether to create a `personal` branch or commit directly.
 
-    **AHEAD commits:**
+    **AHEAD commits (confirmed forks only):**
     - AHEAD commits represent personal work intended for an upstream PR when ready. Do not push
       automatically. Ask the user whether to push to their fork remote, and remind them that
       contributing to the original project requires opening a PR from the fork to upstream.
@@ -184,6 +221,10 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
 
 ## Notes
 
+- **⚠️ `~/Projects/public/skills` and `~/Projects/public/vermilian` are NOT forks — they are
+  Kevin's own repositories. Never call them forks. Never assume a repo is a fork based on its
+  directory. A repo is a fork ONLY if `git remote -v` shows an `upstream` remote to a different
+  account. See section 4a.**
 - Use absolute dates in any generated TODO or commit context when dates matter.
 - Preserve secrets: never print, store, stage, or commit tokens, passwords, private keys, or sensitive host details.
 - Platform mapping: `mac` is macOS, `rpi` is Raspberry Pi Debian Linux, and `fedora` is Fedora Linux on Intel.
