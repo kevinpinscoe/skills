@@ -103,16 +103,18 @@ updated: {{date}}
 - **Frontmatter values** (title, labels, aliases): normal capitalization and spaces are fine
 - **Files must live in** `moc/`
 
-## Canonical hierarchy — stacks.md
+## Canonical hierarchy — frontmatter
 
-`~/PCM/moc/stacks.md` is the single source of truth for the MOC hierarchy, shared by
-both vaults and maintained **only in PCM**. This skill must keep it in sync:
+The MOC hierarchy is canonical in each MOC's `primary_moc` frontmatter (the parent's slug),
+mirrored by each parent's `## Child MOCs` section. There is **no separate map file** —
+`moc/stacks.md` is retired. This skill keeps the hierarchy correct:
 
-- **Before creating**, review it: `~/PCM/scripts/moc-stacks-editor.sh --list`. Confirm
-  the chosen **second-level parent** appears in the tree.
-- **After creating** (in the commit step), register the node:
-  `~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent the parent's display title` then include
-  `moc/stacks.md` in the PCM commit. The tool is idempotent and refuses depth > 3 levels.
+- **Before creating**, confirm the chosen **second-level parent** exists — review
+  `~/PCM/moc-map.md` or the existing `moc/*.md`.
+- **After creating**, the MOC's `primary_moc` points at the parent slug and the parent's
+  `## Child MOCs` lists it. `~/PCM/scripts/create-moc-map.sh` regenerates the clickable
+  `moc-map.md` (the PCM pre-commit hook also does this automatically). This is the third
+  and deepest level — no further nesting is allowed.
 
 ## Instructions
 
@@ -264,9 +266,8 @@ both vaults and maintained **only in PCM**. This skill must keep it in sync:
     git -C ~/KnowledgeVault/PKM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
     git -C ~/KnowledgeVault/PKM push
 
-    # PCM vault — also register the node in the canonical hierarchy
-    ~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent "<PARENT_DISPLAY_TITLE>"
-    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md moc/stacks.md
+    # PCM vault — the pre-commit hook regenerates moc-map.md from frontmatter
+    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md
     git -C ~/PCM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
     git -C ~/PCM push
     ```
