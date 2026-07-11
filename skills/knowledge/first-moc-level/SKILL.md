@@ -117,16 +117,17 @@ Note: The PCM template does not include classification fields by default. **Add 
 - **Title, aliases, classification labels, and display names in home.md** may use normal capitalization, spaces, and punctuation
 - **File must live in** `moc/`
 
-## Canonical hierarchy — stacks.md
+## Canonical hierarchy — frontmatter
 
-`~/PCM/moc/stacks.md` is the single source of truth for the MOC hierarchy, shared by
-both vaults and maintained **only in PCM**. This skill must keep it in sync:
+The MOC hierarchy is canonical in each MOC's `primary_moc` frontmatter (blank for a
+top-level MOC), mirrored by each parent's `## Child MOCs` section. There is **no separate
+map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correct:
 
-- **Before creating**, review it: `~/PCM/scripts/moc-stacks-editor.sh --list`. Confirm
-  this is genuinely a new **top-level** MOC (not already a child of another MOC).
-- **After creating** (in the commit step), register the node:
-  `~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent "MOCs"` then include
-  `moc/stacks.md` in the PCM commit. The tool is idempotent and refuses depth > 3 levels.
+- **Before creating**, confirm this is genuinely a new **top-level** MOC (not already a
+  child of another MOC) — review `~/PCM/moc-map.md` or the existing `moc/*.md`.
+- **After creating**, the MOC carries a blank `primary_moc` and is listed in `home.md`.
+  `~/PCM/scripts/create-moc-map.sh` regenerates the clickable `moc-map.md` (the PCM
+  pre-commit hook also does this automatically). Max depth is three levels.
 
 ## Instructions
 
@@ -222,9 +223,8 @@ both vaults and maintained **only in PCM**. This skill must keep it in sync:
     git -C ~/KnowledgeVault/PKM commit -m "moc: add <slug> first-level MOC"
     git -C ~/KnowledgeVault/PKM push
 
-    # PCM vault — also register the node in the canonical hierarchy
-    ~/PCM/scripts/moc-stacks-editor.sh --add "<DISPLAY_TITLE>" --parent "MOCs"
-    git -C ~/PCM add moc/<slug>.md home.md moc/stacks.md
+    # PCM vault — the pre-commit hook regenerates moc-map.md from frontmatter
+    git -C ~/PCM add moc/<slug>.md home.md
     git -C ~/PCM commit -m "moc: add <slug> first-level MOC"
     git -C ~/PCM push
     ```
