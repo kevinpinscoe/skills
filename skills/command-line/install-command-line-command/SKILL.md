@@ -5,7 +5,7 @@ description: Prompts me for required information before installing a command lin
 
 # Install a Command-Line Tool
 
-> Install a command-line tool (script or binary) on the current host, generate a cheat sheet in `~/cheats`, and append TODO entries to `~/todo/<os>/TODO.md` for each non-current operating system.
+> Install a command-line tool (script or binary) on the current host, generate a cheat sheet in `~/cheats`, and append TODO entries to `~/todo/<os>/TODO.md` for each other host the user selects. There are four possible hosts (`fedora`, `mac`, `rpi`, `mac-container`); the user picks which of the non-current hosts to target from a checkbox (multi-select) prompt.
 
 ## Prerequisites
 
@@ -27,19 +27,20 @@ description: Prompts me for required information before installing a command lin
    - Link to the best documentation to use for installation instructions (required — do not proceed without it)
    - One or more tags to associate with the command
    - A short summary of what the command does (always ask directly — do not infer from docs)
-   - Operating systems to support: `all` or a specific list (e.g. `fedora`, `mac`, `rpi`)
+   - Which other hosts to install on — detect the current host first (see step 3), then present a **checkbox (multi-select) question** via `AskUserQuestion` listing only the other three of the four possible hosts (`fedora`, `mac`, `rpi`, `mac-container`) so the user can tick any combination. The current host is always installed and is never shown as an option; ticking every box is equivalent to `all`. Record the selected hosts for use in steps 4 and 6.
    - If installation is more complex than a single file, ask clarifying questions before proceeding
    - If multiple executables will be installed: gather the command name for each, perform collision evaluation for each, and create a separate cheat sheet for each
 
-3. **Install on the current host** — detect the platform with `uname -s` (and `/etc/os-release` on Linux):
+3. **Install on the current host** — detect the platform with `uname -s` (and `/etc/os-release` on Linux). On Linux, distinguish the Fedora workstation from the Mac-container: both report `fedora` in `/etc/os-release`, but the Mac-container also has `/mac-home` present or hostname == `b38e685e79b8`.
 
-   - **Fedora Linux**: prefer downloading the binary to `~/.local/bin/` (create it first if needed):
+   - **Fedora Linux workstation (x86_64)**: prefer downloading the binary to `~/.local/bin/` (create it first if needed):
      ```bash
      curl -sSfL <download-url> -o ~/.local/bin/<command> && chmod +x ~/.local/bin/<command>
      ```
      If the tool provides a `dnf` package or official installer, that is also acceptable.
    - **macOS (Apple Silicon)**: prefer `brew install <package>`. If no Homebrew formula exists, fall back to `~/.local/bin/`.
    - **Raspberry Pi 5 (Debian Trixie)**: prefer downloading to `~/.local/bin/`. If the tool provides an `apt` package or official installer, that is also acceptable.
+   - **Mac-container (Fedora Linux, ARM/aarch64)**: same approach as the Fedora workstation — prefer `~/.local/bin/`, and `dnf` packages install identically. **But when downloading a raw binary, use the `aarch64`/`arm64` build — never the `x86_64`/`amd64` build used on the Fedora workstation.**
 
    If the tool requires or creates config files under the home directory, add them to `~/.dotfiles` using the GNU Stow symlink method.
 
@@ -47,10 +48,11 @@ description: Prompts me for required information before installing a command lin
 
    | Scope | Template | Destination |
    |---|---|---|
-   | `all` | `~/cheats/templates/all.md` | `~/cheats/all/<command_name>` |
+   | `all` (every host ticked) | `~/cheats/templates/all.md` (carries four install sections: Fedora, RPi, Mac, Mac-container) | `~/cheats/all/<command_name>` |
    | `fedora` | `~/cheats/templates/fedora.md` | `~/cheats/fedora/<command_name>` |
    | `mac` | `~/cheats/templates/mac.md` (or `all.md` if absent) | `~/cheats/mac/<command_name>` |
    | `rpi` | `~/cheats/templates/rpi.md` (or `all.md` if absent) | `~/cheats/rpi/<command_name>` |
+   | `mac-container` | `~/cheats/templates/mac-container.md` | `~/cheats/mac-container/<command_name>` |
 
    Fill in all `{{VARIABLE}}` placeholders directly when writing the file — do not run `generate-cheat.sh` or update `GENERATE-CHEAT.md`:
 
@@ -60,12 +62,14 @@ description: Prompts me for required information before installing a command lin
    | `{{TAGS}}` | comma-delimited tag list from step 2 |
    | `{{SUMMARIZE}}` | the command summary from step 2 |
    | `{{DOCUMENTATION_URL}}` | the documentation URL from step 2 |
-   | `{{INSTALL_METHOD_FEDORA}}` | command(s) to install on Fedora Linux 42/43 |
+   | `{{INSTALL_METHOD_FEDORA}}` | command(s) to install on Fedora Linux 42/43 workstation (x86_64) |
    | `{{INSTALL_METHOD_MAC}}` | command(s) to install on Apple Silicon macOS |
    | `{{INSTALL_METHOD_RPI}}` | command(s) to install on Raspberry Pi 5 (Debian Trixie) |
+   | `{{INSTALL_METHOD_MAC_CONTAINER}}` | command(s) to install on the Mac-container (Fedora Linux, ARM/aarch64) — same `dnf` as Fedora, but raw binaries use the `aarch64`/`arm64` build |
    | `{{COMMAND_PATH_FEDORA}}` | run `which <command>` after installing — e.g. `/usr/bin/<command>` or `~/.local/bin/<command>` |
    | `{{COMMAND_PATH_MAC}}` | e.g. `/opt/homebrew/bin/<command>` for brew, `~/.local/bin/<command>` for manual |
    | `{{COMMAND_PATH_RPI}}` | e.g. `/usr/bin/<command>` for apt, `~/.local/bin/<command>` for manual |
+   | `{{COMMAND_PATH_MAC_CONTAINER}}` | e.g. `/usr/bin/<command>` for dnf, `~/.local/bin/<command>` for the manually-installed aarch64 build |
 
    Fill in the "Command options" section by reading the tool's `--help` output or documentation.
 
@@ -79,11 +83,11 @@ description: Prompts me for required information before installing a command lin
 
    Follow all rules in `~/ai/directives/when-creating-a-runbook.md`.
 
-6. **Append TODO entries for other hosts** — for each non-current host in the user's requested OS list, append one line to `~/todo/<os>/TODO.md`:
+6. **Append TODO entries for the selected other hosts** — for each host the user ticked in the step 2 checkbox (all are non-current by construction), append one line to `~/todo/<os>/TODO.md`:
    ```
    YYYY-MM-DD <shell command to install the tool>  # install <command_name>: <one-line summary>
    ```
-   Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora → `~/todo/fedora/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`.
+   Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora workstation → `~/todo/fedora/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`, Mac-container (Fedora/ARM) → `~/todo/mac-container/TODO.md`. For the Mac-container entry, the install command must reference the `aarch64`/`arm64` build when it downloads a raw binary.
 
 7. **Commit and push all affected repos** — ask for explicit confirmation before committing each repo. Stage only the relevant files (never `git add -A`):
    - `~/Projects/private/app-configuration` — runbook under `apps/<command-name>/RUNBOOK.md` plus the `README.md` "Current apps" tree update; commit message: `chore: add <command_name> runbook`
@@ -95,7 +99,7 @@ description: Prompts me for required information before installing a command lin
 - Tool is installed and `which <command>` returns the expected path on the current host
 - Cheat sheet file exists at the correct path under `~/cheats/`
 - Runbook exists at `~/Projects/private/app-configuration/apps/<command-name>/RUNBOOK.md` and is populated
-- TODO entries appended for all non-current hosts in the user's requested OS list
+- TODO entries appended for every other host the user ticked in the step 2 checkbox
 - All modified repos committed and pushed
 
 ## Notes
