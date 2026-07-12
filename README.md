@@ -15,6 +15,8 @@ Skills are three levels deep: **category directory** → **skill directory** →
 ```
 skills/
 ├── app/
+│   ├── create-new-external-webapp/
+│   │   └── SKILL.md
 │   └── install-desktop-app/
 │       └── SKILL.md
 ├── command-line/
