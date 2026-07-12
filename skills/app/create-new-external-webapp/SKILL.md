@@ -9,7 +9,7 @@ description: Stands up a brand-new external (public) static brochure website end
 
 ## Prerequisites
 
-- `~/ai/directives/root-directive.md` readable — read it first; follow every directive it dispatches that applies to this task (notably `service-catalog.md`, `gitea.md`, `when-building-or-scaffolding-code-in-a-git-repo.md`, `opentofu-iac-standards.md`, `storing-secrets.md`, `portman.md`, `when-making-changes-in-a-directory-that-is-also-a-git-repo.md`).
+- `~/ai/directives/root-directive.md` readable — read it first; follow every directive it dispatches that applies to this task (notably `service-catalog.md`, `gitea.md`, `when-building-or-scaffolding-code-in-a-git-repo.md`, `opentofu-iac-standards.md`, `storing-secrets.md`, `when-making-changes-in-a-directory-that-is-also-a-git-repo.md`). **Note:** `portman.md` does **not** apply here — the site's container port lives on the remote Linode web server (e.g. `web1`), not on FLDW, so it is **not** reserved in FLDW's `portman` registry. Derive a free port from the target host's own `linode-<server>-config` Ansible instead (see Step 14).
 - `dig` / `host` available (DNS lookups).
 - Linode API credentials, located via the **credential map** (`~/.secrets/CREDENTIAL-MAP.md`): the DNS key `~/.secrets/certbot.ini` (`dns_linode_key`, used by the existing `scripts/*dns*.sh` helpers) and/or the account PAT `~/.secrets/kevin-linode.pat` (used by `linode-cli`). **Never read a secret value into a file or the transcript** — pass it through the CLI/API only.
 - `tea` CLI authenticated with Gitea (`tea whoami`) and `~/.config/gitea/api` present.
@@ -34,7 +34,7 @@ description: Stands up a brand-new external (public) static brochure website end
 
 Follow the global directives: **ask for each required input directly and one at a time**, wait for the answer before the next question, and **confirm before every outward or hard-to-reverse action** (Linode API writes, DNS changes, repo creation, pushes, deploys). Do not infer answers to required inputs.
 
-1. **Read directives** — Read `~/ai/directives/root-directive.md` first and follow what it dispatches. This orchestration touches infra-as-code, Gitea, the service catalog, secrets, and (Fedora) ports, so at minimum honor `service-catalog.md`, `gitea.md`, `when-building-or-scaffolding-code-in-a-git-repo.md`, `opentofu-iac-standards.md`, `storing-secrets.md`, and `when-making-changes-in-a-directory-that-is-also-a-git-repo.md`.
+1. **Read directives** — Read `~/ai/directives/root-directive.md` first and follow what it dispatches. This orchestration touches infra-as-code, Gitea, the service catalog, and secrets, so at minimum honor `service-catalog.md`, `gitea.md`, `when-building-or-scaffolding-code-in-a-git-repo.md`, `opentofu-iac-standards.md`, `storing-secrets.md`, and `when-making-changes-in-a-directory-that-is-also-a-git-repo.md`. Do **not** apply `portman.md`: FLDW's `portman` registry only tracks ports bound on FLDW, and this site's port is bound on the remote Linode web server — pick the port from that host's Ansible config (Step 14), not from `portman`.
 
 2. **Ask for the FQDN** — Ask the user for the FQDN of the new external website. Propose a spelling/grammar correction if the domain looks misspelled (per root-directive), but let the user override. Do not proceed without an explicit FQDN.
 
@@ -78,6 +78,35 @@ Follow the global directives: **ask for each required input directly and one at 
 
 12. **Wire Woodpecker to the new repo** — The user activates the `kinscoe/$FQDN` repo and adds the secrets above in the Woodpecker UI at `https://woodpecker-ci.kevininscoe.com` (Settings → Secrets). Provide the exact secret names/scopes and wait for the user to confirm activation before triggering a build.
 
+    **Tell the human these two things explicitly:**
+
+    a. **Scope every secret to `Event: tag`.** The pipeline triggers on `when: event: tag`, so each secret (`gitea_user`, `gitea_token`, `web1_deploy_key`) must have the **`tag`** event enabled in its Events field. A secret restricted to `push` only is invisible to a tag build and the pipeline will fail with a missing-secret error. (Leaving Events empty = "all events" also works, but explicitly selecting just `tag` is cleanest. Do **not** enable `pull_request`.)
+
+    b. **Reuse the shared OpenBao credentials — do not mint a per-repo token.** The values already live in OpenBao; the human pulls them and pastes them into the Woodpecker UI (Woodpecker does not read OpenBao itself). On FLDW, set the env once, then pull each value:
+    ```bash
+    export BAO_ADDR=https://openbao.kevininscoe.com
+    export BAO_TOKEN="$(cat ~/.environment/.vault-token)"
+
+    # → Woodpecker secret  gitea_user   (this is "kinscoe")
+    bao kv get -field=user  app/gitea
+    # → Woodpecker secret  gitea_token
+    bao kv get -field=token app/gitea
+    # → Woodpecker secret  web1_deploy_key
+    bao kv get -field=private_key -mount=linode-web1 deploy-key
+    ```
+    **Scope caveat:** `build-and-push` runs `buildah push` to the Gitea registry, which requires the `gitea_token` to carry **`read:packages` + `write:packages`**. If the push 401/403s, that token lacks packages scope — fix by adding those scopes to the `app/gitea` token in Gitea (Settings → Applications), **not** by minting a new per-repo token. (The `~/.config/gitea/api` on-disk token is over-scoped for CI; do not hand it to Woodpecker.)
+
+    c. **Enable repo trust for the privileged buildah step (REQUIRED — easy to miss).** The `build-and-push` step runs `quay.io/buildah/stable` with `privileged: true`, which Woodpecker only permits on a **trusted** repo. A brand-new repo is untrusted, so the pipeline errors at the linter stage with `Insufficient trust level to use 'privileged' mode` **before any step runs** (`woodpecker-cli pipeline ps` shows no steps). Enable trust to match datagiggle — either in the UI (repo → Settings → **Project** → **Trusted** → enable Network/Volumes/Security) or via the admin API:
+    ```bash
+    # WOODPECKER_SERVER / WOODPECKER_TOKEN are in the env on FLDW; repo id from /api/repos?all=true
+    curl -s -X PATCH -H "Authorization: Bearer $WOODPECKER_TOKEN" -H "Content-Type: application/json" \
+      -d '{"trusted":{"network":true,"volumes":true,"security":true}}' \
+      "$WOODPECKER_SERVER/api/repos/<repo-id>"
+    ```
+    Privileged mode needs at least `security:true`; datagiggle has all three true.
+
+    d. **Secret-name gotcha.** Woodpecker's UI **trims leading/trailing whitespace when displaying** a secret name, so a secret accidentally saved as `" web1_deploy_key"` (leading space) looks correct on screen but fails at build time with `secret "web1_deploy_key" not found`. Verify the real stored names via the API (`GET /api/repos/<id>/secrets`, inspect with Python `repr()`), not by eye. Fix by deleting and recreating the secret with an exact, space-free name.
+
 13. **Trigger the build and confirm the image in the Gitea registry** — Commit and push the scaffold, then create and push a semver tag to trigger CI:
     ```bash
     git -C ~/Projects/private/$FQDN add -A
@@ -88,7 +117,7 @@ Follow the global directives: **ask for each required input directly and one at 
     Monitor the run at `https://woodpecker-ci.kevininscoe.com`. Confirm the OCI image now appears in the **Gitea Packages** registry under `kinscoe/<image>` (publicly pullable, exactly like `datagiggle-lighttpd2`) — verify before deploying. If CI is not yet wired, the manual fallback is `scripts/publish.sh`.
 
 14. **Teach the host's Ansible about the new site** — In `~/Projects/private/linode-<server>-config`, following `opentofu-iac-standards.md` / `when-building-or-scaffolding-code-in-a-git-repo.md`, add the new site by copying the datagiggle pattern:
-    - `ansible/roles/containers/defaults/main.yml` — add a `<site>_manage`, `<site>_port` (assign a free port per `portman.md`; datagiggle=3018, dokoapp=3019, etc.), and `<site>_compose_dir` block.
+    - `ansible/roles/containers/defaults/main.yml` — add a `<site>_manage`, `<site>_port`, and `<site>_compose_dir` block. **Assign the port from the target host's own config, not FLDW's `portman`:** enumerate the existing `*_port:` values in `linode-<server>-config` (`grep -rhE '_port:\s*[0-9]+' ansible/`) and pick the next free number in that host's range (on web1 today: 3013–3020 are taken, so 3021 is next free). The port is bound on the remote Linode host, so it must never be reserved in FLDW's `portman`.
     - `ansible/host_vars/<server>.yml` — set `<site>_manage: true`, `<site>_port: <port>`, and add the FQDN (+`www`) to `certbot_extra_certs`.
     - `ansible/roles/containers/tasks/main.yml` and `ansible/roles/apache/tasks/main.yml` — add the compose/vhost tasks that pull `git.kevininscoe.com/kinscoe/<image>:latest`, run it on `<port>:8080`, and front it with an Apache TLS vhost for `$FQDN` — mirroring the existing datagiggle tasks.
     - Add the per-site host-side image-update script referenced by the CI `deploy-to-<server>` step (e.g. `/usr/local/sbin/<site>-image-update.sh`).
@@ -147,7 +176,7 @@ Follow the global directives: **ask for each required input directly and one at 
 
 - **Stop-and-flag rule (Step 3):** if the FQDN already resolves to something not in the service catalog, halt and wait for the user — never create infra over an unknown existing destination.
 - **Secrets:** locate Linode/Gitea credentials via the credential map and `storing-secrets.md`; never write a secret value to disk or echo it. Woodpecker secrets live only in the Woodpecker UI.
-- **Do not hardcode public IPs or ports** — derive the chosen server's public IP at runtime and assign the container port via `portman.md` (datagiggle=3018, dokoapp=3019, donetick=3020 are already taken).
+- **Do not hardcode public IPs or ports** — derive the chosen server's public IP at runtime, and assign the container port from the **target host's own** `linode-<server>-config` Ansible (`grep -rhE '_port:\s*[0-9]+' ansible/`), picking the next free number in that host's range. Do **not** use FLDW's `portman` for this: `portman` only tracks ports bound on FLDW, and this port is bound on the remote Linode web server. On web1 today, 3013–3020 are taken (datagiggle=3018, dokoapp=3019, donetick=3020), so 3021 is next free.
 - **`web-oci-builder` is the build engine, not a per-site repo** — it is cloned by CI and by `scripts/publish.sh`; this skill does not modify it.
 - **Image naming** follows datagiggle's convention (`<site>-lighttpd2`); keep it consistent so the CI script, Ansible pull, and registry path all agree.
 - Gitea SSH uses port 2223; the default branch is always `main`; SSH is the only git protocol used here.
