@@ -74,6 +74,9 @@ Follow the global directives: **ask for each required input directly and one at 
     - `clone-builder` — clones `web-oci-builder` from Gitea (the build engine).
     - `build-and-push` — runs `web-oci-builder/build/ci/woodpecker/ci-build-and-push.sh` with `SITE=$FQDN`, `GITEA_REGISTRY=git.kevininscoe.com`, `GITEA_OWNER=kinscoe`, `WEB_DIR=$(pwd)/web`. This builds the lighttpd2 OCI image and pushes `:prod`/`:latest` to `git.kevininscoe.com/kinscoe/<image>` (image basename derived from the FQDN, matching datagiggle's `datagiggle-lighttpd2` convention).
     - `deploy-to-<server>` — SSHes to `<server>.network.kevininscoe.com` over Tailscale using the deploy key and runs the per-site image-update script on the host.
+
+    **Woodpecker `${VAR}` gotcha (Woodpecker ≥3.7.0 — REQUIRED):** in `commands:`, Woodpecker substitutes **braced** `${VAR}` itself and replaces unknown names with an empty string *before the shell runs* — so `ssh … "${WEB1_SSH_USER}@${WEB1_SSH_HOST}" …` collapses to `ssh … "@" …` and the deploy fails with SSH exit 255. Use **unbraced** shell vars instead: `ssh … "$WEB1_SSH_USER@$WEB1_SSH_HOST" …` (unbraced `$VAR` is passed through to the shell untouched, exactly like `$WEB1_DEPLOY_KEY` in the key-write step). NOTE: the `datagiggle.com` template still uses the broken braced form, so **do not copy it verbatim** — unbrace the ssh destination when scaffolding.
+
     Required Woodpecker repo secrets (set by the user in the UI): `gitea_user`, `gitea_token` (PAT with `read:packages`+`write:packages`), and the host deploy key secret (`web1_deploy_key` / equivalent for the chosen host).
 
 12. **Wire Woodpecker to the new repo** — The user activates the `kinscoe/$FQDN` repo and adds the secrets above in the Woodpecker UI at `https://woodpecker-ci.kevininscoe.com` (Settings → Secrets). Provide the exact secret names/scopes and wait for the user to confirm activation before triggering a build.
