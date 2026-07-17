@@ -46,7 +46,9 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
 
 2. **Detect the host OS** — run `uname -s` and record the result:
    - Output is `Darwin` → macOS; set `$OS_LABEL=mac`
-   - Output is `Linux` → check `/etc/os-release` for `ID=fedora` → `$OS_LABEL=fedora`; `ID=debian` → `$OS_LABEL=rpi`
+   - Output is `Linux`:
+     - Check for work-context container signals first (`/mac-home` present, or `hostname` matches `mac-container`'s definitive hostname per `~/ai/directives/kevins-federated-unix-universe.md`) → `$OS_LABEL=mac-container`. `mac-container` is its own host with its own TODO file — its underlying OS being Fedora does **not** make it the `fedora` host; that label is reserved for FLDW.
+     - Otherwise check `/etc/os-release` for `ID=fedora` → `$OS_LABEL=fedora`; `ID=debian` → `$OS_LABEL=rpi`
    - If the platform cannot be determined, report the command outputs and stop.
 
 3. **Run check-git-repos** — discover repos that need attention:
@@ -181,6 +183,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - `mac` -> `~/todo/mac/TODO.md`
    - `fedora` -> `~/todo/fedora/TODO.md`
    - `rpi` -> `~/todo/rpi/TODO.md`
+   - `mac-container` -> `~/todo/mac-container/TODO.md`
 
 10. **Walk through TODO items** — read the selected `TODO.md` top-to-bottom. For each line:
     - Briefly explain the task and ask the user whether it should be performed now.
@@ -227,5 +230,5 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   account. See section 4a.**
 - Use absolute dates in any generated TODO or commit context when dates matter.
 - Preserve secrets: never print, store, stage, or commit tokens, passwords, private keys, or sensitive host details.
-- Platform mapping: `mac` is macOS, `rpi` is Raspberry Pi Debian Linux, and `fedora` is Fedora Linux on Intel.
+- Platform mapping: `mac` is macOS, `rpi` is Raspberry Pi Debian Linux, `fedora` is Fedora Linux on Intel (FLDW), and `mac-container` is the Docker container running Fedora Linux hosted on the macOS work machine — four hosts, four `TODO.md` files, per `~/todo/CLAUDE.md`.
 - This skill intentionally combines the behavior of daily repo sync and platform TODO processing; if only TODO processing is needed, use `run-through-my-os-todos`.
