@@ -44,12 +44,36 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - `~/ai/directives/when-creating-a-runbook.md`
    - `~/ai/directives/storing-secrets.md`, if it exists
 
-2. **Detect the host OS** — run `uname -s` and record the result:
-   - Output is `Darwin` → macOS; set `$OS_LABEL=mac`
-   - Output is `Linux`:
-     - Check for work-context container signals first (`/mac-home` present, or `hostname` matches `mac-container`'s definitive hostname per `~/ai/directives/kevins-federated-unix-universe.md`) → `$OS_LABEL=mac-container`. `mac-container` is its own host with its own TODO file — its underlying OS being Fedora does **not** make it the `fedora` host; that label is reserved for FLDW.
-     - Otherwise check `/etc/os-release` for `ID=fedora` → `$OS_LABEL=fedora`; `ID=debian` → `$OS_LABEL=rpi`
-   - If the platform cannot be determined, report the command outputs and stop.
+2. **Detect the host OS and resolve the host identity** — these are two separate things; do not
+   conflate them:
+
+   a. **`$OS_LABEL`** (OS family — used only to pick the `check-git-repos` flag in step 3):
+      run `uname -s`. `Darwin` → `$OS_LABEL=mac`. `Linux` → `$OS_LABEL=linux`.
+
+   b. **`$TODO_HOST`** (host identity — the *only* thing that decides which single `TODO.md`
+      this run touches in steps 9–11): resolve by **hostname**, never by OS family alone.
+      `~/ai/directives/kevins-federated-unix-universe.md` is the canonical, definitive registry
+      for this — read it (required in step 1) and match the current `hostname` against its
+      tables. As of that directive's current contents, the four hosts and their definitive
+      hostnames are:
+
+      | `hostname` | `$TODO_HOST` | Host |
+      |---|---|---|
+      | `KevinI-MBP24` | `mac` | `work-macbook` (physical work Mac, macOS) |
+      | `kevin` | `fedora` | `FLDW` (home Fedora workstation) — **this label means FLDW specifically, never any other Linux/Fedora host** |
+      | `core` | `rpi` | `RPi5 "core"` (aka rpi5) |
+      | `b38e685e79b8` | `mac-container` | `mac-container` (Docker container on `work-macbook`, OS is Fedora Linux but is its own host) |
+
+      Run `hostname` and match it against this table (fall back to `kevins-federated-unix-universe.md`
+      directly if the table above has drifted from that file). If the hostname matches none of
+      the rows, report the mismatch and stop rather than guessing from OS family — a new host
+      needs a row added to the directive (and this table) before this skill can run on it.
+
+      **Every host is concerned with exactly one `TODO.md` file — its own.** Once `$TODO_HOST`
+      is resolved, that is the only TODO file this run ever reads, writes, or even looks at. Do
+      not open, list, or reference any other host's `TODO.md` in the same run.
+
+   If neither `uname -s` nor `hostname` can be resolved, report the command outputs and stop.
 
 3. **Run check-git-repos** — discover repos that need attention:
    - Locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
@@ -179,11 +203,15 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
       - Run `git checkout <default>` then `git pull --ff-only`.
       - If deletion was approved, run `git branch -d <branch>` (safe delete; will refuse if unmerged). Only escalate to `git branch -D` (force delete) if the user explicitly requests it after being warned that unmerged commits will be lost.
 
-9. **Open the platform TODO file** — using `$OS_LABEL` detected in step 2, select:
+9. **Open the platform TODO file** — using `$TODO_HOST` resolved in step 2b (by hostname, not
+   OS family), select the **one** file for this host and open only that file:
    - `mac` -> `~/todo/mac/TODO.md`
-   - `fedora` -> `~/todo/fedora/TODO.md`
+   - `fedora` -> `~/todo/fedora/TODO.md` (FLDW only)
    - `rpi` -> `~/todo/rpi/TODO.md`
    - `mac-container` -> `~/todo/mac-container/TODO.md`
+
+   Do not open, cat, or grep any other host's `TODO.md` as part of this step — this run is
+   scoped to `$TODO_HOST`'s single file for the remainder of steps 9–11.
 
 10. **Walk through TODO items** — read the selected `TODO.md` top-to-bottom. For each line:
     - Briefly explain the task and ask the user whether it should be performed now.
@@ -230,5 +258,5 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   account. See section 4a.**
 - Use absolute dates in any generated TODO or commit context when dates matter.
 - Preserve secrets: never print, store, stage, or commit tokens, passwords, private keys, or sensitive host details.
-- Platform mapping: `mac` is macOS, `rpi` is Raspberry Pi Debian Linux, `fedora` is Fedora Linux on Intel (FLDW), and `mac-container` is the Docker container running Fedora Linux hosted on the macOS work machine — four hosts, four `TODO.md` files, per `~/todo/CLAUDE.md`.
+- Host mapping (`$TODO_HOST`, resolved by `hostname` per `kevins-federated-unix-universe.md` — see step 2b): `mac` is `work-macbook` (macOS), `rpi` is `RPi5 "core"` (Debian Linux), `fedora` is `FLDW` specifically (Fedora Linux on Intel — not any other Fedora/Linux host), and `mac-container` is the Docker container running Fedora Linux hosted on the macOS work machine. Four hosts, four `TODO.md` files, per `~/todo/CLAUDE.md`. Each run touches exactly one of them — the one matching this run's resolved `$TODO_HOST`, never inferred from OS family alone.
 - This skill intentionally combines the behavior of daily repo sync and platform TODO processing; if only TODO processing is needed, use `run-through-my-os-todos`.
