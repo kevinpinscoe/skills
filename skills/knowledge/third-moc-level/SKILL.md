@@ -112,9 +112,15 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
 - **Before creating**, confirm the chosen **second-level parent** exists — review
   `~/PCM/moc-map.md` or the existing `moc/*.md`.
 - **After creating**, the MOC's `primary_moc` points at the parent slug and the parent's
-  `## Child MOCs` lists it. `~/PCM/scripts/create-moc-map.sh` regenerates the clickable
-  `moc-map.md` (the PCM pre-commit hook also does this automatically). This is the third
-  and deepest level — no further nesting is allowed.
+  `## Child MOCs` lists it. This is the third and deepest level — no further nesting is
+  allowed.
+- **Both vaults have their own map.** `moc-map.md` is a generated, clickable wikilink map
+  built from `primary_moc` frontmatter, and each vault regenerates its own:
+  `~/PCM/scripts/create-moc-map.sh` and
+  `~/KnowledgeVault/PKM/scripts/create-moc-map.sh`. **Neither is rebuilt automatically.**
+  The PCM pre-commit hook only *warns* that `moc-map.md` is stale — it stopped rebuilding
+  it on 2026-07-24 — and PKM has no such hook at all. A new MOC is therefore invisible in
+  both maps until the scripts are run, which is what Step 13 exists to do.
 
 ## Instructions
 
@@ -258,29 +264,56 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     - Update the `updated:` frontmatter field to today's date.
     - If the parent MOC file does not yet exist in the PCM vault, create a minimal stub using the KnowledgeVault version as a reference before editing it.
 
-13. **Commit and push in both vaults** — For each vault repo, stage the new MOC file and the updated parent MOC, then commit and push:
+13. **Always offer to rebuild the MOC map in both vaults** — A new MOC does not appear in
+    either vault's `moc-map.md` until the generator runs, and nothing runs it automatically
+    (see "Canonical hierarchy" above). So **always ask**, never skip it: "Rebuild `moc-map.md`
+    in both PKM and PCM so the new MOC shows up in the map?" Wait for their answer.
+    - **If yes** (the expected answer — recommend it): run both generators, then include the
+      regenerated maps in the Step 14 commits so the map and the MOC land together:
+
+      ```bash
+      cd ~/PCM && scripts/create-moc-map.sh
+      cd ~/KnowledgeVault/PKM && scripts/create-moc-map.sh
+      ```
+
+      Each script rewrites only its own vault's `moc-map.md`. Report the diff summary for
+      each — and call out any **unrelated** MOCs the rebuild picks up, since a map that has
+      gone stale since the last run will absorb every MOC added in the meantime, not just
+      this one. That is a correction, not an error, but the human should see it.
+    - **If no**: continue to Step 14 without the maps, and state plainly in the Step 15
+      report that both `moc-map.md` files are now stale for this MOC.
+
+14. **Commit and push in both vaults** — For each vault repo, stage the new MOC file, the
+    updated parent MOC, and (if Step 13 was run) that vault's regenerated `moc-map.md`,
+    then commit and push:
 
     ```bash
     # KnowledgeVault
-    git -C ~/KnowledgeVault/PKM add moc/<slug>.md moc/<parent-slug>.md
+    git -C ~/KnowledgeVault/PKM add moc/<slug>.md moc/<parent-slug>.md moc-map.md
     git -C ~/KnowledgeVault/PKM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
     git -C ~/KnowledgeVault/PKM push
 
-    # PCM vault — the pre-commit hook regenerates moc-map.md from frontmatter
-    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md
+    # PCM vault — the pre-commit hook only warns that moc-map.md is stale; Step 13 rebuilds it
+    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md moc-map.md
     git -C ~/PCM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
     git -C ~/PCM push
     ```
 
+    Drop `moc-map.md` from the `add` list if Step 13 was declined. Both repos are
+    multi-writer (a nightly ingest timer also commits to PCM), so **stage these paths
+    explicitly — never `git add -A`** — and check `git status` for unrelated pending work
+    before committing.
+
     Report the commit hash from each repo after pushing.
 
-14. **Report completion** — Summarize:
+15. **Report completion** — Summarize:
     - Files created: both full paths
     - Parent MOC updated: both full paths, with the exact line added
     - LCC classification applied: code + label (note if reused from parent or deeper)
+    - MOC map: rebuilt in both vaults, or explicitly noted as stale if declined
     - Commits pushed: hash and repo for each
 
-15. **Offer to create a note under this MOC** — After the completion summary, ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
+16. **Offer to create a note under this MOC** — After the completion summary, ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
     - **If no**: stop. The skill is complete.
     - **If yes**: ask which vault the note belongs in — "Which vault should this note live in: **PCM** or **PKM**? (A note lives in only one vault; MOCs may exist in both.)" Then execute the matching note skill, using **this third-level MOC as the target MOC** for the note:
       - **PCM** → `~/skills/skills/knowledge/create-a-pcm-note/SKILL.md`
@@ -313,9 +346,13 @@ interactive prompts in the numbered Instructions:
 - **LCC classification (Step 8)** — search for a deeper class, then **auto-select the best
   match without asking**, reusing the parent's classification if none clearly fits. Do not
   block on ambiguity.
-- **Execute Steps 9–14 exactly as written** — create both vault files, update the
+- **Execute Steps 9–15 exactly as written** — create both vault files, update the
   second-level parent MOC in both vaults, commit and push. Do **not** modify `home.md`.
-- **Skip Step 15** (the interactive offer to create a note).
+- **Step 13 (the MOC map rebuild) is not skipped — it is auto-accepted.** Do not ask;
+  run both `create-moc-map.sh` generators and include each vault's regenerated
+  `moc-map.md` in that vault's commit. An unattended run is exactly the case where a
+  stale map would otherwise go unnoticed.
+- **Skip Step 16** (the interactive offer to create a note).
 - **Final line** — after the completion report, print exactly `MOC-CREATED <slug>` on its
   own line so the caller can confirm success.
 
@@ -327,6 +364,9 @@ the numbered Instructions above as usual.
 - `~/KnowledgeVault/PKM/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
 - `~/PCM/moc/<slug>.md` exists with the same frontmatter
 - Second-level parent MOC in both vaults contains `[[<slug>|<Display Title>]]` in a child section
+- The MOC map rebuild was **offered** in every interactive run; if accepted, both
+  `~/PCM/moc-map.md` and `~/KnowledgeVault/PKM/moc-map.md` list the new MOC and were
+  committed alongside it
 - Neither `home.md` was modified
 - Filename is lowercase, hyphen-separated, no spaces
 
