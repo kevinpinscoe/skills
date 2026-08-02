@@ -206,7 +206,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
 9. **Open the platform TODO file** — using `$TODO_HOST` resolved in step 2b (by hostname, not
    OS family), select the **one** file for this host and open only that file:
    - `mac` -> `~/todo/mac/TODO.md`
-   - `fedora` -> `~/todo/fedora/TODO.md` (FLDW only)
+   - `fedora` -> `~/todo/FLDW/TODO.md` (FLDW only — the directory is `FLDW`, not `fedora`)
    - `rpi` -> `~/todo/rpi/TODO.md`
    - `mac-container` -> `~/todo/mac-container/TODO.md`
 
