@@ -101,13 +101,13 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 
     c. For each file found, strip the leading status prefix and whitespace to get the bare relative path (e.g. `DAILY/TLDR-05-03-2026.md`).
 
-    d. Append one line to `~/todo/fedora/TODO.md` in the format:
+    d. Append one line to `~/todo/FLDW/TODO.md` in the format:
        ```
        YYYY-MM-DD cd "/home/kinscoe/Journal/personal-journal" && git add <file1> [<file2> ...] && git commit -m "Update daily TLDRs" && git push  # commit TLDR files created by read-my-gmail-for-tldr-articles
        ```
        where `YYYY-MM-DD` is today's date and `<file1> [<file2> ...]` is the space-separated list of relative paths from step (c).
 
-    e. After appending, run `cd ~/todo && git add fedora/TODO.md && git commit -m "todo: add TLDR journal commit reminder" && git push` to persist the new TODO entry to the remote.
+    e. After appending, run `cd ~/todo && git add FLDW/TODO.md && git commit -m "todo: add TLDR journal commit reminder" && git push` to persist the new TODO entry to the remote.
 
 ## Success Criteria
 
@@ -122,7 +122,7 @@ description: Scans Gmail for TLDR newsletter emails and saves non-sponsored arti
 - The same summary is printed to the console.
 - All processed threads have both the `claude` and `tldr` Gmail labels applied.
 - All processed threads are archived (removed from inbox).
-- If any TLDR files were created or modified, a dated git commit/push command has been appended to `~/todo/fedora/TODO.md` listing those files, and the todo repo has been committed and pushed.
+- If any TLDR files were created or modified, a dated git commit/push command has been appended to `~/todo/FLDW/TODO.md` listing those files, and the todo repo has been committed and pushed.
 
 ## Notes
 

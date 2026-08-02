@@ -51,7 +51,7 @@ description: Append a dated TODO entry to one or more platform TODO files (fedor
    YYYY-MM-DD <full command>  # <reason>
    ```
    Append this line to the bottom of each selected platform's `TODO.md`. Platform mapping:
-   - `fedora` → `~/todo/fedora/TODO.md`
+   - `fedora` → `~/todo/FLDW/TODO.md`
    - `mac`    → `~/todo/mac/TODO.md`
    - `rpi`    → `~/todo/rpi/TODO.md`
 

@@ -87,7 +87,7 @@ description: Prompts me for required information before installing a command lin
    ```
    YYYY-MM-DD <shell command to install the tool>  # install <command_name>: <one-line summary>
    ```
-   Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora workstation → `~/todo/fedora/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`, Mac-container (Fedora/ARM) → `~/todo/mac-container/TODO.md`. For the Mac-container entry, the install command must reference the `aarch64`/`arm64` build when it downloads a raw binary.
+   Host mapping: macOS → `~/todo/mac/TODO.md`, Fedora workstation → `~/todo/FLDW/TODO.md`, Raspberry Pi 5 → `~/todo/rpi/TODO.md`, Mac-container (Fedora/ARM) → `~/todo/mac-container/TODO.md`. For the Mac-container entry, the install command must reference the `aarch64`/`arm64` build when it downloads a raw binary.
 
 7. **Commit and push all affected repos** — ask for explicit confirmation before committing each repo. Stage only the relevant files (never `git add -A`):
    - `~/Projects/private/app-configuration` — runbook under `apps/<command-name>/RUNBOOK.md` plus the `README.md` "Current apps" tree update; commit message: `chore: add <command_name> runbook`

@@ -61,7 +61,7 @@ description: Syncs the ~/todo repo and walks through the current OS's TODO.md it
 
 ## Notes
 
-- Platform mapping: `mac` → `~/todo/mac/TODO.md`, `fedora` → `~/todo/fedora/TODO.md`, `rpi` → `~/todo/rpi/TODO.md`.
+- Platform mapping: `mac` → `~/todo/mac/TODO.md`, `fedora` → `~/todo/FLDW/TODO.md`, `rpi` → `~/todo/rpi/TODO.md`.
 - Each TODO entry is a shell command with an inline `# reason` comment — the command itself is what Claude should execute (or verify), not just a natural-language description.
 - On the Fedora host, use `sudo -A` for commands that require elevated privileges (a stored askpass is configured).
 - Per `~/skills/CLAUDE.md`, always confirm with the user before committing or pushing changes to the `~/todo` repo.
