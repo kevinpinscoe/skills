@@ -14,7 +14,7 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
 - `tea` CLI installed and authenticated with Gitea (`tea whoami`)
 - SSH key in place for GitHub (`ssh -T git@github.com`)
 - SSH key in place for Gitea (`ssh -T git@git.kevininscoe.com -p 2223`)
-- `~/.config/gitea/api` present (Gitea API token for description update)
+- Gitea API token reachable in OpenBao at mount `app`, path `gitea` (`bao kv get -field=token app/gitea`). The `tea` command on this host is a shell function that fetches it per call and builds a throwaway login in tmpfs — see `~/ai/directives/gitea.md`. There is **no** on-disk token file; `~/.config/gitea/api` was shredded on 2026-07-12 when Gitea credentials moved to OpenBao.
 - `~/Projects/public/kevinpinscoe/profile.yml` readable (GitHub category source of truth)
 - `~/Projects/public/kevinpinscoe` cloned with push access (the GitHub profile repo, remote `git@github.com:kevinpinscoe/kevinpinscoe.git`)
 - `~/Projects/public/kevinpinscoe/scripts/generate-readme.py` present (regenerates the profile README)
@@ -90,20 +90,24 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
      ```bash
      gh repo edit kevinpinscoe/<repo-name> --add-topic <area-topic>
      ```
-   - **Gitea**: Use the visibility confirmed in Step 3. **Default is public** — only add `--private` when the user explicitly chose private.
+   - **Gitea**: Use the visibility confirmed in Step 3. **Default is public** — only add `--private` when the user explicitly chose private. `tea` sets the description itself, so no follow-up API call is needed. `--init --branch main` guarantees the default branch is `main` rather than whatever the server default happens to be, and leaves the repo non-empty so it can be cloned normally.
      ```bash
      # Public (default)
-     tea repo create --name <repo-name>
+     tea repos create --name <repo-name> --description "<about-summary>" --init --branch main
      # Private (only if the user chose private in Step 3)
-     tea repo create --name <repo-name> --private
+     tea repos create --name <repo-name> --description "<about-summary>" --init --branch main --private
      ```
-     Then set the description via the Gitea API:
+     `--init` leaves a stub `README.md` in the initial commit; it is overwritten in Step 14.
+
+     Verify the result — an **unauthenticated** read is what actually proves the repo is public, since omitting `--private` only proves you did not ask for private:
      ```bash
-     curl -s -X PATCH "https://git.kevininscoe.com/api/v1/repos/kinscoe/<repo-name>" \
-       -H "Authorization: token $(cat ~/.config/gitea/api)" \
-       -H "Content-Type: application/json" \
-       -d '{"description": "<about-summary>"}'
+     curl -s "https://git.kevininscoe.com/api/v1/repos/kinscoe/<repo-name>" \
+       | python3 -c "import json,sys
+d=json.load(sys.stdin)
+for k in ('name','private','default_branch','description'):
+    print('%-15s: %s' % (k, d.get(k)))"
      ```
+     Expect `private: False` (or `True` if private was chosen), `default_branch: main`, and the confirmed About text.
 
 10. **Determine local clone path** — Decide where to clone based on the forge. Note: this is a directory convention keyed to the **forge**, not the repo's visibility — Gitea repos always clone under `~/Projects/private/` even when the repo itself is public.
    - **GitHub**: `~/Projects/public/<repo-name>`
@@ -225,7 +229,7 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
 
 ## Notes
 
-- Gitea repo visibility is confirmed with the user at every invocation (Step 3). **The default is public** — the repo is created public unless the user explicitly asks for private, in which case `tea repo create` gets the `--private` flag. This is independent of the local clone path, which always lands under `~/Projects/private/` for Gitea repos.
+- Gitea repo visibility is confirmed with the user at every invocation (Step 3). **The default is public** — the repo is created public unless the user explicitly asks for private, in which case `tea repos create` gets the `--private` flag. This is independent of the local clone path, which always lands under `~/Projects/private/` for Gitea repos.
 - The directive path is `~/ai/directives/` (plural) — a common typo is `~/ai/directive/` (singular) which does not exist.
 - Gitea SSH uses non-standard port 2223 — always use the full `ssh://git@git.kevininscoe.com:2223/kinscoe/` prefix.
 - SSH is the only protocol used for git on this system — never use HTTPS clone URLs.

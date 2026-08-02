@@ -12,7 +12,7 @@ description: Stands up a brand-new external (public) static brochure website end
 - `~/ai/directives/root-directive.md` readable — read it first; follow every directive it dispatches that applies to this task (notably `service-catalog.md`, `gitea.md`, `when-building-or-scaffolding-code-in-a-git-repo.md`, `opentofu-iac-standards.md`, `storing-secrets.md`, `when-making-changes-in-a-directory-that-is-also-a-git-repo.md`). **Note:** `portman.md` does **not** apply here — the site's container port lives on the remote Linode web server (e.g. `web1`), not on FLDW, so it is **not** reserved in FLDW's `portman` registry. Derive a free port from the target host's own `linode-<server>-config` Ansible instead (see Step 14).
 - `dig` / `host` available (DNS lookups).
 - Linode API credentials, located via the **credential map** (`~/.secrets/CREDENTIAL-MAP.md`): the DNS key `~/.secrets/certbot.ini` (`dns_linode_key`, used by the existing `scripts/*dns*.sh` helpers) and/or the account PAT `~/.secrets/kevin-linode.pat` (used by `linode-cli`). **Never read a secret value into a file or the transcript** — pass it through the CLI/API only.
-- `tea` CLI authenticated with Gitea (`tea whoami`) and `~/.config/gitea/api` present.
+- `tea` CLI authenticated with Gitea (`tea whoami`). The token comes from OpenBao at `app/gitea` via the `tea` shell-function wrapper — there is no on-disk token file (`~/.config/gitea/api` was shredded on 2026-07-12). See `~/ai/directives/gitea.md`.
 - SSH access to Gitea (`ssh -T git@git.kevininscoe.com -p 2223`) and to the chosen web server over Tailscale.
 - The sibling skill `~/skills/skills/git/create-a-repo/SKILL.md` (used verbatim for the repo-creation step).
 - Reference project checkouts present locally:
@@ -97,7 +97,7 @@ Follow the global directives: **ask for each required input directly and one at 
     # → Woodpecker secret  web1_deploy_key
     bao kv get -field=private_key -mount=linode-web1 deploy-key
     ```
-    **Scope caveat:** `build-and-push` runs `buildah push` to the Gitea registry, which requires the `gitea_token` to carry **`read:packages` + `write:packages`**. If the push 401/403s, that token lacks packages scope — fix by adding those scopes to the `app/gitea` token in Gitea (Settings → Applications), **not** by minting a new per-repo token. (The `~/.config/gitea/api` on-disk token is over-scoped for CI; do not hand it to Woodpecker.)
+    **Scope caveat:** `build-and-push` runs `buildah push` to the Gitea registry, which requires the `gitea_token` to carry **`read:packages` + `write:packages`**. If the push 401/403s, that token lacks packages scope — fix by adding those scopes to the `app/gitea` token in Gitea (Settings → Applications), **not** by minting a new per-repo token. (There is no longer an on-disk token to reach for — `~/.config/gitea/api` was shredded on 2026-07-12 and OpenBao `app/gitea` is the only source. Take the value from `bao kv get` as shown above.)
 
     c. **Enable repo trust for the privileged buildah step (REQUIRED — easy to miss).** The `build-and-push` step runs `quay.io/buildah/stable` with `privileged: true`, which Woodpecker only permits on a **trusted** repo. A brand-new repo is untrusted, so the pipeline errors at the linter stage with `Insufficient trust level to use 'privileged' mode` **before any step runs** (`woodpecker-cli pipeline ps` shows no steps). Enable trust to match datagiggle — either in the UI (repo → Settings → **Project** → **Trusted** → enable Network/Volumes/Security) or via the admin API:
     ```bash
