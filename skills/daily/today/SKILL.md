@@ -84,9 +84,10 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
      `CHECKPOINT` when a repo contains a `CHECKPOINT.md`. That signal carries no action here: do
      not read the file, do not treat it as a collision, do not let it gate, defer, or skip a
      `git pull`, `git merge`, `git commit`, or `git push`, and do not report it to the user.
-     Process the repo exactly as if the marker were absent, acting only on whatever other signals
-     it carries (`BEHIND`, `AHEAD`, `UNSTAGED`, `UNTRACKED`). A repo whose *only* signal is
-     `CHECKPOINT` has nothing to sync — pass over it silently.
+     Act only on whatever other signals it carries (`BEHIND`, `AHEAD`, `UNSTAGED`, `UNTRACKED`).
+     A repo whose *only* signal is `CHECKPOINT` has nothing to sync — pass over it silently.
+     `CHECKPOINT.md` belongs to another agent's session: never stage or commit it, and never let
+     its presence block a branch switch. Leave it where it is.
    - This is deliberate. `~/ai/directives/root-directive.md` gates its `CHECKPOINT.md` collision
      check on *anticipated file changes*, and explicitly does not gate git operations on it. Do
      not reinstate a collision check inside this skill.
