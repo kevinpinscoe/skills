@@ -80,6 +80,16 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - If `$OS_LABEL=mac`, run: `check-git-repos --ignore-prefix`
    - Otherwise, run: `check-git-repos`
    - Capture each repo path from the output. These are the only repos to process in the steps below.
+   - **Ignore the `CHECKPOINT` signal — it is a no-op for this skill.** `check-git-repos` emits
+     `CHECKPOINT` when a repo contains a `CHECKPOINT.md`. That signal carries no action here: do
+     not read the file, do not treat it as a collision, do not let it gate, defer, or skip a
+     `git pull`, `git merge`, `git commit`, or `git push`, and do not report it to the user.
+     Process the repo exactly as if the marker were absent, acting only on whatever other signals
+     it carries (`BEHIND`, `AHEAD`, `UNSTAGED`, `UNTRACKED`). A repo whose *only* signal is
+     `CHECKPOINT` has nothing to sync — pass over it silently.
+   - This is deliberate. `~/ai/directives/root-directive.md` gates its `CHECKPOINT.md` collision
+     check on *anticipated file changes*, and explicitly does not gate git operations on it. Do
+     not reinstate a collision check inside this skill.
    - If the command produces no output, report that all repos are clean and skip ahead to the TODO steps.
 
 4. **Check repo state** — for each path flagged by `check-git-repos`:
@@ -256,6 +266,9 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   Kevin's own repositories. Never call them forks. Never assume a repo is a fork based on its
   directory. A repo is a fork ONLY if `git remote -v` shows an `upstream` remote to a different
   account. See section 4a.**
+- **The `CHECKPOINT` signal from `check-git-repos` is a no-op here.** It is informational only
+  and never gates or defers a pull, merge, commit, or push. Do not read the `CHECKPOINT.md`, and
+  do not report the marker. See step 3.
 - Use absolute dates in any generated TODO or commit context when dates matter.
 - Preserve secrets: never print, store, stage, or commit tokens, passwords, private keys, or sensitive host details.
 - Host mapping (`$TODO_HOST`, resolved by `hostname` per `kevins-federated-unix-universe.md` — see step 2b): `mac` is `work-macbook` (macOS), `rpi` is `RPi5 "core"` (Debian Linux), `fedora` is `FLDW` specifically (Fedora Linux on Intel — not any other Fedora/Linux host), and `mac-container` is the Docker container running Fedora Linux hosted on the macOS work machine. Four hosts, four `TODO.md` files, per `~/todo/CLAUDE.md`. Each run touches exactly one of them — the one matching this run's resolved `$TODO_HOST`, never inferred from OS family alone.
