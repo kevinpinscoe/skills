@@ -31,6 +31,9 @@ skills/
 │   │   └── SKILL.md
 │   └── today/
 │       └── SKILL.md
+├── decision/
+│   └── kevins-values-system-decision-matrix/
+│       └── SKILL.md
 ├── docker/
 │   ├── check-for-or-upgrade-docker-containers-on-this-system/
 │   │   └── SKILL.md
@@ -55,6 +58,9 @@ skills/
 │   ├── second-moc-level/
 │   │   └── SKILL.md
 │   └── third-moc-level/
+│       └── SKILL.md
+├── raspberry-pi-5/
+│   └── unplanned-restart/
 │       └── SKILL.md
 ├── services/
 │   └── check-improvmx-logs/
