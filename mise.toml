@@ -1,0 +1,4 @@
+# Tool versions for the skills repo. Skill helper scripts are standard-library Python 3;
+# nothing else here is version-sensitive.
+[tools]
+python = "3.14"
