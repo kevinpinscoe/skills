@@ -12,3 +12,4 @@
 **/*.pyc
 **/*.pyo
 **/__pycache__/
+**/ai-wt/
