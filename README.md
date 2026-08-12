@@ -59,6 +59,12 @@ skills/
 │   │   └── SKILL.md
 │   └── third-moc-level/
 │       └── SKILL.md
+├── project/
+│   └── review-all-checkpoints/
+│       ├── SKILL.md
+│       ├── RUNBOOK.md
+│       ├── collect-checkpoints.py   # parses every CHECKPOINT.md the host reports
+│       └── run.sh
 ├── raspberry-pi-5/
 │   └── unplanned-restart/
 │       └── SKILL.md
