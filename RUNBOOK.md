@@ -1,3 +1,11 @@
+---
+title: RUNBOOK.md — skills
+tags: [runbook, operations]
+vault_link: runbooks/home-kinscoe-skills.md
+source_path: /home/kinscoe/skills/RUNBOOK.md
+---
+
+> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills.md` (symlink → this file).
 # RUNBOOK.md — skills
 
 ## Metadata
