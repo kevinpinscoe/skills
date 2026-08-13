@@ -44,41 +44,42 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    - `~/ai/directives/when-creating-a-runbook.md`
    - `~/ai/directives/storing-secrets.md`, if it exists
 
-2. **Detect the host OS and resolve the host identity** — these are two separate things; do not
+2. **Resolve the host identity and its category** — these are two separate things; do not
    conflate them:
 
-   a. **`$OS_LABEL`** (OS family — used only to pick the `check-git-repos` flag in step 3):
-      run `uname -s`. `Darwin` → `$OS_LABEL=mac`. `Linux` → `$OS_LABEL=linux`.
+   a. **`$TODO_HOST`** (host identity — the *only* thing that decides which single `TODO.md`
+      this run touches in steps 9–11) and **`$HOST_CATEGORY`** (Work or Home — used only to
+      pick the `check-git-repos` flag in step 3): resolve both by **hostname**, never by OS
+      family alone. `~/ai/directives/kevins-federated-unix-universe.md` is the canonical,
+      definitive registry for this — read it (required in step 1) and match the current
+      `hostname` against its tables. As of that directive's current contents, the four hosts
+      and their definitive hostnames are:
 
-   b. **`$TODO_HOST`** (host identity — the *only* thing that decides which single `TODO.md`
-      this run touches in steps 9–11): resolve by **hostname**, never by OS family alone.
-      `~/ai/directives/kevins-federated-unix-universe.md` is the canonical, definitive registry
-      for this — read it (required in step 1) and match the current `hostname` against its
-      tables. As of that directive's current contents, the four hosts and their definitive
-      hostnames are:
-
-      | `hostname` | `$TODO_HOST` | Host |
-      |---|---|---|
-      | `KevinI-MBP24` | `mac` | `work-macbook` (physical work Mac, macOS) |
-      | `kevin` | `fedora` | `FLDW` (home Fedora workstation) — **this label means FLDW specifically, never any other Linux/Fedora host** |
-      | `core` | `rpi` | `RPi5 "core"` (aka rpi5) |
-      | `b38e685e79b8` | `mac-container` | `mac-container` (Docker container on `work-macbook`, OS is Fedora Linux but is its own host) |
+      | `hostname` | `$TODO_HOST` | `$HOST_CATEGORY` | Host |
+      |---|---|---|---|
+      | `KevinI-MBP24` | `mac` | `Work` | `work-macbook` (physical work Mac, macOS) |
+      | `kevin` | `fedora` | `Home` | `FLDW` (home Fedora workstation) — **this label means FLDW specifically, never any other Linux/Fedora host** |
+      | `core` | `rpi` | `Home` | `RPi5 "core"` (aka rpi5) |
+      | `b38e685e79b8` | `mac-container` | `Work` | `mac-container` (Docker container on `work-macbook`, OS is Fedora Linux but is its own host — **Work category despite running Linux**) |
 
       Run `hostname` and match it against this table (fall back to `kevins-federated-unix-universe.md`
       directly if the table above has drifted from that file). If the hostname matches none of
-      the rows, report the mismatch and stop rather than guessing from OS family — a new host
-      needs a row added to the directive (and this table) before this skill can run on it.
+      the rows, fall back to that directive's own resolution order (`uname -s` = `Darwin` or
+      `/mac-home` present → `Work`, otherwise → `Home`) to resolve `$HOST_CATEGORY`, and report
+      the unmatched hostname and stop rather than guessing at `$TODO_HOST` — a new host needs a
+      row added to the directive (and this table) before this skill can pick a TODO file for it.
 
       **Every host is concerned with exactly one `TODO.md` file — its own.** Once `$TODO_HOST`
       is resolved, that is the only TODO file this run ever reads, writes, or even looks at. Do
       not open, list, or reference any other host's `TODO.md` in the same run.
 
-   If neither `uname -s` nor `hostname` can be resolved, report the command outputs and stop.
+   If `hostname` cannot be resolved, report the command output and stop.
 
 3. **Run check-git-repos** — discover repos that need attention:
    - Locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
-   - If `$OS_LABEL=mac`, run: `check-git-repos --ignore-prefix`
-   - Otherwise, run: `check-git-repos`
+   - If `$HOST_CATEGORY=Work` (per step 2a — this includes `mac-container`, even though it
+     runs Linux), run: `check-git-repos --ignore-prefix`
+   - Otherwise (`$HOST_CATEGORY=Home`), run: `check-git-repos`
    - Capture each repo path from the output. These are the only repos to process in the steps below.
    - **Ignore the `CHECKPOINT` signal — it is a no-op for this skill.** `check-git-repos` emits
      `CHECKPOINT` when a repo contains a `CHECKPOINT.md`. That signal carries no action here: do
@@ -272,5 +273,9 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   do not report the marker. See step 3.
 - Use absolute dates in any generated TODO or commit context when dates matter.
 - Preserve secrets: never print, store, stage, or commit tokens, passwords, private keys, or sensitive host details.
-- Host mapping (`$TODO_HOST`, resolved by `hostname` per `kevins-federated-unix-universe.md` — see step 2b): `mac` is `work-macbook` (macOS), `rpi` is `RPi5 "core"` (Debian Linux), `fedora` is `FLDW` specifically (Fedora Linux on Intel — not any other Fedora/Linux host), and `mac-container` is the Docker container running Fedora Linux hosted on the macOS work machine. Four hosts, four `TODO.md` files, per `~/todo/CLAUDE.md`. Each run touches exactly one of them — the one matching this run's resolved `$TODO_HOST`, never inferred from OS family alone.
+- Host mapping (`$TODO_HOST`, resolved by `hostname` per `kevins-federated-unix-universe.md` — see step 2a): `mac` is `work-macbook` (macOS), `rpi` is `RPi5 "core"` (Debian Linux), `fedora` is `FLDW` specifically (Fedora Linux on Intel — not any other Fedora/Linux host), and `mac-container` is the Docker container running Fedora Linux hosted on the macOS work machine. Four hosts, four `TODO.md` files, per `~/todo/CLAUDE.md`. Each run touches exactly one of them — the one matching this run's resolved `$TODO_HOST`, never inferred from OS family alone.
+- The `check-git-repos --ignore-prefix` flag (step 3) is gated on `$HOST_CATEGORY` (Work vs
+  Home), not on OS family. `mac-container` runs Linux but is `Work` category (hosted on
+  `work-macbook`), so it gets `--ignore-prefix` the same as `work-macbook` itself — a plain
+  `linux` vs `mac` check would get this wrong.
 - This skill intentionally combines the behavior of daily repo sync and platform TODO processing; if only TODO processing is needed, use `run-through-my-os-todos`.
