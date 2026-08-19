@@ -25,8 +25,6 @@ skills/
 ├── daily/
 │   ├── put-email-offers-on-my-calendar/
 │   │   └── SKILL.md
-│   ├── read-my-gmail-for-tldr-articles/
-│   │   └── SKILL.md
 │   ├── run-through-my-os-todos/
 │   │   └── SKILL.md
 │   └── today/
