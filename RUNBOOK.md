@@ -120,7 +120,6 @@ categories are deliberately out of scope — they belong to `vanco-skills`.
 ## Subdirectory Runbooks
 
 - [`skills/daily/put-email-offers-on-my-calendar/RUNBOOK.md`](skills/daily/put-email-offers-on-my-calendar/RUNBOOK.md) — reads Gmail offer emails and creates Google Calendar events; user timer
-- [`skills/daily/read-my-gmail-for-tldr-articles/RUNBOOK.md`](skills/daily/read-my-gmail-for-tldr-articles/RUNBOOK.md) — extracts TLDR newsletter articles to the Obsidian vault; user timer, daily 10:30
 - [`skills/project/review-all-checkpoints/RUNBOOK.md`](skills/project/review-all-checkpoints/RUNBOOK.md) — reviews every `CHECKPOINT.md` on this host; on demand, not scheduled
 
 **Not listed here:** `skills/Jira/` and `skills/YouTrack/` are symlinks into
