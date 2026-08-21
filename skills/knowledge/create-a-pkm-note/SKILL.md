@@ -238,7 +238,13 @@ Example: "How Agentic RAG Works" → `how-agentic-rag-works` → file `qa76-how-
 10. **Confirm the plan** — Tell the human, then proceed:
     > "I will create **notes/<filename>**, classified **`deepest_cls` — deepest_lbl**, linked under **[deepest_title]**, with <K> image(s) saved to attachments/."
 
-11. **Write the note (KnowledgeVault only)** — Write `~/KnowledgeVault/PKM/notes/<filename>`:
+11. **Write the note (KnowledgeVault only)** — Write `~/KnowledgeVault/PKM/notes/<filename>`.
+
+    `primary_moc` is the **deepest** MOC (`deepest_slug`); `related_mocs` lists the **broader
+    ancestor MOCs above it**, as slugs — never a repeat of `deepest_slug`, and never a display
+    title. A note whose deepest MOC is second-level therefore carries its first-level
+    grandparent here; a note placed directly on a first-level MOC carries `related_mocs: []`.
+
     ```yaml
     ---
     title: "<NOTE_TITLE>"
@@ -249,7 +255,7 @@ Example: "How Agentic RAG Works" → `how-agentic-rag-works` → file `qa76-how-
     classification_source: lcc
     primary_moc: <deepest_slug>
     related_mocs:
-      - "<deepest_title>"
+      - "<ancestor-moc-slug>"   # the broader MOC(s) ABOVE deepest_slug, as slugs
     tags: []
     created: YYYY-MM-DD
     updated: YYYY-MM-DD
