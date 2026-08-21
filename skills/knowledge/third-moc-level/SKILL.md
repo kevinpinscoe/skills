@@ -14,7 +14,7 @@ Both Python choosers run **inline as Steps 1 and 3** of this skill. Claude runs 
 ## Prerequisites
 
 - `~/KnowledgeVault/PKM/moc/` must contain at least one first-level MOC and at least one second-level MOC
-- `~/PCM/moc/` must exist
+- `~/PCM/PCM/moc/` must exist
 - Both vaults must have `templates/moc-note-template.md`
 - Python 3 available (`python3`)
 
@@ -80,21 +80,48 @@ updated: {{date}}
 ```
 
 ### Vault 2 — Personal Context Management (private)
-Path: `~/PCM/`
+Path: `~/PCM/PCM/`
 
 - `moc/` — mirrors the KnowledgeVault; may be empty or partial
-- `lcc/` — `~/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`; either path works for lookups
+- `lcc/` — `~/PCM/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`; either path works for lookups
 - `home.md` — **do not modify**
 
-Template (`templates/moc-note-template.md`) — simpler; add classification fields explicitly:
+Template (`templates/moc-note-template.md`) — identical to the KnowledgeVault's. It already
+carries the classification fields, `primary_moc`, and a `## Child MOCs` section, so there is
+nothing extra to add:
 ```yaml
 ---
 title: "{{title}}"
+aliases:
+  - "moc {{title}}"
 type: moc
+classification:
+classification_label:
+classification_source: lcc
+primary_moc:
+related_mocs: []
 tags: []
 created: {{date}}
 updated: {{date}}
 ---
+
+# {{title}} MOC
+
+## Overview
+
+<!-- What does this map cover? -->
+
+## Child MOCs
+
+None yet.
+
+## Notes
+
+- [[]]
+
+## Related MOCs
+
+- [[]]
 ```
 
 ### Naming Rules
@@ -110,13 +137,13 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
 `moc/stacks.md` is retired. This skill keeps the hierarchy correct:
 
 - **Before creating**, confirm the chosen **second-level parent** exists — review
-  `~/PCM/moc-map.md` or the existing `moc/*.md`.
+  `~/PCM/PCM/moc-map.md` or the existing `moc/*.md`.
 - **After creating**, the MOC's `primary_moc` points at the parent slug and the parent's
   `## Child MOCs` lists it. This is the third and deepest level — no further nesting is
   allowed.
 - **Both vaults have their own map.** `moc-map.md` is a generated, clickable wikilink map
   built from `primary_moc` frontmatter, and each vault regenerates its own:
-  `~/PCM/scripts/create-moc-map.sh` and
+  `~/PCM/PCM/scripts/create-moc-map.sh` and
   `~/KnowledgeVault/PKM/scripts/create-moc-map.sh`. **Neither is rebuilt automatically.**
   The PCM pre-commit hook only *warns* that `moc-map.md` is stale — it stopped rebuilding
   it on 2026-07-24 — and PKM has no such hook at all. A new MOC is therefore invisible in
@@ -233,12 +260,16 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     - `classification_label`: LCC label
     - `classification_source`: `lcc`
     - `primary_moc`: the second-level parent's slug
-    - `related_mocs`: list with the second-level parent's display title
+    - `related_mocs`: list with the second-level parent's **slug**, quoted — not its display title
     - `tags`: `["moc"]`
     - `created` / `updated`: today's date
-    - Body: `# <title> MOC`, one-sentence Overview describing what focus area this covers, `## Notes` with `- [[]]`, `## Related MOCs` linking back to parent
+    - Body, in this order (`rules/moc-section-order.md`): `# <title> MOC`, `## Overview` with a
+      one-sentence description of what focus area this covers, `## Child MOCs` with `None yet.`
+      (this is the deepest level, so it stays empty), `## Notes` with `- [[]]`, then
+      `## Related MOCs` linking back to the parent
 
-11. **Create the PCM MOC file** — Write `~/PCM/moc/<slug>.md` with the same content. Add all classification fields explicitly since the PCM template omits them:
+11. **Create the PCM MOC file** — Write `~/PCM/PCM/moc/<slug>.md` with the same content. The PCM
+    template already carries these fields, so this is the shape to fill in, not fields to add:
     ```yaml
     ---
     title: "..."
@@ -250,7 +281,7 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     classification_source: lcc
     primary_moc: <parent-slug>
     related_mocs:
-      - "<Parent Display Title>"
+      - "<parent-slug>"
     tags:
       - moc
     created: YYYY-MM-DD
@@ -259,7 +290,10 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     ```
 
 12. **Update the parent MOC in both vaults** — In each vault, open `moc/<parent-slug>.md`:
-    - Find a section named `## Child MOCs`, `## Third-level MOCs`, or similar. If no such section exists, add one immediately before `## Related MOCs` (or before `## Notes` if there is no Related MOCs section).
+    - Find a section named `## Child MOCs`, `## Third-level MOCs`, or similar. If no such
+      section exists, add one immediately **before `## Notes`** — `rules/moc-section-order.md` in
+      the PCM vault fixes the order as Overview → Child MOCs → Notes → Related MOCs, and it takes
+      precedence over any other placement.
     - Append: `- [[<slug>|<Display Title>]]`
     - Update the `updated:` frontmatter field to today's date.
     - If the parent MOC file does not yet exist in the PCM vault, create a minimal stub using the KnowledgeVault version as a reference before editing it.
@@ -272,7 +306,7 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
       regenerated maps in the Step 14 commits so the map and the MOC land together:
 
       ```bash
-      cd ~/PCM && scripts/create-moc-map.sh
+      cd ~/PCM/PCM && scripts/create-moc-map.sh
       cd ~/KnowledgeVault/PKM && scripts/create-moc-map.sh
       ```
 
@@ -294,7 +328,7 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     git -C ~/KnowledgeVault/PKM push
 
     # PCM vault — the pre-commit hook only warns that moc-map.md is stale; Step 13 rebuilds it
-    git -C ~/PCM add moc/<slug>.md moc/<parent-slug>.md moc-map.md
+    git -C ~/PCM add PCM/moc/<slug>.md PCM/moc/<parent-slug>.md PCM/moc-map.md
     git -C ~/PCM commit -m "moc: add <slug> third-level MOC under <parent-slug>"
     git -C ~/PCM push
     ```
@@ -362,10 +396,10 @@ the numbered Instructions above as usual.
 ## Success Criteria
 
 - `~/KnowledgeVault/PKM/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
-- `~/PCM/moc/<slug>.md` exists with the same frontmatter
+- `~/PCM/PCM/moc/<slug>.md` exists with the same frontmatter
 - Second-level parent MOC in both vaults contains `[[<slug>|<Display Title>]]` in a child section
 - The MOC map rebuild was **offered** in every interactive run; if accepted, both
-  `~/PCM/moc-map.md` and `~/KnowledgeVault/PKM/moc-map.md` list the new MOC and were
+  `~/PCM/PCM/moc-map.md` and `~/KnowledgeVault/PKM/moc-map.md` list the new MOC and were
   committed alongside it
 - Neither `home.md` was modified
 - Filename is lowercase, hyphen-separated, no spaces
@@ -373,7 +407,7 @@ the numbered Instructions above as usual.
 ## Notes
 
 - **Do not modify `home.md`** — only first-level MOCs are listed there
-- The canonical LCC outlines live in `~/KnowledgeVault/PKM/lcc/`; `~/PCM/lcc/` is a symlink to it, so either path works for lookups
+- The canonical LCC outlines live in `~/KnowledgeVault/PKM/lcc/`; `~/PCM/PCM/lcc/` is a symlink to it, so either path works for lookups
 - The second-level chooser matches `primary_moc` against both the grandparent slug and title (case-insensitive) to handle the inconsistency in existing files where some use slugs and some use display titles
 - Reusing the parent's classification is correct when no tighter LCC sub-class fits
 - If the chooser in Step 3 returns no results, stop and direct the human to the `second-moc-level` skill

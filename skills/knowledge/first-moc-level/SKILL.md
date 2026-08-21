@@ -10,7 +10,7 @@ description: Creates a first-level Map of Content (MOC) file in both the persona
 ## Prerequisites
 
 - `~/KnowledgeVault/PKM/` must exist and contain a `lcc/` directory with LCC outline files (`lcco-a.md` through `lcco-z.md`)
-- `~/PCM/` must exist
+- `~/PCM/PCM/` must exist
 - Both vaults must have `templates/moc-note-template.md` and `moc/` directories
 
 ## Parameters
@@ -75,30 +75,41 @@ Existing first-level MOC examples (filename → classification):
 - `moc/health.md` → classification: R, label: "Medicine"
 
 ### Vault 2 — Personal Context Management (private)
-Path: `~/PCM/`
+Path: `~/PCM/PCM/`
 
 An operational layer for the PCM workflow — holds ingest pipeline configuration, AI conversation exports, and Obsidian-ready distilled output. Its `moc/` directory mirrors the same structure as the KnowledgeVault but starts empty.
 
 Key directories:
 - `moc/` — same role as in the KnowledgeVault
-- `lcc/` — exists but is empty; use the KnowledgeVault's `lcc/` for all lookups
+- `lcc/` — a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`; either path works for lookups
 - `home.md` — currently contains only quick links to directories; add a `## Maps of Content` section if one does not already exist
 
-Template: `templates/moc-note-template.md`
+Template: `templates/moc-note-template.md` — identical to the KnowledgeVault's:
 ```yaml
 ---
 title: "{{title}}"
+aliases:
+  - "moc {{title}}"
 type: moc
+classification:
+classification_label:
+classification_source: lcc
+primary_moc:
+related_mocs: []
 tags: []
 created: {{date}}
 updated: {{date}}
 ---
 
-# {{title}}
+# {{title}} MOC
 
 ## Overview
 
 <!-- What does this map cover? -->
+
+## Child MOCs
+
+None yet.
 
 ## Notes
 
@@ -108,8 +119,6 @@ updated: {{date}}
 
 - [[]]
 ```
-
-Note: The PCM template does not include classification fields by default. **Add them anyway** — the human has requested LCC classification in frontmatter for both vaults.
 
 ## Naming Rules (both vaults)
 
@@ -124,12 +133,12 @@ top-level MOC), mirrored by each parent's `## Child MOCs` section. There is **no
 map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correct:
 
 - **Before creating**, confirm this is genuinely a new **top-level** MOC (not already a
-  child of another MOC) — review `~/PCM/moc-map.md` or the existing `moc/*.md`.
+  child of another MOC) — review `~/PCM/PCM/moc-map.md` or the existing `moc/*.md`.
 - **After creating**, the MOC carries a blank `primary_moc` and is listed in `home.md`.
   Max depth is three levels.
 - **Both vaults have their own map.** `moc-map.md` is a generated, clickable wikilink map
   built from `primary_moc` frontmatter, and each vault regenerates its own:
-  `~/PCM/scripts/create-moc-map.sh` and
+  `~/PCM/PCM/scripts/create-moc-map.sh` and
   `~/KnowledgeVault/PKM/scripts/create-moc-map.sh`. **Neither is rebuilt automatically.**
   The PCM pre-commit hook only *warns* that `moc-map.md` is stale — it stopped rebuilding
   it on 2026-07-24 — and PKM has no such hook at all. A new MOC is therefore invisible in
@@ -185,7 +194,7 @@ map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correc
    - `updated`: today's date
    - Body: fill `# <title> MOC` heading; write a one-sentence overview describing what the map covers
 
-8. **Create the PCM MOC file** — Write `~/PCM/moc/<slug>.md` using the PCM template. Use the same title, date, and classification fields as the KnowledgeVault file. The PCM template omits classification fields; add them in the same order and format as the KnowledgeVault version:
+8. **Create the PCM MOC file** — Write `~/PCM/PCM/moc/<slug>.md` using the PCM template. Use the same title, date, and classification fields as the KnowledgeVault file. The PCM template already carries these fields, so this is the shape to fill in, not fields to add:
    ```yaml
    ---
    title: "..."
@@ -210,7 +219,7 @@ map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correc
    ```
    where `<slug>` is the filename without `.md` and `<Display Title>` is what the human specified. Keep the list alphabetically ordered or append at the end if ordering is unclear.
 
-10. **Update PCM home.md** — Open `~/PCM/home.md`. If a `## Maps of Content` section already exists, add:
+10. **Update PCM home.md** — Open `~/PCM/PCM/home.md`. If a `## Maps of Content` section already exists, add:
     ```
     - [[<slug>|<Display Title>]]
     ```
@@ -229,7 +238,7 @@ map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correc
       regenerated maps in the Step 12 commits so the map and the MOC land together:
 
       ```bash
-      cd ~/PCM && scripts/create-moc-map.sh
+      cd ~/PCM/PCM && scripts/create-moc-map.sh
       cd ~/KnowledgeVault/PKM && scripts/create-moc-map.sh
       ```
 
@@ -251,7 +260,7 @@ map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correc
     git -C ~/KnowledgeVault/PKM push
 
     # PCM vault — the pre-commit hook only warns that moc-map.md is stale; Step 11 rebuilds it
-    git -C ~/PCM add moc/<slug>.md home.md moc-map.md
+    git -C ~/PCM add PCM/moc/<slug>.md PCM/home.md PCM/moc-map.md
     git -C ~/PCM commit -m "moc: add <slug> first-level MOC"
     git -C ~/PCM push
     ```
@@ -322,10 +331,10 @@ the numbered Instructions above as usual.
 ## Success Criteria
 
 - `~/KnowledgeVault/PKM/moc/<slug>.md` exists with correct YAML frontmatter including `classification`, `classification_label`, and `classification_source: lcc`
-- `~/PCM/moc/<slug>.md` exists with the same frontmatter fields
+- `~/PCM/PCM/moc/<slug>.md` exists with the same frontmatter fields
 - Both `home.md` files contain a new `[[<slug>|<Display Title>]]` link
 - The MOC map rebuild was **offered** in every interactive run; if accepted, both
-  `~/PCM/moc-map.md` and `~/KnowledgeVault/PKM/moc-map.md` list the new MOC and were
+  `~/PCM/PCM/moc-map.md` and `~/KnowledgeVault/PKM/moc-map.md` list the new MOC and were
   committed alongside it
 - Filename is lowercase, hyphen-separated, no spaces, ends in `.md`
 - `type: moc` is set in both files
@@ -333,7 +342,7 @@ the numbered Instructions above as usual.
 
 ## Notes
 
-- The canonical LCC outlines live in `~/KnowledgeVault/PKM/lcc/`; `~/PCM/lcc/` is a symlink to it, so either path works for classification lookups
+- The canonical LCC outlines live in `~/KnowledgeVault/PKM/lcc/`; `~/PCM/PCM/lcc/` is a symlink to it, so either path works for classification lookups
 - When the subject is ambiguous (e.g. "tools", "radio", "security"), always surface the ambiguity before choosing a classification — do not guess
 - The `primary_moc` field in the KnowledgeVault template is left blank for first-level MOCs; second-level MOCs (child MOCs) would set this to their parent
 - If the `.gitkeep` file is the only file in `moc/` of the PCM vault, it can remain in place — git will still track the directory with real content present

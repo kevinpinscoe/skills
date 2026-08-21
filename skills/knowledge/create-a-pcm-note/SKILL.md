@@ -5,11 +5,11 @@ description: Creates a new note in the PCM vault only by walking the MOC hierarc
 
 # Create a PCM Note
 
-> Walks through up to three levels of MOC choosers to place a note precisely in the hierarchy, then creates the note in the **PCM vault only** (`~/PCM/`) with inherited LCC classification and links it back into the selected MOC.
+> Walks through up to three levels of MOC choosers to place a note precisely in the hierarchy, then creates the note in the **PCM vault only** (`~/PCM/PCM/`) with inherited LCC classification and links it back into the selected MOC.
 
 ## Scope
 
-This skill writes the note to **PCM only** (`~/PCM/`). It does **not** touch the KnowledgeVault (PKM). Its sibling `create-a-pkm-note` is the PKM-only counterpart — a note lives in exactly one vault. MOCs may exist in both vaults (they are categories); notes must not.
+This skill writes the note to **PCM only** (`~/PCM/PCM/`). It does **not** touch the KnowledgeVault (PKM). Its sibling `create-a-pkm-note` is the PKM-only counterpart — a note lives in exactly one vault. MOCs may exist in both vaults (they are categories); notes must not.
 
 ## How This Skill Chains
 
@@ -17,9 +17,9 @@ Three Python choosers run sequentially and conditionally — first-level always,
 
 ## Prerequisites
 
-- `~/PCM/moc/` must contain at least one first-level MOC
-- `~/PCM/notes/` must exist
-- `~/PCM/templates/note-template.md` must exist
+- `~/PCM/PCM/moc/` must contain at least one first-level MOC
+- `~/PCM/PCM/notes/` must exist
+- `~/PCM/PCM/templates/note-template.md` must exist
 - Python 3 available (`python3`)
 
 ## Parameters
@@ -47,16 +47,25 @@ Examples:
 
 To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB` → `sb`, `QA76` → `qa76`, `QA76.75` → `qa7675`, `T58.5` → `t585`.
 
+**Ranged codes (`Z696-697`, `BF309-499`, `T55.4-60.8`) — match the shelf that already exists.**
+The corpus is genuinely split here: some notes keep the whole range (`bf309-499-*`) and others
+truncate to the leading segment (`bf309-*`, `he8689-*`, `t55-*`). Before deriving a prefix from a
+ranged code, list `~/PCM/PCM/notes/` for notes already shelved under that classification and reuse
+whichever prefix they use. Only when no note exists on that shelf, fall back to the leading
+segment. Deriving blindly splits one subject across two prefixes — e.g. adding a `z696-697-` note
+beside three existing `z696-` ones — which is invisible in Obsidian and defeats the point of a
+shelf marker.
+
 ### Vault Paths (PCM only)
 
 | Purpose | Path |
 |---|---|
-| Notes | `~/PCM/notes/` |
-| MOC files | `~/PCM/moc/` |
-| Note template | `~/PCM/templates/note-template.md` |
-| LCC outlines | `~/PCM/lcc/` (a symlink to `~/KnowledgeVault/PKM/lcc/`) |
+| Notes | `~/PCM/PCM/notes/` |
+| MOC files | `~/PCM/PCM/moc/` |
+| Note template | `~/PCM/PCM/templates/note-template.md` |
+| LCC outlines | `~/PCM/PCM/lcc/` (a symlink to `~/KnowledgeVault/PKM/lcc/`) |
 
-`~/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`, so classification lookups work from the PCM path directly.
+`~/PCM/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`, so classification lookups work from the PCM path directly.
 
 ### MOC Level Detection
 
@@ -71,7 +80,7 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/PCM/moc")
+   moc_dir = os.path.expanduser("~/PCM/PCM/moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -110,7 +119,7 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/PCM/moc")
+   moc_dir = os.path.expanduser("~/PCM/PCM/moc")
    parent_slug = "<l1_slug>"    # substitute
    parent_title = "<l1_title>"  # substitute
    results = []
@@ -171,7 +180,13 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
 
 9. **Get today's date** — Run `date +%Y-%m-%d` for the `created`/`updated` fields.
 
-10. **Create the PCM note** — Write `~/PCM/notes/<filename>`:
+10. **Create the PCM note** — Write `~/PCM/PCM/notes/<filename>`.
+
+    `primary_moc` is the **deepest** MOC (`deepest_slug`); `related_mocs` lists the **broader
+    ancestor MOCs above it**, as slugs — never a repeat of `deepest_slug`, and never a display
+    title. A note whose deepest MOC is second-level therefore carries its first-level
+    grandparent here; a note placed directly on a first-level MOC carries `related_mocs: []`.
+
     ```yaml
     ---
     title: "<Note Title>"
@@ -182,7 +197,7 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
     classification_source: lcc
     primary_moc: <deepest_slug>
     related_mocs:
-      - "<deepest_title>"
+      - "<ancestor-moc-slug>"   # the broader MOC(s) ABOVE deepest_slug, as slugs
     tags: []
     created: YYYY-MM-DD
     updated: YYYY-MM-DD
@@ -203,7 +218,7 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
     - [[<deepest_slug>|<deepest_title>]]
     ```
 
-11. **Update the target MOC in PCM** — Open `~/PCM/moc/<deepest_slug>.md`:
+11. **Update the target MOC in PCM** — Open `~/PCM/PCM/moc/<deepest_slug>.md`:
     - Find the `## Notes` section. If it contains only `- [[]]`, replace that placeholder line with the new link. Otherwise append the link as a new list item.
     - Link format: `- [[<lcc_prefix>-<title_slug>|<Note Title>]]`
     - Update the `updated:` frontmatter field to today's date.
@@ -211,7 +226,7 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
 12. **Commit and push in PCM** — Stage the new note and updated MOC, then commit and push:
 
     ```bash
-    git -C ~/PCM add notes/<filename> moc/<deepest_slug>.md
+    git -C ~/PCM add PCM/notes/<filename> PCM/moc/<deepest_slug>.md
     git -C ~/PCM commit -m "note: add <lcc_prefix>-<title_slug>"
     git -C ~/PCM push
     ```
@@ -226,7 +241,7 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
 
 ## Success Criteria
 
-- `~/PCM/notes/<filename>` exists with `primary_moc` set to `deepest_slug` and `classification` filled
+- `~/PCM/PCM/notes/<filename>` exists with `primary_moc` set to `deepest_slug` and `classification` filled
 - The note was **not** written to the KnowledgeVault (PKM)
 - Target MOC in PCM contains `[[<lcc_prefix>-<title_slug>|<Note Title>]]` in its `## Notes` section
 - Filename follows `<lcc_prefix>-<title_slug>.md` convention (lowercase, no dots in prefix, hyphens throughout)
@@ -236,8 +251,8 @@ To derive the prefix: lowercase the LCC code and remove all dots. Examples: `SB`
 ## Notes
 
 - The human may stop at any chooser level — if they skip the second-level or third-level chooser (by pressing Enter), the note targets the deepest MOC they did select
-- `~/PCM/lcc/` is a symlink to `~/KnowledgeVault/PKM/lcc/`; use it for any classification lookups
+- `~/PCM/PCM/lcc/` is a symlink to `~/KnowledgeVault/PKM/lcc/`; use it for any classification lookups
 - `created` and `updated` use plain `YYYY-MM-DD` format (not the `YYYY-MM-DDThh:mm:ss` Obsidian template syntax — that is resolved by Obsidian's template engine, not here)
 - Leave `## Details` and `tags: []` blank for the human to fill in after creation
-- For saving a web article into PCM (with image archival), prefer the ingest pipeline `~/PCM/scripts/ingest-html-page.sh <url>` over this manual skill
+- For saving a web article into PCM (with image archival), prefer the ingest pipeline `~/PCM/PCM/scripts/ingest-html-page.sh <url>` over this manual skill
 - Related skills: `create-a-pkm-note` (the PKM-only counterpart), `first-moc-level`, `second-moc-level`, `third-moc-level` (create MOC structure before adding notes)
