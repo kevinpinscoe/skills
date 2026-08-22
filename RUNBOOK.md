@@ -2,7 +2,7 @@
 title: RUNBOOK.md — skills
 tags: [runbook, operations]
 vault_link: runbooks/home-kinscoe-skills.md
-source_path: /home/kinscoe/skills/RUNBOOK.md
+source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 ---
 
 > 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills.md` (symlink → this file).
@@ -13,11 +13,11 @@ source_path: /home/kinscoe/skills/RUNBOOK.md
 | Field | Value |
 |---|---|
 | **Owner** | Kevin Inscoe |
-| **Last Updated** | 2026-08-12 |
-| **Last Tested** | 2026-08-12 |
+| **Last Updated** | 2026-08-21 |
+| **Last Tested** | 2026-08-21 |
 | **Expected Duration** | Varies by skill |
 | **Risk Level** | Low — this repo holds prompts and wrappers, not services |
-| **Repo** | `~/skills` (GitHub `kevinpinscoe/skills`) |
+| **Repo** | `~/.claude/skills` (GitHub `kevinpinscoe/skills`) |
 
 ---
 
@@ -29,6 +29,10 @@ source_path: /home/kinscoe/skills/RUNBOOK.md
 This repo is a collection of AI task automation skills plus the `skills` Go TUI used to browse and
 run them. It is not a service, so most skills need no runbook — the ones that run unattended on a
 timer, or that carry operational detail worth writing down, have their own, listed below.
+
+Its working tree is `~/.claude/skills` — Claude Code's own officially-recognized skill path,
+shared with the ~65 `gsd-*` directories installed by the separate `get-shit-done` plugin. This
+repo's `.gitignore` excludes `gsd-*`; see `README.md` → "Structure" for the full model.
 
 ---
 
@@ -45,7 +49,7 @@ timer, or that carry operational detail worth writing down, have their own, list
 
 - [ ] Claude Code CLI at `~/.local/bin/claude`
 - [ ] `mise.toml` is present at the repo root: run `mise install && mise doctor` before committing
-- [ ] The `skills` TUI binary at `~/skills/skills` (source: `github.com/kevinpinscoe/skills-tui`)
+- [ ] The `skills` TUI binary at `~/.local/bin/skills` (source: `github.com/kevinpinscoe/skills-tui`)
 
 ---
 
@@ -64,22 +68,22 @@ timer, or that carry operational detail worth writing down, have their own, list
 
 ### Step 1 — Launch a skill interactively
 
-**Why:** the chooser is the normal path; it lists categories, then the skills in the chosen
-category that have a `SKILL.md`.
+**Why:** the chooser is the normal path; it lists every skill under `~/.claude/skills` that has
+a `run.sh` or a `SKILL.md` and is not excluded by `.gitignore`.
 
 ```bash
-~/skills/skills
+skills
 ```
 
-**If this fails:** a skill directory missing its `SKILL.md` will not be listed — that is the
-filter working, not a fault.
+**If this fails:** a skill directory missing both `run.sh` and `SKILL.md`, or matched by
+`.gitignore` (e.g. `gsd-*`), will not be listed — that is the filter working, not a fault.
 
 ### Step 2 — Run a skill directly
 
 **Why:** bypasses the chooser for a skill you can name, and is how a timer invokes one.
 
 ```bash
-bash ~/skills/skills/<category>/<skill-name>/run.sh
+bash ~/.claude/skills/<skill-name>/run.sh
 ```
 
 Skills without a `run.sh` are launched through the chooser, or by handing `SKILL.md` to Claude
@@ -90,22 +94,23 @@ Code yourself.
 ## Verification
 
 ```bash
-find ~/skills/skills -mindepth 2 -maxdepth 2 -type d '!' -exec test -e '{}/SKILL.md' ';' -print
+find ~/.claude/skills -mindepth 1 -maxdepth 1 -type d -name 'gsd-*' -prune -o \
+  -mindepth 1 -maxdepth 1 -type d -print | \
+  xargs -I{} sh -c 'test -e "{}/SKILL.md" -o -e "{}/run.sh" || echo "{}"'
 ```
 
 **Expected output:** nothing.
 
-**Success criteria:** every skill directory contains a `SKILL.md`. Any path printed is a directory
-the TUI will not list. `-type d` does not follow symlinks, so the `Jira/` and `YouTrack/`
-categories are deliberately out of scope — they belong to `vanco-skills`.
+**Success criteria:** every non-`gsd-*` directory contains a `SKILL.md` or a `run.sh`. Any path
+printed is a directory the TUI will not list.
 
 ---
 
 ## Rollback Procedure
 
-1. `cd ~/skills`
-2. `git log --oneline -- skills/<category>/<skill-name>/`
-3. `git checkout <good-sha> -- skills/<category>/<skill-name>/`
+1. `cd ~/.claude/skills`
+2. `git log --oneline -- <skill-name>/`
+3. `git checkout <good-sha> -- <skill-name>/`
 
 ---
 
@@ -119,10 +124,10 @@ categories are deliberately out of scope — they belong to `vanco-skills`.
 
 ## Subdirectory Runbooks
 
-- [`skills/daily/put-email-offers-on-my-calendar/RUNBOOK.md`](skills/daily/put-email-offers-on-my-calendar/RUNBOOK.md) — reads Gmail offer emails and creates Google Calendar events; user timer
-- [`skills/project/review-all-checkpoints/RUNBOOK.md`](skills/project/review-all-checkpoints/RUNBOOK.md) — reviews every `CHECKPOINT.md` on this host; on demand, not scheduled
+- [`daily-put-email-offers-on-my-calendar/RUNBOOK.md`](daily-put-email-offers-on-my-calendar/RUNBOOK.md) — reads Gmail offer emails and creates Google Calendar events; user timer
+- [`project-review-all-checkpoints/RUNBOOK.md`](project-review-all-checkpoints/RUNBOOK.md) — reviews every `CHECKPOINT.md` on this host; on demand, not scheduled
 
-**Not listed here:** `skills/Jira/` and `skills/YouTrack/` are symlinks into
+**Not listed here:** `jira-*`, `youtrack-*`, and `daily-run-through-my-os-todo` are symlinks into
 `~/Projects/private/vanco-skills/skills/`. Their skills and runbooks belong to that repository and
 are maintained there — per `when-creating-a-runbook.md` step 4, a runbook for a tool in another
 repo is updated in that tool's own repo. They appear in the chooser because the TUI follows the
@@ -134,9 +139,10 @@ symlinks; they are not files this repo owns.
 
 | Symptom | Likely Cause | Resolution |
 |---|---|---|
-| A skill is not listed in the chooser | Its directory has no `SKILL.md` | Add one, or launch its `run.sh` directly |
+| A skill is not listed in the chooser | No `run.sh`/`SKILL.md`, or excluded by `.gitignore` | Add one, check `.gitignore`, or launch its `run.sh` directly |
 | `claude: command not found` in a `run.sh` | Non-interactive shell without `~/.local/bin` on `PATH` | The wrappers call `$HOME/.local/bin/claude` by absolute path; update the path if the CLI moved |
 | A timer-driven skill did not run | User timer not enabled after a reinstall | `systemctl --user list-timers`, then enable per that skill's runbook |
+| A `jira-*`/`youtrack-*` symlink is broken or missing | `vanco-skills` was moved, or the link was clobbered | Run `bash ~/.claude/skills/install.sh` to recreate it |
 
 ---
 
@@ -166,11 +172,15 @@ journalctl --user -u <skill-name>.service -n 100
 
 ## Maintenance Notes
 
-- **Last game-day test:** 2026-08-12
+- **Last game-day test:** 2026-08-21
 - **Next scheduled review:** when a skill gains or loses a timer
 - **Known drift risks:**
   - The `## Structure` tree in `README.md` and the runbook list above are both maintained by hand
     and drift as skills are added. `CLAUDE.md` requires the README tree to be updated whenever a
-    skill or category is added, renamed, or removed; this list needs the same care.
-  - `skills/task-management/youtraack-todo/` is empty — no `SKILL.md`, so the TUI does not list
-    it. Its name is also misspelled (`youtraack`). Both are pre-existing and left alone.
+    skill is added, renamed, or removed; this list needs the same care.
+  - The two dead legacy directories that used to sit under `skills/daily/` and
+    `skills/task-management/` (an empty, no-`SKILL.md` directory and a misspelled empty one) were
+    dropped entirely during the FSM-3 flattening rather than migrated — nothing to track here now.
+  - This file's own `vault_link` symlink in the PKM vault (`runbooks/home-kinscoe-skills.md`)
+    still points at the pre-FSM-3 path and needs repointing once this repo's working tree is
+    physically re-homed from `~/skills` to `~/.claude/skills`.

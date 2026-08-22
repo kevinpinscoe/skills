@@ -13,3 +13,8 @@
 **/*.pyo
 **/__pycache__/
 **/ai-wt/
+
+# Third-party content installed into this same directory by the get-shit-done
+# Claude Code plugin, once this repo's working tree is re-homed to
+# ~/.claude/skills (FSM-3). Never vendor or track it here.
+gsd-*
