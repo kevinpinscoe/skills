@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-Kevin's personal collection of AI task automation skills, plus the `skill` Go CLI used to browse and execute them via Claude Code.
+Kevin's personal collection of AI task automation skills, plus the `skills` Go CLI used to browse and execute them via Claude Code.
 
 ## Directory layout
 
@@ -12,7 +12,6 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
 ~/skills/
 ├── CLAUDE.md               # This file
 ├── README.md
-├── skills                  # Compiled Go binary (from github.com/kevinpinscoe/skills-tui)
 └── skills/
     ├── template.md         # Template for new skill files
     ├── app/
@@ -33,16 +32,16 @@ Kevin's personal collection of AI task automation skills, plus the `skill` Go CL
     │       └── SKILL.md
 ```
 
-Skills are organized three levels deep: **category directory** → **skill directory** → `SKILL.md`. The `skill` CLI only lists skill directories that contain a `SKILL.md` file.
+Skills are organized three levels deep: **category directory** → **skill directory** → `SKILL.md` (optionally paired with a `run.sh`). The `skills` CLI only lists skill directories that contain a `SKILL.md` file.
 
-## The `skill` CLI
+## The `skills` CLI
 
-Skills (via `SKILL.md` or `run.sh`) are designed to be launched through the **skills-tui** tool, installed locally as the `skill` command. Binary lives at `~/skills/skills`. Source and full behavior documentation: https://github.com/kevinpinscoe/skills-tui.
+Skills (via `SKILL.md` or `run.sh`) are designed to be launched through the **skills-tui** tool, installed as the system `skills` command — on this host (Fedora) via `dnf install skills-tui` from the `kevinpinscoe` RPM repo (source: https://github.com/kevinpinscoe/rpm), landing at `/usr/bin/skills`. The binary is **not** part of this repo; `~/skills/skills` is this repo's skill-content directory, which the tool reads as its default `SKILLS_DIR` (overridable via the env var of that name). Source and full behavior documentation: https://github.com/kevinpinscoe/skills-tui.
 
 **Behavior:**
 1. Presents an interactive chooser listing category directories under `~/skills/skills` (overridable via `SKILLS_DIR`)
-2. After a category is chosen, presents a second chooser listing skill directories that contain a `SKILL.md`
-3. Launches Claude Code with the selected `SKILL.md` as the prompt
+2. After a category is chosen, presents a second chooser listing skill directories that contain a `run.sh` or a `SKILL.md`
+3. If the skill directory has a `run.sh`, changes into that directory and executes it (stdin wired through); otherwise launches Claude Code with the `SKILL.md` content as the prompt — **prefer giving every skill a `run.sh`** (see `FSM-2`): the bare-`SKILL.md` fallback passes the content with no framing, which Claude Code can mistake for background documentation instead of an active task.
 
 ## Skill file format
 
