@@ -125,8 +125,9 @@ chooser without the tool needing to know anything about `get-shit-done` specific
 `jira-*`, `youtrack-*`, and `daily-run-through-my-os-todo` are symlinks — their content lives
 in, and is owned by, the private `~/Projects/private/vanco-skills` repo, not this one. Git
 tracks only the symlinks. `install.sh` recreates them if a target goes missing or a link gets
-clobbered; see `RUNBOOK.md`. A companion restructuring of `vanco-skills` itself, to match this
-naming convention and add complete frontmatter to those skills, is tracked separately.
+clobbered; see `RUNBOOK.md`. `vanco-skills` itself now matches this naming convention (flat
+`jira-<skill-name>`/`youtrack-<skill-name>` directories with complete frontmatter) as of
+WORK-193.
 
 ### Why every skill has a `run.sh`
 
