@@ -12,22 +12,22 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")" && pwd)"
-VANCO_ROOT="/home/kinscoe/Projects/private/vanco-skills"
+VANCO_ROOT="$HOME/Projects/private/vanco-skills"
 
 # Each entry: "<link path relative to $REPO>|<absolute target path>"
 LINKS=(
-    "jira-create-a-jira-ticket|$VANCO_ROOT/skills/Jira/create-a-jira-ticket"
-    "jira-create-jira-tickets-bookmark|$VANCO_ROOT/skills/Jira/create-jira-tickets-bookmark"
-    "jira-update-menu-app-yaml-from-jira-html|$VANCO_ROOT/skills/Jira/update-menu-app-yaml-from-jira-html"
-    "youtrack-check-for-duplicate-tickets-and-tag|$VANCO_ROOT/skills/YouTrack/check-for-duplicate-tickets-and-tag"
-    "youtrack-create-a-youtrack-project|$VANCO_ROOT/skills/YouTrack/create-a-youtrack-project"
-    "youtrack-create-ticket-in-youtrack|$VANCO_ROOT/skills/YouTrack/create-ticket-in-youtrack"
-    "youtrack-get-my-assigned-tickets-from-jira-into-youtrack|$VANCO_ROOT/skills/YouTrack/get-my-assigned-tickets-from-jira-into-youtrack"
-    "youtrack-insert-specific-jira-ticket-in-youtrack|$VANCO_ROOT/skills/YouTrack/insert-specific-jira-ticket-in-youtrack"
-    "youtrack-read-updates-from-tasks-and-generate-stand-up|$VANCO_ROOT/skills/YouTrack/read-updates-from-tasks-and-generate-stand-up"
-    "youtrack-reconcile|$VANCO_ROOT/skills/YouTrack/reconcile"
-    "youtrack-report-a-problem|$VANCO_ROOT/skills/YouTrack/report-a-problem"
-    "youtrack-sync-jira-ticket-status-with-youtrack|$VANCO_ROOT/skills/YouTrack/sync-jira-ticket-status-with-youtrack"
+    "jira-create-a-jira-ticket|$VANCO_ROOT/skills/jira-create-a-jira-ticket"
+    "jira-create-jira-tickets-bookmark|$VANCO_ROOT/skills/jira-create-jira-tickets-bookmark"
+    "jira-update-menu-app-yaml-from-jira-html|$VANCO_ROOT/skills/jira-update-menu-app-yaml-from-jira-html"
+    "youtrack-check-for-duplicate-tickets-and-tag|$VANCO_ROOT/skills/youtrack-check-for-duplicate-tickets-and-tag"
+    "youtrack-create-a-youtrack-project|$VANCO_ROOT/skills/youtrack-create-a-youtrack-project"
+    "youtrack-create-ticket-in-youtrack|$VANCO_ROOT/skills/youtrack-create-ticket-in-youtrack"
+    "youtrack-get-my-assigned-tickets-from-jira-into-youtrack|$VANCO_ROOT/skills/youtrack-get-my-assigned-tickets-from-jira-into-youtrack"
+    "youtrack-insert-specific-jira-ticket-in-youtrack|$VANCO_ROOT/skills/youtrack-insert-specific-jira-ticket-in-youtrack"
+    "youtrack-read-updates-from-tasks-and-generate-stand-up|$VANCO_ROOT/skills/youtrack-read-updates-from-tasks-and-generate-stand-up"
+    "youtrack-reconcile|$VANCO_ROOT/skills/youtrack-reconcile"
+    "youtrack-report-a-problem|$VANCO_ROOT/skills/youtrack-report-a-problem"
+    "youtrack-sync-jira-ticket-status-with-youtrack|$VANCO_ROOT/skills/youtrack-sync-jira-ticket-status-with-youtrack"
     "daily-run-through-my-os-todo|$VANCO_ROOT/skills/daily/run-through-my-os-todo"
 )
 
