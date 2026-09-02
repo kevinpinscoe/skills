@@ -92,13 +92,19 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
           ```
           ssh -p 2222 kevini@localhost 'CHECK_GIT_REPOS=/mac-home check-git-repos --ignore-prefix'
           ```
-          Paths come back as `/mac-home/...`; translate each to its `~/...` equivalent before
-          operating on it, because every later step runs on the Mac. **The container keeps its
-          own, shorter ignore file** — it does not exclude `Projects/vancopayments`,
-          `Projects/workspaces/DOSD`, `Projects/workspaces/SRE`, `Projects/public/playbook` or
-          `.codex`, all of which the Mac's ignore file does. Those trees are deliberately out of
-          scope for this skill: skip anything under them and say so in the final report, rather
-          than syncing repos the Mac deliberately excludes.
+          **The output mixes two path shapes and they are not the same host.** A `/mac-home/...`
+          path is one of *this Mac's* repositories: strip the `/mac-home` prefix to get the
+          `~/...` path to act on, because every later step runs on the Mac. A bare `~/...` path
+          is one of the *container's own* repositories — `~/local/parzival`, for instance, which
+          does not exist on the Mac at all. Those are out of scope for this run: skip them, and
+          never translate a `~/...` result into a Mac path.
+          **The two hosts keep separate ignore files.** They were reconciled on 2026-09-02 —
+          `/mac-home/Projects/vancopayments/`, `/mac-home/Projects/workspaces/DOSD/`,
+          `/mac-home/Projects/workspaces/SRE/`, `/mac-home/Projects/public/playbook/` and
+          `/mac-home/.codex/` were added to the container's file to match the Mac's — but nothing
+          keeps them in step, so they can drift again. If the container reports a repo under a
+          tree the Mac's `~/.config/check-git-repos-source/ignore.txt` excludes, that tree is out
+          of scope: skip it and say so in the final report rather than syncing it.
        2. **`~/bin/check-git-repos-shell`** — a pure-shell stand-in using stock git, reading the
           same `~/.config/check-git-repos-source/ignore.txt` and emitting the same
           `BEHIND`/`AHEAD`/`STAGED`/`UNSTAGED`/`UNTRACKED` statuses. Run
@@ -311,6 +317,7 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   installed** — Homebrew is not an approved channel, so the binary is deleted within seconds of
   each install. Never try to reinstall it there. Prefer running the real tool on `mac-container`
   over SSH (it is outside Homebrew and reaches the Mac via `/mac-home`), or fall back to
-  `~/bin/check-git-repos-shell`. The two hosts keep separate ignore files and the container's is
-  shorter, so the container reports repos the Mac deliberately excludes — see step 3.
+  `~/bin/check-git-repos-shell`. The two hosts keep separate ignore files (reconciled 2026-09-02,
+  but nothing keeps them in step), and the container's scan also covers the container's *own*
+  repos, whose paths come back as `~/...` rather than `/mac-home/...` — see step 3.
 - This skill intentionally combines the behavior of daily repo sync and platform TODO processing; if only TODO processing is needed, use `run-through-my-os-todos`.
