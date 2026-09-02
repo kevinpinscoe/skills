@@ -77,7 +77,35 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
    If `hostname` cannot be resolved, report the command output and stop.
 
 3. **Run check-git-repos** — discover repos that need attention:
-   - Locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
+   - **On `work-macbook` (`$TODO_HOST=mac`) the binary cannot run, and must not be installed.**
+     CrowdStrike Falcon quarantines applications installed outside ACST's approved channels, and
+     a Homebrew cask is not an approved channel: the binary is deleted within seconds of every
+     install. Confirmed 2026-09-02 — it vanished twice, about 30 seconds apart, leaving a
+     dangling symlink while `brew list --cask` still reported the cask installed. So on this host
+     a `command -v` miss, or an exit 127 or 137, is **that** and not a missing install: do not
+     run `brew install`/`brew reinstall` to "fix" it. Reinstalling cannot work, and each attempt
+     raises a detection in ACST's Falcon console. Use one of these instead, in order of
+     preference:
+       1. **Run the real tool on `mac-container`**, where it is installed at
+          `/usr/bin/check-git-repos` — outside Homebrew, and not quarantined. It reaches this
+          Mac's repositories through the `/mac-home` mount:
+          ```
+          ssh -p 2222 kevini@localhost 'CHECK_GIT_REPOS=/mac-home check-git-repos --ignore-prefix'
+          ```
+          Paths come back as `/mac-home/...`; translate each to its `~/...` equivalent before
+          operating on it, because every later step runs on the Mac. **The container keeps its
+          own, shorter ignore file** — it does not exclude `Projects/vancopayments`,
+          `Projects/workspaces/DOSD`, `Projects/workspaces/SRE`, `Projects/public/playbook` or
+          `.codex`, all of which the Mac's ignore file does. Those trees are deliberately out of
+          scope for this skill: skip anything under them and say so in the final report, rather
+          than syncing repos the Mac deliberately excludes.
+       2. **`~/bin/check-git-repos-shell`** — a pure-shell stand-in using stock git, reading the
+          same `~/.config/check-git-repos-source/ignore.txt` and emitting the same
+          `BEHIND`/`AHEAD`/`STAGED`/`UNSTAGED`/`UNTRACKED` statuses. Run
+          `check-git-repos-shell --ignore-prefix`. Slower, and it has no `--worktree`,
+          `--remove-locks` or stash-staleness support.
+     Report which of the two was used in the final report, since their repo lists differ.
+   - On every other host, locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
    - If `$HOST_CATEGORY=Work` (per step 2a — this includes `mac-container`, even though it
      runs Linux), run: `check-git-repos --ignore-prefix`
    - Otherwise (`$HOST_CATEGORY=Home`), run: `check-git-repos`
@@ -279,4 +307,10 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   Home), not on OS family. `mac-container` runs Linux but is `Work` category (hosted on
   `work-macbook`), so it gets `--ignore-prefix` the same as `work-macbook` itself — a plain
   `linux` vs `mac` check would get this wrong.
+- **On `work-macbook`, `check-git-repos` is quarantined by CrowdStrike Falcon and cannot be
+  installed** — Homebrew is not an approved channel, so the binary is deleted within seconds of
+  each install. Never try to reinstall it there. Prefer running the real tool on `mac-container`
+  over SSH (it is outside Homebrew and reaches the Mac via `/mac-home`), or fall back to
+  `~/bin/check-git-repos-shell`. The two hosts keep separate ignore files and the container's is
+  shorter, so the container reports repos the Mac deliberately excludes — see step 3.
 - This skill intentionally combines the behavior of daily repo sync and platform TODO processing; if only TODO processing is needed, use `run-through-my-os-todos`.
