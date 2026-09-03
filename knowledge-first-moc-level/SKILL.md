@@ -147,6 +147,8 @@ map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correc
 
 ## Instructions
 
+Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name MOC`. If the command is not on `PATH`, skip this step silently.
+
 1. **Ask for subject name** — Ask the human: "What is the subject of this MOC?" Wait for their answer before proceeding.
 
 2. **Ask for display title and link text** — Ask: "How should the title and link name appear in home.md for each vault? (For example: `[[linux|Linux]]` uses `Linux` as the display text.)" Wait for their answer.
@@ -280,6 +282,8 @@ map file** — `moc/stacks.md` is retired. This skill keeps the hierarchy correc
     - MOC map: rebuilt in both vaults, or explicitly noted as stale if declined
     - Commits pushed: hash and repo for each
 
+    After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name MOCc`.
+
 14. **Offer to create a second-level MOC** — After the completion summary, ask the human: "Do you want to create a second-level MOC under **[this MOC's Display Title]**?" Wait for their answer.
     - **If yes**: execute the `second-moc-level` skill at `~/skills/skills/knowledge/second-moc-level/SKILL.md` — read that file and follow its Instructions section from Step 1 (the parent chooser). The MOC just created here will appear in that chooser as an eligible parent.
     - **If no**: continue to Step 15.
@@ -308,6 +312,8 @@ interactive prompts in the numbered Instructions:
 - **No questions.** Do not pause for human input at any step. The root directive's
   confirmation requirement is waived for this automated invocation — it declares itself
   unattended/headless, equivalent to a systemd context.
+- **Skip the terminal tab naming** (before Step 1 and in Step 13) — this runs headlessly
+  from a script, not in Kevin's own interactive terminal.
 - **Parameters** (read from the invoking prompt):
   - `MOC_NAME` — the subject of the MOC. Use it as `SUBJECT` (Step 1).
   - `DISPLAY_TITLE` — the title/link text (Step 2). If absent, title-case `MOC_NAME`.

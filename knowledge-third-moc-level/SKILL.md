@@ -152,6 +152,8 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
 
 ## Instructions
 
+Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name MOC`. If the command is not on `PATH`, skip this step silently.
+
 1. **Run the first-level MOC chooser** — Run this Python script immediately, before asking the human anything:
 
    ```python
@@ -348,6 +350,8 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     - MOC map: rebuilt in both vaults, or explicitly noted as stale if declined
     - Commits pushed: hash and repo for each
 
+    After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name MOCc`.
+
 16. **Offer to create a note under this MOC** — After the completion summary, ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
     - **If no**: stop. The skill is complete.
     - **If yes**: ask which vault the note belongs in — "Which vault should this note live in: **PCM** or **PKM**? (A note lives in only one vault; MOCs may exist in both.)" Then execute the matching note skill, using **this third-level MOC as the target MOC** for the note:
@@ -371,6 +375,8 @@ interactive prompts in the numbered Instructions:
 
 - **No questions.** Do not pause for human input. The root directive's confirmation
   requirement is waived for this automated invocation — it declares itself unattended.
+- **Skip the terminal tab naming** (before Step 1 and in Step 15) — this runs headlessly
+  from a script, not in Kevin's own interactive terminal.
 - **Parameters** (read from the invoking prompt):
   - `MOC_NAME` — the focus area. Use it as `FOCUS_AREA` (Step 5).
   - `DISPLAY_TITLE` — the title/link text (Step 6). If absent, title-case `MOC_NAME`.
