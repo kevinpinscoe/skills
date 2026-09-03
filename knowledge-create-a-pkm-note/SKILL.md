@@ -74,6 +74,8 @@ Example: "How Agentic RAG Works" → `how-agentic-rag-works` → file `qa76-how-
 
 ## Instructions
 
+Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name PKM-note`. If the command is not on `PATH`, skip this step silently.
+
 1. **Ask for the source** — Before anything else, ask the human:
 
    > "What should this note be built from? Paste a **link** (URL) or the **text** you want in the note."
@@ -306,6 +308,8 @@ Example: "How Agentic RAG Works" → `how-agentic-rag-works` → file `qa76-how-
     - Any MOC levels created during the walk (which skill, which slug)
     - Whether `home.md`'s `## Main Indexes` was updated (and the line added), if a first-level MOC was created
     - Commit hash pushed
+
+    After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PKM-notec`.
 
 ## Success Criteria
 

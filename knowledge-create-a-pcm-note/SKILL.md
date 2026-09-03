@@ -76,6 +76,8 @@ shelf marker.
 
 ## Instructions
 
+Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name PCM-note`. If the command is not on `PATH`, skip this step silently.
+
 1. **Run the first-level MOC chooser** — Run immediately, before asking the human anything:
 
    ```python
@@ -239,6 +241,8 @@ shelf marker.
     - Target MOC updated: full path, with the exact line added
     - Classification applied: `deepest_cls` — `deepest_lbl`
     - Commit pushed: hash
+
+    After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PCM-notec`.
 
 ## Success Criteria
 

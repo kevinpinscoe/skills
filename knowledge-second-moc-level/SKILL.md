@@ -188,6 +188,8 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
 
 ## Instructions
 
+Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name MOC`. If the command is not on `PATH`, skip this step silently.
+
 1. **Run the parent chooser** — Run this Python script immediately, before asking the human anything:
 
    ```python
@@ -345,6 +347,8 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
     - MOC map: rebuilt in both vaults, or explicitly noted as stale if declined
     - Commits pushed: hash and repo for each
 
+    After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name MOCc`.
+
 14. **Offer to create a third-level MOC** — After the completion summary, ask the human: "Do you want to create a third-level MOC under **[this MOC's Display Title]**?" Wait for their answer.
     - **If yes**: execute the `third-moc-level` skill at `~/skills/skills/knowledge/third-moc-level/SKILL.md` — read that file and follow its Instructions section from Step 1. The second-level MOC just created here will appear as an eligible parent.
     - **If no**: continue to Step 15.
@@ -372,6 +376,8 @@ interactive prompts in the numbered Instructions:
 
 - **No questions.** Do not pause for human input. The root directive's confirmation
   requirement is waived for this automated invocation — it declares itself unattended.
+- **Skip the terminal tab naming** (before Step 1 and in Step 13) — this runs headlessly
+  from a script, not in Kevin's own interactive terminal.
 - **Parameters** (read from the invoking prompt):
   - `MOC_NAME` — the subtopic. Use it as `SUBTOPIC` (Step 3).
   - `DISPLAY_TITLE` — the title/link text (Step 4). If absent, title-case `MOC_NAME`.
