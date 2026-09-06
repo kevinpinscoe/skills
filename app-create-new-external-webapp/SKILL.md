@@ -86,15 +86,12 @@ Follow the global directives: **ask for each required input directly and one at 
 
     a. **Scope every secret to `Event: tag`.** The pipeline triggers on `when: event: tag`, so each secret (`gitea_user`, `gitea_token`, `web1_deploy_key`) must have the **`tag`** event enabled in its Events field. A secret restricted to `push` only is invisible to a tag build and the pipeline will fail with a missing-secret error. (Leaving Events empty = "all events" also works, but explicitly selecting just `tag` is cleanest. Do **not** enable `pull_request`.)
 
-    b. **Reuse the shared OpenBao credentials — do not mint a per-repo token.** The values already live in OpenBao; the human pulls them and pastes them into the Woodpecker UI (Woodpecker does not read OpenBao itself). On FLDW, set the env once, then pull each value:
+    b. **Reuse the shared OpenBao credentials — do not mint a per-repo token.** The values already live in OpenBao; **Kevin** pulls them and pastes them into the Woodpecker UI (Woodpecker does not read OpenBao itself). Because a human is reading raw values to paste elsewhere, this is `bao-breakglass` — typed by Kevin at his own terminal, never run by an agent or wrapped in a script. `~/.environment/.vault-token` no longer exists; PARZIVAL-2 revoked and removed it.
     ```bash
-    export BAO_ADDR=https://openbao.kevininscoe.com
-    export BAO_TOKEN="$(cat ~/.environment/.vault-token)"
-
     # → Woodpecker secret  gitea_user   (this is "kinscoe")
-    bao kv get -field=user  app/gitea
+    bao-breakglass kv get -field=user  -mount=app gitea
     # → Woodpecker secret  gitea_token
-    bao kv get -field=token app/gitea
+    bao-breakglass kv get -field=token -mount=app gitea
     # → Woodpecker secret  web1_deploy_key
     bao kv get -field=private_key -mount=linode-web1 deploy-key
     ```

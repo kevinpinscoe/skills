@@ -11,7 +11,11 @@ description: Capture a pasted alert (or block of alerts) as a YouTrack issue in 
 ## Prerequisites
 
 - Python 3 standard library only (`urllib`, `json`) — no `pip install` required
-- `bao` CLI at `~/.local/bin/bao`, and a valid vault token at `~/.environment/.vault-token`
+- Credential access goes through **parzival**, not a direct `bao` call. `run.sh` sources
+  `~/.environment/openbao/openbao-env.sh` itself and fetches the token via
+  `parzival exec --as ai youtrack-claude-code`. There is no vault token on disk to supply —
+  PARZIVAL-2 revoked and removed `~/.environment/.vault-token`, and PARZIVAL-12 was filed
+  because this skill broke when it did.
 - YouTrack API token in OpenBao at mount `app`, secret `YouTrack-Claude-Code`, field `token` — **not** `app/YouTrack` (that path is reserved for Kevin's own human-run scripts) and **not** `app/YouTrack-backups`
 - The `Claude_Code` YouTrack user must already be on the target project's team, or the create call 404s
 - Network access to `https://youtrack.kevininscoe.com` (or `$YOUTRACK_BASE_URL` if overridden)
