@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Create a YouTrack alert-response ticket.
 
-Prompts for a pasted alert (or block of alerts), lets Kevin pick the target
-project from the live project list, then files an issue with:
+Prompts for a pasted alert (or block of alerts), then files an issue into
+the fixed target project -- Problem reports (PR) -- with:
   - Type = Problem              (157-1)
   - Status = To do              (157-2)
   - Assignee = Claude_Code      (157-3)
@@ -20,7 +20,6 @@ Required env vars:
   YOUTRACK_BASE_URL - Base URL (default: https://youtrack.kevininscoe.com)
 """
 
-import html
 import json
 import os
 import sys
@@ -31,6 +30,12 @@ import urllib.request
 
 PAGE_SIZE = 100
 PROJECT_FIELDS = "id,shortName,name,archived"
+
+# The target project is fixed, not a runtime choice: every alert ticket goes
+# to Problem reports. Kevin's instruction, 2026-09-09 (AI-34) -- the prompt
+# this replaced listed all 34 projects and only ever had one right answer.
+PROJECT_SHORT_NAME = "PR"
+
 DESCRIPTION_PREFIX = "Resolve and prevent re-occurence of alert(s): "
 ASSIGNEE_LOGIN = "Claude_Code"
 TERMINATOR = "END"
@@ -90,16 +95,10 @@ def api_post(base_url, path, body, token):
         if exc.code == 404:
             die(
                 f"POST {url} -> 404: {body_text}\n"
-                "Claude_Code may not be on this project's team yet -- ask Kevin to add it."
+                f"Claude_Code may not be on the {PROJECT_SHORT_NAME} project's team "
+                "yet -- ask Kevin to add it."
             )
         die(f"POST {url} -> {exc.code}: {body_text}")
-
-
-def ask(prompt):
-    try:
-        return input(prompt)
-    except EOFError:
-        die("input closed unexpectedly")
 
 
 def read_alert_block():
@@ -136,32 +135,29 @@ def iter_projects(base_url, token):
         skip += PAGE_SIZE
 
 
-def choose_project(base_url, token):
-    projects = sorted(iter_projects(base_url, token), key=lambda p: p.get("shortName", ""))
-    if not projects:
-        die("no projects found on the live instance")
+def resolve_project(base_url, token):
+    """Resolve the fixed target project to its live internal id.
 
-    print(f"\n{len(projects)} project(s)\n")
-    width = max(len(p.get("shortName") or "") for p in projects)
-    for project in projects:
-        short = project.get("shortName") or "?"
-        name = html.unescape(project.get("name") or "")
-        archived = "  [archived]" if project.get("archived") else ""
-        print(f"  {short:<{width}}  {name}{archived}")
-
-    while True:
-        choice = ask("\nProject short name: ").strip()
-        match = next(
-            (p for p in projects if (p.get("shortName") or "").lower() == choice.lower()),
-            None,
+    The project is never asked for -- see PROJECT_SHORT_NAME. The live list
+    is still read rather than the id being hardcoded, because the create
+    call needs the internal id ("0-46") and that is an instance detail this
+    script has no business pinning.
+    """
+    match = next(
+        (
+            p for p in iter_projects(base_url, token)
+            if (p.get("shortName") or "").upper() == PROJECT_SHORT_NAME
+        ),
+        None,
+    )
+    if not match:
+        die(f"project {PROJECT_SHORT_NAME!r} not found on the live instance")
+    if match.get("archived"):
+        die(
+            f"project {PROJECT_SHORT_NAME!r} is archived -- ask Kevin which "
+            "project alert tickets should go to now"
         )
-        if not match:
-            print(f"  No project with short name {choice!r}. Try again.")
-            continue
-        if match.get("archived"):
-            print(f"  {match['shortName']} is archived -- pick an active project.")
-            continue
-        return match
+    return match
 
 
 def resolve_project_fields(base_url, token, project_short_name, prototype_ids):
@@ -254,7 +250,7 @@ def main():
     base_url = os.environ.get("YOUTRACK_BASE_URL", "https://youtrack.kevininscoe.com")
 
     alert_text = read_alert_block()
-    project = choose_project(base_url, token)
+    project = resolve_project(base_url, token)
 
     print(f"\n>>> Resolving fields on {project['shortName']}...")
     field_map = resolve_project_fields(
