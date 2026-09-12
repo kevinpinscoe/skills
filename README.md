@@ -110,6 +110,9 @@ prefix back out of the name would be ambiguous).
 ├── youtrack-insert-specific-jira-ticket-in-youtrack/   # symlink → vanco-skills
 ├── youtrack-read-updates-from-tasks-and-generate-stand-up/    # symlink → vanco-skills
 ├── youtrack-reconcile/                                 # symlink → vanco-skills
+├── youtrack-report-a-fldw-swap-issue-and-investigate/
+│   ├── SKILL.md
+│   └── run.sh
 ├── youtrack-report-a-problem/                          # symlink → vanco-skills
 ├── youtrack-sync-jira-ticket-status-with-youtrack/     # symlink → vanco-skills
 ├── daily-run-through-my-os-todo/      # symlink → vanco-skills
