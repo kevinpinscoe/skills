@@ -19,9 +19,12 @@ description: Capture a pasted Telegram swap alert for the FLDW, investigate it w
 issue — it accumulates one comment per swap event, indefinitely. This skill therefore:
 
 - **Never** changes `Status`, `Assignee`, `Priority`, or any other custom field on FLDW-47.
-- **Never** creates a worktree, a `CHECKPOINT.md`, or a Ghostty tab rename for this work —
-  those apply to discrete units of implementation work, not to appending a diagnostic comment
-  to a standing log.
+- **Never** creates a worktree or a `CHECKPOINT.md` for this work — those apply to discrete
+  units of implementation work, not to appending a diagnostic comment to a standing log. The
+  Ghostty tab **is** renamed for the duration of the investigation (see step 2 and step 7) —
+  that is a live-status marker for whoever glances at the tab bar while this skill is running,
+  not the ticket-key convention from `~/ai/directives/when-creating-a-youtrack-ticket.md` §9,
+  which does not apply here since FLDW-47 is never moved to `In Progress` or `Done`.
 - **Never** counts against Kevin's one-ticket-at-a-time policy
   (`~/ai/directives/when-creating-a-youtrack-ticket.md` §11) — commenting on an existing issue
   is not "starting work" on it in that sense, the same way filing an alert ticket doesn't touch
@@ -71,6 +74,17 @@ hostname
 If it does not read `kevin`, stop — this skill's diagnostics (sar, the FLDW's swap
 configuration, the containers under `/opt/containers`/`/home/containers`) are specific to this
 host and will not apply elsewhere.
+
+Then mark the tab as investigating:
+
+```bash
+set-ghostty-tab-name SWAP
+```
+
+This is a live-status label only — it does not touch FLDW-47's fields and is unrelated to the
+ticket-key tab convention in `~/ai/directives/when-creating-a-youtrack-ticket.md` §9. It stays
+`SWAP` for the rest of this run and is turned back to `SWAPc` in the final reporting step
+(step 7) once the comment is posted, whether or not anything actionable was found.
 
 ### 2. Capture the alert, verbatim
 
@@ -257,8 +271,9 @@ parzival exec --as ai youtrack-claude-code -- sh -c '
 '
 ```
 
-If this 404s or the issue is archived, stop and tell Kevin — do not silently redirect the log
-to a different issue.
+If this 404s or the issue is archived, run `set-ghostty-tab-name SWAPc` before stopping — the
+tab should not read `SWAP` for an investigation that isn't going to finish — then tell Kevin.
+Do not silently redirect the log to a different issue.
 
 ### 6. Compose and post one comment — alert plus investigation summary
 
@@ -315,9 +330,18 @@ parzival exec --as ai youtrack-claude-code -- sh -c '
 Building the JSON with `python3 -c` rather than hand-quoting keeps the alert's own punctuation,
 quotes, and line breaks from breaking the payload.
 
-### 7. Report back to Kevin
+### 7. Turn the tab back and report to Kevin
 
-Tell Kevin, in bare text:
+Once the comment in step 6 has posted successfully, mark the investigation as closed out:
+
+```bash
+set-ghostty-tab-name SWAPc
+```
+
+Do this even if the investigation found nothing actionable — `SWAPc` marks that this run's
+investigation is finished, not that a problem was confirmed.
+
+Then tell Kevin, in bare text:
 
 1. The tracker's full FQDN URL: `https://youtrack.kevininscoe.com/issue/FLDW-47`.
 2. Whether the swap pressure was actually reproduced/confirmed in the evidence, or only
@@ -337,7 +361,9 @@ Tell Kevin, in bare text:
   than glossing over it.
 - `Status`, `Assignee`, and every other custom field on FLDW-47 are unchanged from before this
   run.
-- No worktree, `CHECKPOINT.md`, or Ghostty tab rename was created for this work.
+- No worktree or `CHECKPOINT.md` was created for this work.
+- The Ghostty tab read `SWAP` for the duration of the investigation and was turned back to
+  `SWAPc` after the comment posted.
 - No service was restarted, no process was killed, no configuration was changed, and no swap
   was cleared.
 - Kevin has the full FQDN URL to FLDW-47, in bare text.
