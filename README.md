@@ -79,6 +79,9 @@ prefix back out of the name would be ambiguous).
 ├── knowledge-third-moc-level/
 │   ├── SKILL.md
 │   └── run.sh
+├── parzival-maintain-k-fed-config/
+│   ├── SKILL.md
+│   └── run.sh
 ├── project-review-all-checkpoints/
 │   ├── SKILL.md
 │   ├── RUNBOOK.md
