@@ -25,7 +25,7 @@ field in its `SKILL.md` frontmatter, never from the directory name (several cate
 themselves multi-hyphen — `raspberry-pi-5`, `task-management`, `command-line` — so parsing the
 prefix back out of the name would be ambiguous).
 
-```
+```text
 ~/.claude/skills/
 ├── app-create-new-external-webapp/
 │   ├── SKILL.md
@@ -81,6 +81,10 @@ prefix back out of the name would be ambiguous).
 │   └── run.sh
 ├── parzival-maintain-k-fed-config/
 │   ├── SKILL.md
+│   └── run.sh
+├── prescription-check-for-refills/
+│   ├── SKILL.md
+│   ├── check-for-refills.py     # reads the prescription inventory's Next due rows
 │   └── run.sh
 ├── project-review-all-checkpoints/
 │   ├── SKILL.md
