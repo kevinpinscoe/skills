@@ -98,13 +98,30 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
           is one of the *container's own* repositories — `~/local/parzival`, for instance, which
           does not exist on the Mac at all. Those are out of scope for this run: skip them, and
           never translate a `~/...` result into a Mac path.
-          **The two hosts keep separate ignore files.** They were reconciled on 2026-09-02 —
-          `/mac-home/Projects/vancopayments/`, `/mac-home/Projects/workspaces/DOSD/`,
-          `/mac-home/Projects/workspaces/SRE/`, `/mac-home/Projects/public/playbook/` and
-          `/mac-home/.codex/` were added to the container's file to match the Mac's — but nothing
-          keeps them in step, so they can drift again. If the container reports a repo under a
-          tree the Mac's `~/.config/check-git-repos-source/ignore.txt` excludes, that tree is out
-          of scope: skip it and say so in the final report rather than syncing it.
+          **The two hosts keep separate ignore files, and "drifted" is not the only failure
+          mode — the container's copy can be missing entirely.** Confirmed 2026-09-16: after a
+          container rebuild, `~/.config/check-git-repos-source/ignore.txt` did not exist on
+          `mac-container` at all, so `--ignore-prefix` filtered nothing and the scan reported
+          every repo under every tree the Mac's own ignore file excludes — including all of
+          `~/Projects/acst/` and `~/Projects/vancopayments/` — as if they were in scope. **Before
+          trusting the container's output, verify the file is actually present**
+          (`ssh -p 2222 kevini@localhost 'cat /home/kevini/.config/check-git-repos-source/ignore.txt'`)
+          — do not infer presence from the run succeeding, since a missing ignore file does not
+          make the command fail, it just silently stops filtering. If it is missing, copy it from
+          the Mac before proceeding (`cp -p /mac-home/.config/check-git-repos-source/ignore.txt
+          /home/kevini/.config/check-git-repos-source/ignore.txt`, creating the destination
+          directory first if needed), then re-run the scan rather than manually cross-referencing
+          the raw output against the Mac's file.
+          As of 2026-09-16 the canonical ignore list (present on both hosts) is: `~/Projects/acst`,
+          `~/Projects/vancopayments`, `~/Projects/3rd-party-repos`, `~/Projects/workspaces/DOSD`,
+          `~/Projects/workspaces/SRE`, `~/Projects/public/playbook`, `~/Library`, `~/.claude`,
+          `~/.codex`, and `~/.tmux/plugins`. **`~/Projects/acst/` is out of scope for this skill by
+          design, not merely by omission** — Kevin's daily repo sync never touches ACST-owned
+          repos through this skill; work on them is handled separately. Nothing keeps either
+          host's file in step with the other, so both existence and content can drift again —
+          check presence every run, and treat any repo path reported under one of these trees as
+          a scan bug to fix (missing/stale ignore file), not as a repo to process: skip it and say
+          so in the final report rather than syncing it.
        2. **`~/bin/check-git-repos-shell`** — a pure-shell stand-in using stock git, reading the
           same `~/.config/check-git-repos-source/ignore.txt` and emitting the same
           `BEHIND`/`AHEAD`/`STAGED`/`UNSTAGED`/`UNTRACKED` statuses. Run
@@ -318,6 +335,26 @@ description: Syncs daily working repos, resolves user-approved divergence, then 
   each install. Never try to reinstall it there. Prefer running the real tool on `mac-container`
   over SSH (it is outside Homebrew and reaches the Mac via `/mac-home`), or fall back to
   `~/bin/check-git-repos-shell`. The two hosts keep separate ignore files (reconciled 2026-09-02,
-  but nothing keeps them in step), and the container's scan also covers the container's *own*
-  repos, whose paths come back as `~/...` rather than `/mac-home/...` — see step 3.
+  but nothing keeps them in step — and as of 2026-09-16 the container's copy can go missing
+  entirely after a rebuild, not just drift, which silently disables all filtering rather than
+  erroring), and the container's scan also covers the container's *own* repos, whose paths come
+  back as `~/...` rather than `/mac-home/...` — see step 3.
+- **Scope is limited to non-acst top-level directories.** `~/Projects/acst/` (and the equally
+  out-of-scope `~/Projects/vancopayments/`) are excluded from this skill's repo processing,
+  deliberately — this skill's daily sync never pulls, merges, or pushes ACST-owned repos. If
+  either tree ever shows up in a run's output, that means the ignore file is missing, stale, or
+  (see next note) simply not matching under this run's mount setup — not that those repos are
+  newly in scope. Treat any `acst/` or `vancopayments/` path in the output as **always** out of
+  scope and filter it out yourself even if the tool's own `--ignore-prefix` filtering did not.
+- **`--ignore-prefix` can silently filter nothing when run via `CHECK_GIT_REPOS=/mac-home`.**
+  Confirmed 2026-09-16: even with a byte-identical, present ignore file on both hosts, the
+  container-via-SSH scan still reported every `acst/`/`vancopayments/` repo. Cause: the ignore
+  file's entries are written as `~/Projects/acst`-style paths, which expand against the
+  container's own `$HOME` (`/home/kevini`) — but `CHECK_GIT_REPOS=/mac-home` walks
+  `/mac-home/Projects/acst` instead, so the expanded ignore entry never matches the scanned path.
+  The flag works when running natively against the real `$HOME` (e.g. `check-git-repos-shell` on
+  the Mac itself, or the container scanning its own repos) but not in this cross-mount shape.
+  **Do not trust `--ignore-prefix` to have filtered anything in the `CHECK_GIT_REPOS=/mac-home`
+  case — manually strip any `Projects/acst/`, `Projects/vancopayments/`, or other ignore-listed
+  prefix from the raw output before processing it**, regardless of whether the flag was passed.
 - This skill intentionally combines the behavior of daily repo sync and platform TODO processing; if only TODO processing is needed, use `run-through-my-os-todos`.
