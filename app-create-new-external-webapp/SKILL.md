@@ -68,6 +68,7 @@ Follow the global directives: **ask for each required input directly and one at 
    - `scripts/publish.sh` — the manual-fallback publish script (adapted so `SITE=$FQDN`).
    - `AGENTS.md`, `PLAN.md`, `mise.toml`, and an FQDN-specific `RUNBOOK.md` modelled on `datagiggle.com/RUNBOOK.md` (swap in the FQDN, image name, chosen host, and production port).
    Replace every `datagiggle.com` / `datagiggle` / `web1` token with the new FQDN, its OCI image basename, and the chosen host as appropriate.
+   The resulting `RUNBOOK.md` must still conform to `~/ai/directives/runbook-template.md`'s structure per `~/ai/directives/when-creating-a-runbook.md` — `datagiggle.com/RUNBOOK.md` is a worked example to copy the shape of, not a substitute for the directive, and may itself have drifted from the current template.
 
 10. **Create the sample brochure page** — In `web/index.html`, build a single-page brochure-style site with **sample placeholder data** in the same spirit as `datagiggle.com/web/index.html` (hero, a few feature/section blocks, footer), self-contained under `web/assets/`. Make clear in copy/comments that the content is placeholder sample data for the new `$FQDN`. Preview locally per the QA-checks convention (`python3 -m http.server 8000 --directory web`) and report the local URL — do not screenshot.
 

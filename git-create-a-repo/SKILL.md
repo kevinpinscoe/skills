@@ -25,6 +25,7 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
 - `~/ai/directives/gitea.md` readable
 - `~/ai/directives/gitignore.md` readable
 - `~/ai/directives/when-creating-a-readme.md` readable
+- `~/ai/directives/readme-template.md` readable
 - `~/ai/directives/when-creating-a-runbook.md` readable
 - `~/ai/directives/runbook-template.md` readable
 - `~/ai/directives/when-generating-code-or-updating-code-in-an-outside-repo.md` readable
@@ -40,6 +41,7 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
    - `~/ai/directives/when-creating-or-cloning-a-git-repo.md`
    - `~/ai/directives/gitignore.md`
    - `~/ai/directives/when-creating-a-readme.md`
+   - `~/ai/directives/readme-template.md`
    - `~/ai/directives/when-creating-a-runbook.md`
    - `~/ai/directives/runbook-template.md`
    - `~/ai/directives/when-generating-code-or-updating-code-in-an-outside-repo.md` (for GitHub repos)
@@ -131,7 +133,7 @@ for k in ('name','private','default_branch','description'):
 
 13. **Propose directory scaffold** — Based on the repo's stated purpose (ask the user if not yet known), propose a sensible top-level directory structure. Present the proposal to the user and ask them to confirm or adjust it. Create the agreed-upon directories (empty directories get a `.gitkeep` placeholder).
 
-14. **Create README.md** — Follow `~/ai/directives/when-creating-a-readme.md` in full. The directive requires conducting an interview with the user before writing. Walk through all interview groups in order (Identity, Getting Started, Understanding the Repo, Changing the Repo, Operations, Governance). Do not fabricate content for sections the user skips. The Repository Layout section must reflect the actual directory structure created in Step 13. Do not write the README until the interview is complete and the user has confirmed the proposed content.
+14. **Create README.md** — Follow `~/ai/directives/when-creating-a-readme.md` in full. Use `~/ai/directives/readme-template.md` as the base structure. The directive requires conducting an interview with the user before writing. Walk through all interview groups in order (Identity, Getting Started, Understanding the Repo, Changing the Repo, Operations, Governance). Do not fabricate content for sections the user skips. The Repository Layout section must reflect the actual directory structure created in Step 13. Do not write the README until the interview is complete and the user has confirmed the proposed content.
 
 15. **Create RUNBOOK.md** — Follow `~/ai/directives/when-creating-a-runbook.md` in full. Use `~/ai/directives/runbook-template.md` as the base structure. Interview the user for operational context relevant to this repo (how to build/install, how to troubleshoot, credentials/secrets, related services). Place the completed `RUNBOOK.md` at the repo root. Identify any operational gaps and prompt the user for additional information.
 
@@ -222,7 +224,7 @@ for k in ('name','private','default_branch','description'):
 - Parent directory README (`~/Projects/public/README.md` or `~/Projects/private/README.md`) has an entry for the new repo
 - `README.md`, `RUNBOOK.md`, `.gitignore`, and `mise.toml` are present, committed, and pushed on the `main` branch
 - `.gitignore` covers all patterns required by `~/ai/directives/gitignore.md`
-- `README.md` was produced via the full interview process from `~/ai/directives/when-creating-a-readme.md`
+- `README.md` was produced via the full interview process from `~/ai/directives/when-creating-a-readme.md`, using `~/ai/directives/readme-template.md` as the base structure
 - `RUNBOOK.md` follows the template from `~/ai/directives/runbook-template.md` and is at the repo root
 - Directory scaffold (if any) is committed with `.gitkeep` placeholders
 - `git -C <clone-dir> log` shows the initial commit

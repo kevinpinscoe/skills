@@ -99,6 +99,10 @@ signals, then classify.
    # write <EVENT_TS>/README.md — mirror the structure of the newest existing entry:
    #   What this is · Timeline · Evidence (per class) · Conclusion · Follow-ups · Raw evidence
    ```
+   This is a specialized incident-report README, not a repo front door — per
+   `~/ai/directives/when-creating-a-readme.md`'s "Not all repos are code repos" guidance, mirror
+   the established incident structure above rather than the generic sections in
+   `~/ai/directives/readme-template.md`.
    Then **add a row** to `unplanned-restarts/README.md` (the incident index table).
 
 9. **Commit and push** the config repo (Kevin prefers commit + immediate push):
