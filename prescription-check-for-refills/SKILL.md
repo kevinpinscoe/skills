@@ -118,7 +118,12 @@ never marks a refill as collected. The spreadsheet is Kevin's record; correcting
   separate clock from the pharmacy refill and are deliberately not read here; the sensor can be
   due for a change while the prescription is not due for collection.
 - A sheet whose final row carries the label but no date lands in `POSSIBLY ABANDONED TRACKING`
-  with `(no date)`, rather than being silently dropped.
+  with `(no date)`, rather than being silently dropped. The domain check says so explicitly too,
+  which is what makes that case visible rather than merely quiet.
+- **The next-due date is found by scanning the row, not by its column position.** Sheets do not
+  agree on where it sits — a table with extra columns pushes it right of its label — so the first
+  parseable date to the right of the label wins. Reading a fixed column was the 2026-09-17 defect
+  that filed a prescription as abandoned when it was due in a fortnight.
 - Dates embedded in longer cell text (`2024-04-15 (bottle 1)`) are read correctly; values outside
   1990–2100 are treated as typos and ignored, because the spreadsheet contains a few.
 - **The two halves of step 1 live in different places on purpose.** Structural rules are generic

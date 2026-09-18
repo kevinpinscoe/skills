@@ -105,7 +105,14 @@ def read_sheet(table: ET.Element) -> dict:
         if NEXT_DUE_LABEL.match(first):
             # Last such row wins, in case a sheet carries an older one above it.
             label = first
-            next_due = parse_date(cells[1]) if len(cells) > 1 else None
+            # The first date anywhere to the right of the label, not the cell next to it.
+            # Reading cells[1] assumed the date sits immediately beside its label, which
+            # stopped being true on 2026-09-17 when a sheet's table gained two columns and
+            # pushed its next-due date out to column 3. The skill then found no date and
+            # filed a prescription under "possibly abandoned tracking" that was actually due
+            # in a fortnight -- silent, and wrong in the dangerous direction. Scanning the
+            # row costs nothing and survives the next column added.
+            next_due = next((d for d in (parse_date(c) for c in cells[1:]) if d), None)
             continue
         fill_rows.append(cells)
 
