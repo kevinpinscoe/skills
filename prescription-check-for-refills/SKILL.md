@@ -66,8 +66,8 @@ never marks a refill as collected. The spreadsheet is Kevin's record; correcting
    usually has Kevin's own uncommitted edits sitting on top of it.
 
    The **domain** checks — a sheet with no next-due row, a next-due row with no readable date,
-   a prescription number one digit off its neighbours, inconsistent next-due labels — run
-   automatically as part of step 2 and print above the report under `SPREADSHEET CHECKS`. They
+   a next-due row sharing its line with other data, a prescription number one digit off its
+   neighbours, inconsistent next-due labels — run automatically as part of step 2 and print above the report under `SPREADSHEET CHECKS`. They
    live here rather than in `sheetlint.py` because they are knowledge about this workbook, and
    that repo is generic public tooling that holds no spreadsheets.
 
@@ -120,6 +120,10 @@ never marks a refill as collected. The spreadsheet is Kevin's record; correcting
 - A sheet whose final row carries the label but no date lands in `POSSIBLY ABANDONED TRACKING`
   with `(no date)`, rather than being silently dropped. The domain check says so explicitly too,
   which is what makes that case visible rather than merely quiet.
+- **The next-due row is expected to hold the label and its date and nothing else**, and a
+  domain check says so when it does not. That is what makes scanning the row safe: with a second
+  block pasted onto the same line, the first date to the right of the label could belong to
+  something else entirely. The check is the guard on the assumption the scan relies on.
 - **The next-due date is found by scanning the row, not by its column position.** Sheets do not
   agree on where it sits — a table with extra columns pushes it right of its label — so the first
   parseable date to the right of the label wins. Reading a fixed column was the 2026-09-17 defect

@@ -96,6 +96,7 @@ def read_sheet(table: ET.Element) -> dict:
 
     next_due = None
     label = None
+    crowded_row: list[str] = []
     fill_rows = []
 
     for cells in rows:
@@ -113,6 +114,13 @@ def read_sheet(table: ET.Element) -> dict:
             # in a fortnight -- silent, and wrong in the dangerous direction. Scanning the
             # row costs nothing and survives the next column added.
             next_due = next((d for d in (parse_date(c) for c in cells[1:]) if d), None)
+            # Everything on that row other than the label and the date it carries. The row
+            # is supposed to hold only those two, and when it holds more it usually means a
+            # second block has been pasted onto the same line — which is how the scan above
+            # could pick up a date that belongs to something else entirely.
+            share = [c.strip() for c in cells[1:]
+                     if c.strip() and parse_date(c) != next_due]
+            crowded_row = share
             continue
         fill_rows.append(cells)
 
@@ -125,6 +133,7 @@ def read_sheet(table: ET.Element) -> dict:
         "last_fill": max(fills) if fills else None,
         "fill_count": len(fills),
         "rx_numbers": rx_numbers(fill_rows),
+        "crowded_row": crowded_row,
     }
 
 
@@ -212,6 +221,16 @@ def domain_findings(entries: list[dict]) -> list[str]:
                        "until one is added.")
         elif entry["next_due"] is None:
             out.append(f"{name}: the {entry['label']!r} row carries no readable date.")
+
+        if entry["crowded_row"]:
+            shown = ", ".join(repr(v) for v in entry["crowded_row"][:5])
+            more = "" if len(entry["crowded_row"]) <= 5 else \
+                f" and {len(entry['crowded_row']) - 5} more"
+            out.append(f"{name}: the {entry['label']!r} row is not on a line of its own — it "
+                       f"also holds {shown}{more}. That row should carry the label and its "
+                       "date and nothing else; anything else on it is usually a second "
+                       "block pasted onto the same line, and the date read from it may "
+                       "belong to something else.")
 
         for suspect, intended in rx_outliers(entry["rx_numbers"]):
             out.append(f"{name}: prescription number {suspect} appears once and differs from "
