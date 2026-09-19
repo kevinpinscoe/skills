@@ -48,6 +48,8 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
 
 3. **Determine forge** — Ask the user: "Will this repo be created on **git.kevininscoe.com** (Gitea) or **github.com/kevinpinscoe** (GitHub — public)?" Do not proceed without this answer.
    - **If Gitea:** Always confirm the repo's visibility with the user before proceeding: "Should this Gitea repo be **public** or **private**?" **The default is public** — unless the user explicitly says private, treat the repo as public. Capture the chosen visibility; it is used in Step 8 (confirmation) and Step 9 (creation).
+
+     **"Public" on Gitea does not mean published to the world.** `git.kevininscoe.com` is reachable only on the private tailnet and is not exposed to the public internet by routing, NAT, or any other means. A **public** Gitea repo is one that can be read **without authenticating** — by a person, a tool, or an AI already inside k-fed. A **private** one requires a Gitea login even from localhost. Never describe a public Gitea repo as published, world-readable, or comparable to a public GitHub repo, and never write that framing into a README, a commit message, or a report to Kevin. The axis is authentication, not internet exposure. See the terminology table in `~/ai/directives/when-creating-or-cloning-a-git-repo.md`.
    - **If GitHub:** Repos are always public (no visibility question needed).
 
 4. **Get repo name** — Ask the user for the name of the new repo. Normalize it to lowercase-with-hyphens (e.g., "Repo Where Skills Live" → `repo-where-skills-live`). Present the normalized name to the user and ask them to confirm it before proceeding.
@@ -56,15 +58,15 @@ description: Creates a new Git repository on either Gitea (visibility confirmed 
 
 6. **Select a license (GitHub repos only)** — For GitHub repos, conduct the license interview from `~/ai/directives/when-creating-or-cloning-a-git-repo.md` step 4. Confirm the license with the user before proceeding. Have the canonical full license text ready (copyright holder: **Kevin P. Inscoe**) to write as `LICENSE` (no `.md` extension) in the repo root after cloning. Skip this step for Gitea repos.
 
-7. **Select a category (GitHub repos only)** — For GitHub repos, determine which category the repo falls under by reading the **live** category list from `~/Projects/public/kevinpinscoe/profile.yml` at runtime. Do **not** rely on any hardcoded list — the categories must be read fresh every invocation, because they change over time. Use the bundled chooser script that ships next to this `SKILL.md` at `~/skills/skills/git/create-a-repo/category-chooser.py` (it reads `profile.yml` fresh on each run):
+7. **Select a category (GitHub repos only)** — For GitHub repos, determine which category the repo falls under by reading the **live** category list from `~/Projects/public/kevinpinscoe/profile.yml` at runtime. Do **not** rely on any hardcoded list — the categories must be read fresh every invocation, because they change over time. Use the bundled chooser script that ships next to this `SKILL.md` at `~/.claude/skills/git-create-a-repo/category-chooser.py` (it reads `profile.yml` fresh on each run):
    - List the current categories:
      ```bash
-     ~/skills/skills/git/create-a-repo/category-chooser.py --list
+     ~/.claude/skills/git-create-a-repo/category-chooser.py --list
      ```
      This prints one `index<TAB>name<TAB>topic` line per category. Present the numbered category names to the user and ask them to pick exactly one. Do not pick on the user's behalf — ask and wait for their selection.
    - Resolve the user's selection to its `area-*` topic:
      ```bash
-     ~/skills/skills/git/create-a-repo/category-chooser.py --resolve <selected-number>
+     ~/.claude/skills/git-create-a-repo/category-chooser.py --resolve <selected-number>
      ```
      Capture the printed `area-*` topic — this is the GitHub topic that will be applied to the new repo in Step 9. Skip this step entirely for Gitea repos.
 
@@ -233,6 +235,7 @@ for k in ('name','private','default_branch','description'):
 ## Notes
 
 - Gitea repo visibility is confirmed with the user at every invocation (Step 3). **The default is public** — the repo is created public unless the user explicitly asks for private, in which case `tea repos create` gets the `--private` flag. This is independent of the local clone path, which always lands under `~/Projects/private/` for Gitea repos.
+- **Gitea "public" means unauthenticated, not internet-facing.** The forge is tailnet-only. A public Gitea repo is readable without logging in; it is not published to the general public the way a public GitHub repo is. Keep that distinction out of README text and status reports alike — see Step 3.
 - The directive path is `~/ai/directives/` (plural) — a common typo is `~/ai/directive/` (singular) which does not exist.
 - Gitea SSH uses non-standard port 2223 — always use the full `ssh://git@git.kevininscoe.com:2223/kinscoe/` prefix.
 - SSH is the only protocol used for git on this system — never use HTTPS clone URLs.
