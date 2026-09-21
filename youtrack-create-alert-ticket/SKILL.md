@@ -6,7 +6,7 @@ description: Capture a pasted alert (or block of alerts) as a YouTrack issue in 
 
 # Create Alert Ticket
 
-> Turn a pasted alert or block of alerts into a correctly-populated YouTrack issue in `Problem reports` (`PR`), then report its URL. Filing only — this skill never troubleshoots or works the alert itself.
+> Turn a pasted alert or block of alerts into a correctly-populated YouTrack issue in `Problem reports` (`PR`), then report its URL. Filing only — this skill never troubleshoots or works the alert itself; it puts the required investigation and remediation instructions in the ticket for the assigned agent.
 
 **The project is fixed and is never asked for.** Every alert ticket goes to `Problem reports` — short name `PR`, internal ID `0-46`. The skill used to list all 34 YouTrack projects and prompt for a short name; that prompt only ever had one right answer, so AI-34 removed it (2026-09-09).
 
@@ -41,18 +41,49 @@ description: Capture a pasted alert (or block of alerts) as a YouTrack issue in 
       - `Assignee` = `Claude_Code`
       - `Date time entered` = now, epoch milliseconds
       - `summary` derived from the first non-blank line of the pasted alert text (truncated to 120 chars)
-      - `description` = `Resolve and prevent re-occurence of alert(s): ` followed by a blank line and the full pasted alert text, unmodified
+      - `description` begins with `Resolve and prevent re-occurence of alert(s): `, followed by a blank line and the full pasted alert text, unmodified. After the pasted text, add the **Required ticket work** instructions below.
    6. Print `CREATED: <issue-key> in <project>` and the full issue URL.
 3. **Report the full URL back to Kevin as bare text** (`https://youtrack.kevininscoe.com/issue/<KEY>`), never as a Markdown link and never the bare key alone, per the directive's URL-reporting rule.
 
+## Required ticket work
+
+Every created problem ticket must direct its assigned agent to do the following work:
+
+1. Consolidate related alerts that represent the same underlying condition into a single event. Do not treat repeated alerts for the same underlying condition as independent incidents unless the evidence shows they are separate events.
+2. For each event, determine the root cause or most likely cause from the available evidence, verify the current condition rather than assuming the alert remains active, and distinguish confirmed facts from hypotheses.
+3. If the condition is still occurring, identify and recommend an appropriate corrective action.
+4. Determine whether the condition could reasonably recur once the immediate issue is resolved. If it could, recommend preventive or hardening measures that address the underlying cause and reduce the likelihood of recurrence.
+5. Before proposing corrective or preventive work, check whether work is already tracking, investigating, or remediating the condition. Review relevant issues in `https://youtrack.kevininscoe.com`, current `CHECKPOINT.md` files in likely affected or remediation repositories, and any branches, pull requests, commits, follow-up tickets, or dependencies those sources reference. Use the findings to determine whether work is already in progress.
+6. Do not create duplicate remediation recommendations when appropriate work is underway. Reference that work and identify only what remains unresolved.
+7. Capture the investigation results, current status, remediation, prevention recommendations, and existing-work review in the associated problem ticket.
+
+For each event, the ticket must clearly document:
+
+- the alerts consolidated into the event;
+- what happened;
+- the identified or suspected cause and its supporting evidence;
+- whether the condition is still occurring;
+- the recommended immediate fix, if needed;
+- recommended preventive or hardening measures, if recurrence is possible;
+- actions already taken and their results; and
+- remaining follow-up work, dependencies, or unresolved questions.
+
+The ticket must also document:
+
+- related YouTrack issues found;
+- relevant repositories and `CHECKPOINT.md` findings;
+- the current status of related work;
+- whether that work appears to address the alert condition fully, partially, or not at all; and
+- any gaps, stalled work, missing follow-up, or discrepancies between the alert condition and tracked remediation.
+
 ## Success Criteria
 
-- A new issue exists in `Problem reports` (`PR`) with `Type = Problem`, `Status = To do`, `Assignee = Claude_Code`, `Date time entered` populated, and a description starting with `Resolve and prevent re-occurence of alert(s): ` followed by the pasted text.
+- A new issue exists in `Problem reports` (`PR`) with `Type = Problem`, `Status = To do`, `Assignee = Claude_Code`, `Date time entered` populated, the pasted alert text, and the required ticket-work instructions to investigate consolidated events, verify their current state, review existing related work, recommend only needed remediation and prevention, and document the results.
 - Script output ends with `CREATED: <issue-key> in <project>` and the issue's full URL, and exits `0`.
 
 ## Notes
 
-- This skill only files the ticket — per `~/ai/directives/when-creating-a-youtrack-ticket.md` §11, filing an issue never touches the one-ticket-at-a-time lock, so `Status` is left at `To do` rather than moved to `In Progress`, and there is no worktree, `CHECKPOINT.md`, or terminal-tab rename involved.
+- This skill only files the ticket — per `~/ai/directives/when-creating-a-youtrack-ticket.md` §11, filing an issue never touches the one-ticket-at-a-time lock, so `Status` is left at `To do` rather than moved to `In Progress`, and it creates no worktree or terminal-tab rename. The assigned agent's required ticket work may review existing `CHECKPOINT.md` files.
 - A `404` on create almost always means `Claude_Code` has not been added to the `PR` project's team yet — that is a per-project grant Kevin makes, not something this skill can fix.
 - If the paste needs to be abandoned mid-entry, `Ctrl-D` also ends input. Nothing is prompted for after the paste any more, so this is no longer the trap it was — but an empty block still aborts the run, which is the intended way out.
 - **Related skill** — `../youtrack-report-a-problem` is the closer analog for a live service/infrastructure symptom Kevin is experiencing directly and wants corroborated before filing; this skill is for capturing an already-fired alert (from monitoring, email, etc.) with no corroboration step. Both file into `PR`; the difference is the investigation step, not the destination.
