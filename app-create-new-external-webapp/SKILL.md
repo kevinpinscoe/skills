@@ -79,24 +79,28 @@ Follow the global directives: **ask for each required input directly and one at 
 
     **Woodpecker `${VAR}` gotcha (Woodpecker ≥3.7.0 — REQUIRED):** in `commands:`, Woodpecker substitutes **braced** `${VAR}` itself and replaces unknown names with an empty string *before the shell runs* — so `ssh … "${WEB1_SSH_USER}@${WEB1_SSH_HOST}" …` collapses to `ssh … "@" …` and the deploy fails with SSH exit 255. Use **unbraced** shell vars instead: `ssh … "$WEB1_SSH_USER@$WEB1_SSH_HOST" …` (unbraced `$VAR` is passed through to the shell untouched, exactly like `$WEB1_DEPLOY_KEY` in the key-write step). NOTE: the `datagiggle.com` template still uses the broken braced form, so **do not copy it verbatim** — unbrace the ssh destination when scaffolding.
 
-    Required Woodpecker repo secrets (set by the user in the UI): `gitea_user`, `gitea_token` (PAT with `read:packages`+`write:packages`), and the host deploy key secret (`web1_deploy_key` / equivalent for the chosen host).
+    Required Woodpecker repo secrets: `gitea_user`, `gitea_token` (PAT with `read:packages`+`write:packages`) — set by the agent through the Parzival broker in step 12b — and the host deploy key secret (`web1_deploy_key` / equivalent for the chosen host), set by the user in the UI.
 
-12. **Wire Woodpecker to the new repo** — The user activates the `kinscoe/$FQDN` repo and adds the secrets above in the Woodpecker UI at `https://woodpecker-ci.kevininscoe.com` (Settings → Secrets). Provide the exact secret names/scopes and wait for the user to confirm activation before triggering a build.
+12. **Wire Woodpecker to the new repo** — The user activates the `kinscoe/$FQDN` repo in the Woodpecker UI at `https://woodpecker-ci.kevininscoe.com`, and adds the host deploy key secret there (Settings → Secrets). Once they confirm activation, the agent sets `gitea_user`/`gitea_token` itself through the broker, per (b) below. Wait for the user to confirm activation before running (b) or triggering a build.
 
     **Tell the human these two things explicitly:**
 
-    a. **Scope every secret to `Event: tag`.** The pipeline triggers on `when: event: tag`, so each secret (`gitea_user`, `gitea_token`, `web1_deploy_key`) must have the **`tag`** event enabled in its Events field. A secret restricted to `push` only is invisible to a tag build and the pipeline will fail with a missing-secret error. (Leaving Events empty = "all events" also works, but explicitly selecting just `tag` is cleanest. Do **not** enable `pull_request`.)
+    a. **Scope every secret to `Event: tag`.** The pipeline triggers on `when: event: tag`, so each secret must have the **`tag`** event enabled in its Events field. `gitea_user`/`gitea_token` get this automatically from the broker operation in (b); `web1_deploy_key`, added by hand, needs it set explicitly. A secret restricted to `push` only is invisible to a tag build and the pipeline will fail with a missing-secret error. (Leaving Events empty = "all events" also works, but explicitly selecting just `tag` is cleanest. Do **not** enable `pull_request`.)
 
-    b. **Reuse the shared OpenBao credentials — do not mint a per-repo token.** The values already live in OpenBao; **Kevin** pulls them and pastes them into the Woodpecker UI (Woodpecker does not read OpenBao itself). Because a human is reading raw values to paste elsewhere, this is `bao-breakglass` — typed by Kevin at his own terminal, never run by an agent or wrapped in a script. `~/.environment/.vault-token` no longer exists; PARZIVAL-2 revoked and removed it.
+    b. **Reuse the shared OpenBao credentials — do not mint a per-repo token.** `gitea_user` and `gitea_token` are set **by the agent**, through the Parzival broker operation `woodpecker.repo-secret-set` (PARZIVAL-79). The broker reads `app/gitea` and calls the Woodpecker API itself, so the values never reach a terminal, a clipboard, or this conversation. The operation returns only `{"name":...,"action":"created"|"updated"}`, and pins each secret to the `tag` event. It needs the repo **activated** in Woodpecker first — ask Kevin to activate `kinscoe/$FQDN`, and wait for his confirmation before running it:
     ```bash
-    # → Woodpecker secret  gitea_user   (this is "kinscoe")
-    bao-breakglass kv get -field=user  -mount=app gitea
-    # → Woodpecker secret  gitea_token
-    bao-breakglass kv get -field=token -mount=app gitea
+    # --input flags go BEFORE the operation name
+    parzival service --input repo=kinscoe/$FQDN --input name=gitea_user  woodpecker.repo-secret-set
+    parzival service --input repo=kinscoe/$FQDN --input name=gitea_token woodpecker.repo-secret-set
+    ```
+    Never fetch these two values with `bao-breakglass kv get` to paste them — since PARZIVAL-76 it withholds that output anyway. If the call returns `consumer_failed`, the repo is usually not activated; see the `woodpecker.repo-secret-set` troubleshooting table in `~/Projects/private/parzival-k-fed-config/RUNBOOK.md`.
+
+    `web1_deploy_key` is still added by Kevin in the Woodpecker UI (Settings → Secrets, event `tag`) from:
+    ```bash
     # → Woodpecker secret  web1_deploy_key
     bao kv get -field=private_key -mount=linode-web1 deploy-key
     ```
-    **Scope caveat:** `build-and-push` runs `buildah push` to the Gitea registry, which requires the `gitea_token` to carry **`read:packages` + `write:packages`**. If the push 401/403s, that token lacks packages scope — fix by adding those scopes to the `app/gitea` token in Gitea (Settings → Applications), **not** by minting a new per-repo token. (There is no longer an on-disk token to reach for — `~/.config/gitea/api` was shredded on 2026-07-12 and OpenBao `app/gitea` is the only source. Take the value from `bao kv get` as shown above.)
+    **Scope caveat:** `build-and-push` runs `buildah push` to the Gitea registry, which requires the `gitea_token` to carry **`read:packages` + `write:packages`**. If the push 401/403s, that token lacks packages scope — fix by adding those scopes to the `app/gitea` token in Gitea (Settings → Applications), **not** by minting a new per-repo token, then re-run the `gitea_token` call above to push it to Woodpecker again. (There is no longer an on-disk token to reach for — `~/.config/gitea/api` was shredded on 2026-07-12 and OpenBao `app/gitea` is the only source.)
 
     c. **Enable repo trust for the privileged buildah step (REQUIRED — easy to miss).** The `build-and-push` step runs `quay.io/buildah/stable` with `privileged: true`, which Woodpecker only permits on a **trusted** repo. A brand-new repo is untrusted, so the pipeline errors at the linter stage with `Insufficient trust level to use 'privileged' mode` **before any step runs** (`woodpecker-cli pipeline ps` shows no steps). Enable trust to match datagiggle — either in the UI (repo → Settings → **Project** → **Trusted** → enable Network/Volumes/Security) or via the admin API:
     ```bash
