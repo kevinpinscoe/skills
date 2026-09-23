@@ -15,8 +15,11 @@ description: Capture a pasted Telegram swap alert for the FLDW, investigate it w
 
 ## Scope — read this before anything else
 
-**FLDW-47 is a permanent, never-closed tracker.** It is not worked and closed like an ordinary
-issue — it accumulates one comment per swap event, indefinitely. This skill therefore:
+**FLDW-47 is a long-running tracker, not an ordinary issue.** It accumulates one comment per swap
+event, and it is also the vehicle for Kevin's continual adjustments to improve swap conditions on
+the FLDW. Its title ("Evaluate sda (/home) I/O contention as a source of memory PSI full-stalls")
+and its `In Progress` status are expected and are not a mismatch to flag. Kevin intends to close it
+out at some point in 2026; that closure is his decision, never this skill's. This skill therefore:
 
 - **Never** changes `Status`, `Assignee`, `Priority`, or any other custom field on FLDW-47.
 - **Never** creates a worktree or a `CHECKPOINT.md` for this work — those apply to discrete
@@ -24,7 +27,7 @@ issue — it accumulates one comment per swap event, indefinitely. This skill th
   Ghostty tab **is** renamed for the duration of the investigation (see step 2 and step 7) —
   that is a live-status marker for whoever glances at the tab bar while this skill is running,
   not the ticket-key convention from `~/ai/directives/when-creating-a-youtrack-ticket.md` §9,
-  which does not apply here since FLDW-47 is never moved to `In Progress` or `Done`.
+  which does not apply here since this skill never moves FLDW-47 to `In Progress` or `Done`.
 - **Never** counts against Kevin's one-ticket-at-a-time policy
   (`~/ai/directives/when-creating-a-youtrack-ticket.md` §11) — commenting on an existing issue
   is not "starting work" on it in that sense, the same way filing an alert ticket doesn't touch
@@ -34,7 +37,8 @@ issue — it accumulates one comment per swap event, indefinitely. This skill th
   `../youtrack-report-a-problem/`.
 
 The target issue is fixed and is never asked for — every swap event logged by this skill goes
-to **FLDW-47**, and only FLDW-47.
+to **FLDW-47**, and only FLDW-47, for as long as it stays open. Once Kevin closes it, this skill
+needs a new target issue, and that is his choice (see step 5).
 
 ## Prerequisites
 
@@ -271,9 +275,12 @@ parzival exec --as ai youtrack-claude-code -- sh -c '
 '
 ```
 
-If this 404s or the issue is archived, run `set-ghostty-tab-name SWAPc` before stopping — the
-tab should not read `SWAP` for an investigation that isn't going to finish — then tell Kevin.
-Do not silently redirect the log to a different issue.
+If this 404s, the issue is archived, or it has been closed out (`resolved` is set, or `Status`
+is `Done`/`Wont do`), run `set-ghostty-tab-name SWAPc` before stopping — the tab should not read
+`SWAP` for an investigation that isn't going to finish — then tell Kevin. A closed FLDW-47 means
+the tracker has run its course: ask Kevin which issue should receive swap events from now on, and
+offer to update this skill to point at it. Do not reopen FLDW-47, and do not silently redirect
+the log to a different issue.
 
 ### 6. Compose and post one comment — alert plus investigation summary
 
@@ -375,9 +382,10 @@ Then tell Kevin, in bare text:
   does the opposite — swap events on the FLDW are logged as an accumulating history on one
   issue, so Kevin can see the pattern over time (frequency, whether the same container recurs,
   whether a diagnostic gap keeps recurring) rather than having each event start a cold trail.
-- **This skill never closes, reassigns, or reprioritizes FLDW-47.** If Kevin ever wants those
-  fields set or changed, that is a separate, explicit request — not something this skill infers
-  from an investigation result.
+- **This skill never closes, reassigns, or reprioritizes FLDW-47.** Kevin will close it himself
+  at some point in 2026, once the swap work tracked on it is done. If he wants any of those fields
+  set or changed before then, that is a separate, explicit request — not something this skill
+  infers from an investigation result.
 - **Escalation path.** If an investigation surfaces something bigger than routine swap
   pressure — data loss, a user-visible outage, a failure monitoring itself missed — that also
   needs an incident report under `~/ai/directives/when-writing-an-incident-report.md`. Say so
