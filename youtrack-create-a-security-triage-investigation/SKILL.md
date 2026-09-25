@@ -129,10 +129,48 @@ plainly now.** Say it before step 3. Ask whether Kevin wants to take containment
 or authorize it before triage continues. This skill never performs containment on its own
 initiative (see Guardrails).
 
-### 3. Ask for the priority
+### 3. Read the live field values, then ask for the priority
 
-YouTrack's `Priority` field cannot be empty. Present the values and let Kevin choose. **Never
-choose a priority for him, and never fall back to a default.**
+**Read the enum value lists live, before asking anything.** Never trust the snapshot in this
+file. Kevin edits these lists in the UI without telling any repo.
+
+```bash
+source ~/.environment/openbao/openbao-env.sh
+export YT_BASE=http://127.0.0.1:9000
+
+parzival exec --as ai youtrack-claude-code -- sh -c '
+  curl -s -K "$YOUTRACK_CURL_CONFIG" -H "Accept: application/json" \
+    "$YT_BASE/api/admin/customFieldSettings/bundles/enum?fields=id,name,values(name,archived)&\$top=200"
+' | python3 -c '
+import json, sys
+want = {"Priorities": "159-0", "Types": "159-1", "Issue domains": "159-60"}
+for b in json.load(sys.stdin):
+    if b["name"] in want:
+        n = b["name"]
+        vals = [v["name"] for v in b["values"] if not v.get("archived")]
+        print(n, "(" + b["id"] + ", expected " + want[n] + "):", vals)
+'
+```
+
+Then check these three things before going on. **If any check fails, stop and report the
+discrepancy to Kevin.** Never substitute a near-miss value.
+
+| List | Must contain | Snapshot, read 2026-09-25 |
+| --- | --- | --- |
+| `Priorities` (`159-0`) | The value Kevin picks below | `Show-stopper`, `Critical`, `Major`, `Normal`, `Minor` |
+| `Types` (`159-1`) | `Task` | `Bug`, `Cosmetics`, `Exception`, `Feature`, `Task`, `Usability Problem`, `Performance Problem`, `Epic`, `Incident`, `Problem` |
+| `Issue domains` (`159-60`) | `Personal` | `Personal`, `Employer work`, `Client work` |
+
+If a list turns up under a different id, or is missing, that is also a discrepancy to report.
+
+**What this check cannot prove.** The token can read the value lists, but not which list a
+project's field is attached to: `GET /api/admin/projects/<id>/customFields` returns `[]`. So this
+step proves the values exist, not that KSI uses these exact lists. The read-back in step 4
+closes that gap.
+
+**Ask for the priority.** YouTrack's `Priority` field cannot be empty. Present the values **as
+read live just now**, not the snapshot above, and let Kevin choose. **Never choose a priority for
+him, and never fall back to a default.**
 
 ```text
 Which priority?
@@ -142,11 +180,6 @@ Which priority?
   4. Normal
   5. Minor
 ```
-
-This token cannot read project field schemas: `GET /api/admin/projects/<id>/customFields` returns
-`[]`. So the values above cannot be validated before the create. Step 4 reads the fields back
-instead. If the create rejects a value, stop and show Kevin the error. Never substitute a
-near-miss value.
 
 ### 4. Create the KSI ticket
 
@@ -234,6 +267,7 @@ json.dump({
   "customFields": [
     {"name": "Status",            "$type": "StateIssueCustomField",      "value": {"name": "In Progress"}},
     {"name": "Priority",          "$type": "SingleEnumIssueCustomField", "value": {"name": priority}},
+    {"name": "Type",              "$type": "SingleEnumIssueCustomField", "value": {"name": "Task"}},
     {"name": "Issue domain",      "$type": "SingleEnumIssueCustomField", "value": {"name": "Personal"}},
     {"name": "Assignee",          "$type": "SingleUserIssueCustomField", "value": {"login": "Claude_Code"}},
     {"name": "Date time entered", "$type": "SimpleIssueCustomField",     "value": now_ms},
@@ -255,9 +289,11 @@ Field notes:
 
 - **`Status` is `In Progress` at creation.** Triage starts the moment the ticket exists, so
   creation and "work started" are the same event (Kevin's decision, AI-49).
-- **`Type` is not set.** No `Type` value means "suspected security event", and `Incident` would
-  assert exactly what this skill must not assert. If Kevin later adds a suitable value to the
-  bundle, use it. Until then, the description's first line carries the classification.
+- **`Type` is `Task`** (Kevin's decision, AI-49). No `Type` value means "suspected security
+  event", so `Task` is a neutral placeholder. The description's first line carries the real
+  classification. **Never set `Incident` or `Problem`.** `Incident` asserts exactly what this
+  skill must not assert, and `Problem` means a known malfunction. That holds even after a
+  confirmed failure: the formal incident gets its own record under step 10.
 - **`Issue domain` is `Personal`.** KSI covers k-fed only, and step 1 already stopped for
   employer assets.
 - **`Affected host`**: set it only when the asset maps exactly to an existing value (`FLDW`,
@@ -561,9 +597,10 @@ The KSI ticket, and not the chat, contains:
 Also:
 
 - The title and fields never assert an incident, breach, or compromise the evidence did not
-  establish. `Type` is not `Incident`.
+  establish. `Type` reads back as `Task`, never `Incident` or `Problem`.
 - `Status` was `In Progress` from creation. `Date time entered`, `Priority` (Kevin's choice),
   `Issue domain`, and `Assignee` read back correctly.
+- The live value-list check in step 3 ran before the create, and passed.
 - Start and stop comments exist, with clock-read times. `Spent time` holds at least this
   session's elapsed span.
 - No state-changing action was taken without Kevin's explicit authorization, and any that was
@@ -578,11 +615,14 @@ Also:
 - **Why KSI and not `PR`.** `../youtrack-report-a-problem/` investigates a known malfunction.
   This skill investigates a _suspicion_, where the most likely outcome is "benign". It needs a
   record that can conclude that without an incident label ever having been attached.
-- **Why no `Type`.** A field value is read as a classification. Leaving `Type` empty is more
-  honest than `Incident`, and more honest than a misleading `Task`.
-- **Schema cannot be pre-validated.** The `Claude_Code` token gets `[]` from the project
-  custom-field endpoint (seen 2026-09-25 for both KSI and PR). Validation happens by reading the
-  fields back. Any field KSI lacks shows up as a create error: stop and report it.
+- **Why `Task`.** A field value is read as a classification, and none of the `Types` values
+  means "suspected, unconfirmed event". Kevin chose `Task` as the neutral placeholder (AI-49). If
+  he later adds a dedicated value such as `Suspected Security Event` to `Types`, switch to it.
+- **Two-stage validation.** The `Claude_Code` token can read the enum value lists
+  (`/api/admin/customFieldSettings/bundles/enum`), but it gets `[]` from the per-project
+  custom-field endpoint (seen 2026-09-25 for both KSI and PR). Step 3 therefore proves that the
+  values exist, and step 4's read-back proves that KSI accepted them. A field KSI lacks shows up
+  as a create error: stop and report it.
 - **Escalation from other skills.** If `../youtrack-report-a-problem/` or
   `../youtrack-report-a-fldw-swap-issue-and-investigate/` surfaces something security-shaped but
   unproven, this skill is the next step, not the incident directive.
