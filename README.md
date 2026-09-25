@@ -107,6 +107,9 @@ prefix back out of the name would be ambiguous).
 │   ├── SKILL.md
 │   ├── create_alert_ticket.py
 │   └── run.sh
+├── youtrack-create-a-security-triage-investigation/
+│   ├── SKILL.md
+│   └── run.sh
 ├── jira-create-a-jira-ticket/         # symlink → vanco-skills, see below
 ├── jira-create-jira-tickets-bookmark/ # symlink → vanco-skills
 ├── jira-update-menu-app-yaml-from-jira-html/  # symlink → vanco-skills
