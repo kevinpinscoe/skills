@@ -28,7 +28,7 @@ LINKS=(
     "youtrack-reconcile|$VANCO_ROOT/skills/youtrack-reconcile"
     "youtrack-report-a-problem|$VANCO_ROOT/skills/youtrack-report-a-problem"
     "youtrack-sync-jira-ticket-status-with-youtrack|$VANCO_ROOT/skills/youtrack-sync-jira-ticket-status-with-youtrack"
-    "daily-run-through-my-os-todo|$VANCO_ROOT/skills/daily/run-through-my-os-todo"
+    "daily-run-through-my-os-todo|$VANCO_ROOT/skills/daily-run-through-my-os-todo"
 )
 
 link_one() {
