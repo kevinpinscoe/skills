@@ -18,3 +18,7 @@
 # Claude Code plugin, once this repo's working tree is re-homed to
 # ~/.claude/skills (FSM-3). Never vendor or track it here.
 gsd-*
+
+# Claude Code skill-sync state marker (last finished sync pass) - per-machine,
+# rewritten every sync, regenerated if missing. manifest.json alongside it IS tracked.
+synced/*/.last-complete-round
