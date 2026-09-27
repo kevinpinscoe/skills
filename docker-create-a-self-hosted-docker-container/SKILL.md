@@ -2,6 +2,7 @@
 name: docker-create-a-self-hosted-docker-container
 category: docker
 description: Creates a new self-hosted Docker container service under /opt/containers, including DNS record, TLS certificate, Apache proxy, optional backup job, SELinux audit, and full documentation.
+disable-model-invocation: true
 ---
 
 # Create a Self-Hosted Docker Container

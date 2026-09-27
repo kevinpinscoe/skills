@@ -2,6 +2,7 @@
 name: decision-kevins-values-system-decision-matrix
 category: decision
 description: Walks the human through Kevin's Values System Decision Matrix — the quadrant filter first, then weighted values scoring — and writes the result as a durable decision record in the journal vault.
+disable-model-invocation: true
 ---
 
 # Kevin's Values System Decision Matrix

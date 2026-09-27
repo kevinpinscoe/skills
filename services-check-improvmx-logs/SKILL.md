@@ -2,6 +2,7 @@
 name: services-check-improvmx-logs
 category: services
 description: Queries the ImprovMX API for email delivery logs for a domain and displays status, sender, recipient, and timestamps.
+disable-model-invocation: true
 ---
 
 # Check ImprovMX Email Logs

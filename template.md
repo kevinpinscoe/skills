@@ -2,6 +2,7 @@
 name: skill-directory-name
 category: category-slug
 description: One sentence describing what this skill does.
+disable-model-invocation: true
 ---
 
 # <Skill Name>

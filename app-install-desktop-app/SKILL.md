@@ -2,6 +2,7 @@
 name: app-install-desktop-app
 category: app
 description: Install a desktop application on the current host and create a runbook in ~/Projects/private/app-configuration.
+disable-model-invocation: true
 ---
 
 # Install a Desktop App

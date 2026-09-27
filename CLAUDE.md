@@ -14,6 +14,7 @@ Kevin's personal collection of AI task automation skills, plus the `skills` Go C
 ├── README.md
 ├── RUNBOOK.md
 ├── install.sh                    # recreates the vanco-skills symlinks below
+├── sync-skill-overrides.sh       # per-host skillOverrides for skills lacking the frontmatter flag
 ├── template.md                   # Template for new skill files
 ├── app-install-desktop-app/
 │   └── SKILL.md
@@ -59,11 +60,18 @@ Every `SKILL.md` must begin with YAML frontmatter:
 name: skill-directory-name
 category: category-slug
 description: One sentence describing what this skill does.
+disable-model-invocation: true
 ---
 
 # Skill Title
 ...
 ```
+
+`disable-model-invocation: true` is required on every skill this repo owns (AI-52). Without it,
+Claude Code loads the skill's description into every session's context. Leave it out only when
+Kevin explicitly asks for a skill Claude may start on its own. Skills this repo does not own
+(`gsd-*`, the `vanco-skills` symlinks) are covered per host by `sync-skill-overrides.sh`; see
+`~/ai/directives/when-creating-a-new-skill.md`.
 
 `name:` must exactly match the skill's directory name. `category:` is the old category as a
 lowercase, hyphenated slug (e.g. `docker`, `raspberry-pi-5`) — it is what `skills-tui` actually
@@ -126,5 +134,6 @@ The `## Structure` tree in `README.md` must exactly reflect the directories that
 - **When creating a new skill: read `template.md` first, then follow it exactly.** Place the new file at `~/.claude/skills/<category>-<skill-name>/SKILL.md`. YAML frontmatter (`name:`, `category:`, `description:`) is required. Use existing `SKILL.md` files as additional style reference, but `template.md` is the authoritative source of truth for structure.
 - **Never create a directory starting with `gsd-`** — that prefix is reserved for the third-party `get-shit-done` plugin's own content, which this repo's `.gitignore` deliberately excludes.
 - **When creating or modifying any skill: update `README.md` to reflect the current directory layout before committing.**
+- **Every new skill carries `disable-model-invocation: true`** (it is in `template.md`), and after it merges, `bash sync-skill-overrides.sh --check` passes on this host.
 - Do not modify existing skills unless asked
 - When executing a skill, follow its Instructions section precisely and report against its Success Criteria

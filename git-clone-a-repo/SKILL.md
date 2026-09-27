@@ -2,6 +2,7 @@
 name: git-clone-a-repo
 category: git
 description: Asks for a git repo URL, determines the correct local clone directory per the AI directive, confirms with the user, then clones the repo.
+disable-model-invocation: true
 ---
 
 # Clone a Git Repo

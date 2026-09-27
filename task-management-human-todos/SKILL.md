@@ -2,6 +2,7 @@
 name: task-management-human-todos
 category: task-management
 description: Manage a personal task list in ~/TODO.md — add, view, triage, and work tasks with optional codebase analysis.
+disable-model-invocation: true
 ---
 
 # Human TODOs

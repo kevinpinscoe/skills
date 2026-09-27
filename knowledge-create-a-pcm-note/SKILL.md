@@ -2,6 +2,7 @@
 name: knowledge-create-a-pcm-note
 category: knowledge
 description: Creates a new note in the PCM vault only by walking the MOC hierarchy with Python choosers, inheriting LCC classification from the deepest selected MOC, and linking the note back into that MOC.
+disable-model-invocation: true
 ---
 
 # Create a PCM Note

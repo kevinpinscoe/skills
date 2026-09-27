@@ -2,6 +2,7 @@
 name: knowledge-second-moc-level
 category: knowledge
 description: Creates a second-level Map of Content (MOC) nested under a human-selected first-level parent, asking for a subtopic within that subject, then classifying and writing the MOC in both vaults.
+disable-model-invocation: true
 ---
 
 # Create Second-Level MOC

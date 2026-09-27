@@ -2,6 +2,7 @@
 name: git-create-a-repo
 category: git
 description: Creates a new Git repository on either Gitea (visibility confirmed at runtime, default public) or GitHub (public), clones it locally to the correct directory, scaffolds README.md, RUNBOOK.md, and .gitignore, and (GitHub only) assigns an area-* category topic chosen at runtime from the live profile.yml.
+disable-model-invocation: true
 ---
 
 # Create a Git Repo

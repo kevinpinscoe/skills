@@ -6,14 +6,15 @@ source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 ---
 
 > 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills.md` (symlink → this file).
+>
 # RUNBOOK.md — skills
 
 ## Metadata
 
 | Field | Value |
-|---|---|
+| --- | --- |
 | **Owner** | Kevin Inscoe |
-| **Last Updated** | 2026-08-21 |
+| **Last Updated** | 2026-09-27 |
 | **Last Tested** | 2026-08-21 |
 | **Expected Duration** | Varies by skill |
 | **Risk Level** | Low — this repo holds prompts and wrappers, not services |
@@ -56,7 +57,7 @@ repo's `.gitignore` excludes `gsd-*`; see `README.md` → "Structure" for the fu
 ## Stack
 
 | Component | Details |
-|---|---|
+| --- | --- |
 | **Language / Runtime** | Markdown prompts; Bash `run.sh` wrappers; occasional Python helper scripts; Go TUI |
 | **External Services** | Per skill — Gmail, Google Calendar, YouTrack, and Gitea appear in various skills |
 | **Databases / File Stores** | None at the repo level |
@@ -89,6 +90,27 @@ bash ~/.claude/skills/<skill-name>/run.sh
 Skills without a `run.sh` are launched through the chooser, or by handing `SKILL.md` to Claude
 Code yourself.
 
+### Step 3 — Keep skills out of model context (once per host, AI-52)
+
+**Why:** every model-invocable skill's description is loaded into every Claude Code session. This
+repo's own skills opt out in their frontmatter (`disable-model-invocation: true`, tracked). The
+untracked ones (`gsd-*`, `vanco-skills` symlinks) are opted out per host in
+`~/.claude/settings.json` → `skillOverrides`, which git never carries. See `README.md`, "Why
+every skill is user-invocable only".
+
+Run after the first clone on a host, after pulling a change that adds a skill, and after a
+`get-shit-done` plugin update:
+
+```bash
+git -C ~/.claude/skills pull --ff-only origin main
+bash ~/.claude/skills/sync-skill-overrides.sh --check   # report only; exit 1 = gaps
+bash ~/.claude/skills/sync-skill-overrides.sh           # add the missing overrides
+```
+
+The script only **adds** entries, backs up `settings.json` to `settings.json.bak-<timestamp>`
+first, and keeps the file's mode (`0600`). It reports stale entries (skills no longer on disk)
+but never deletes them. Restart open Claude Code sessions afterwards.
+
 ---
 
 ## Verification
@@ -104,6 +126,15 @@ find ~/.claude/skills -mindepth 1 -maxdepth 1 -type d -name 'gsd-*' -prune -o \
 **Success criteria:** every non-`gsd-*` directory contains a `SKILL.md` or a `run.sh`. Any path
 printed is a directory the TUI will not list.
 
+```bash
+bash ~/.claude/skills/sync-skill-overrides.sh --check
+```
+
+**Expected output:** ends `ok: nothing to add`, exit 0. **Success criteria:** no skill on this
+host is model-invocable. In a new Claude Code session, the skill list the model is shown
+contains none of this repo's skills and no `gsd-*` skill, while `/<skill-name>` still runs each
+one.
+
 ---
 
 ## Rollback Procedure
@@ -117,7 +148,7 @@ printed is a directory the TUI will not list.
 ## Escalation
 
 | Condition | Contact | How |
-|---|---|---|
+| --- | --- | --- |
 | A skill modified files outside this repo unexpectedly | Kevin | Report before committing anything — see the side-effect rules in `CLAUDE.md` |
 
 ---
@@ -138,11 +169,13 @@ symlinks; they are not files this repo owns.
 ## Troubleshooting
 
 | Symptom | Likely Cause | Resolution |
-|---|---|---|
+| --- | --- | --- |
 | A skill is not listed in the chooser | No `run.sh`/`SKILL.md`, or excluded by `.gitignore` | Add one, check `.gitignore`, or launch its `run.sh` directly |
 | `claude: command not found` in a `run.sh` | Non-interactive shell without `~/.local/bin` on `PATH` | The wrappers call `$HOME/.local/bin/claude` by absolute path; update the path if the CLI moved |
 | A timer-driven skill did not run | User timer not enabled after a reinstall | `systemctl --user list-timers`, then enable per that skill's runbook |
 | A `jira-*`/`youtrack-*` symlink is broken or missing | `vanco-skills` was moved, or the link was clobbered | Run `bash ~/.claude/skills/install.sh` to recreate it |
+| Claude starts a skill on its own, or skill descriptions are back in every session's context | A new skill without the frontmatter flag, or new `gsd-*` skills from a plugin update | `bash ~/.claude/skills/sync-skill-overrides.sh`, and add `disable-model-invocation: true` to any skill this repo owns |
+| `/<skill-name>` is not recognized | The skill was set to `off` rather than `user-invocable-only`, or the session predates the change | Check `jq .skillOverrides ~/.claude/settings.json`; restart the session |
 
 ---
 
@@ -162,7 +195,7 @@ journalctl --user -u <skill-name>.service -n 100
 > skill's own runbook `## Monitoring` section.
 
 | Field | Value |
-|---|---|
+| --- | --- |
 | **Monitoring** | **Waived at the repository level** — a repo of prompts has no run to monitor |
 | **Rationale** | Nothing executes at the repo level. Each unattended skill carries its own monitoring decision in its own runbook |
 | **Revisit when** | Something in this repo runs on a schedule other than through a per-skill timer |
@@ -175,6 +208,9 @@ journalctl --user -u <skill-name>.service -n 100
 - **Last game-day test:** 2026-08-21
 - **Next scheduled review:** when a skill gains or loses a timer
 - **Known drift risks:**
+  - `skillOverrides` in `~/.claude/settings.json` is per-host and untracked. A `get-shit-done`
+    update adds `gsd-*` skills that are model-invocable until `sync-skill-overrides.sh` is re-run
+    on that host (AI-52).
   - The `## Structure` tree in `README.md` and the runbook list above are both maintained by hand
     and drift as skills are added. `CLAUDE.md` requires the README tree to be updated whenever a
     skill is added, renamed, or removed; this list needs the same care.

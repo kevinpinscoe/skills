@@ -2,6 +2,7 @@
 name: food-make-me-a-bagel
 category: food
 description: Produces one excellent bagel using a stern, procedural tone with subtle human humor (and a completely necessary Wi‑Fi bagel slicer profile).
+disable-model-invocation: true
 ---
 
 # Make Me A Bagel
