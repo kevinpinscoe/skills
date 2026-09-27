@@ -2,6 +2,7 @@
 name: youtrack-report-a-fldw-swap-issue-and-investigate
 category: youtrack
 description: Capture a pasted Telegram swap alert for the FLDW, investigate it with sar/atop/docker logs/journalctl and other FLDW diagnostics, and log the alert plus findings as one comment on the standing tracker issue FLDW-47.
+disable-model-invocation: true
 ---
 
 # Report a FLDW Swap Issue and Investigate

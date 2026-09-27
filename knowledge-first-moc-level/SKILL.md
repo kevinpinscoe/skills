@@ -2,6 +2,7 @@
 name: knowledge-first-moc-level
 category: knowledge
 description: Creates a first-level Map of Content (MOC) file in both the personal knowledge base and personal context management vaults, with LCC classification in frontmatter.
+disable-model-invocation: true
 ---
 
 # Create First-Level MOC

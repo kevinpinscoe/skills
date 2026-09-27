@@ -2,6 +2,7 @@
 name: daily-run-through-my-os-todos
 category: daily
 description: Syncs the ~/todo repo and walks through the current OS's TODO.md items one at a time, executing or skipping each and removing completed entries.
+disable-model-invocation: true
 ---
 
 # Daily To Do Run Through

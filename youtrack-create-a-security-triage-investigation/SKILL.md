@@ -2,6 +2,7 @@
 name: youtrack-create-a-security-triage-investigation
 category: youtrack
 description: Open a KSI YouTrack ticket for suspicious or unusual behavior and guide an evidence-first, read-only security triage investigation to a documented disposition, without declaring an incident or breach the evidence does not establish.
+disable-model-invocation: true
 ---
 
 # Create a Security Triage Investigation

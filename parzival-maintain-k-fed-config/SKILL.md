@@ -2,6 +2,7 @@
 name: parzival-maintain-k-fed-config
 category: parzival
 description: Provisions and maintains Kevin's private parzival-k-fed-config Gitea repo — the git-tracked deployment/policy/broker configuration for Parzival across k-fed — via branch-and-PR changes only, never a direct push or merge.
+disable-model-invocation: true
 ---
 
 # Maintain the Parzival k-fed Config Repo

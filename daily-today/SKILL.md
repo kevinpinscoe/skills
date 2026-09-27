@@ -2,6 +2,7 @@
 name: daily-today
 category: daily
 description: Syncs daily working repos, resolves user-approved divergence, then walks through the current platform TODO file.
+disable-model-invocation: true
 ---
 
 # Today

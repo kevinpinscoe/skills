@@ -2,6 +2,7 @@
 name: youtrack-create-alert-ticket
 category: youtrack
 description: Capture a pasted alert (or block of alerts) as a YouTrack issue in the Problem reports (PR) project — Type Problem, Status To do, assigned to Claude_Code — and hand back the ticket URL.
+disable-model-invocation: true
 ---
 
 # Create Alert Ticket

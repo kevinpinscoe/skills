@@ -2,6 +2,7 @@
 name: knowledge-third-moc-level
 category: knowledge
 description: Creates a third-level Map of Content (MOC) by first choosing a first-level MOC, then choosing a second-level MOC under it, then asking for a further focus area within that subtopic.
+disable-model-invocation: true
 ---
 
 # Create Third-Level MOC

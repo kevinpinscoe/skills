@@ -127,6 +127,7 @@ prefix back out of the name would be ambiguous).
 ├── youtrack-sync-jira-ticket-status-with-youtrack/     # symlink → vanco-skills
 ├── daily-run-through-my-os-todo/      # symlink → vanco-skills
 ├── install.sh
+├── sync-skill-overrides.sh   # per-host: keeps untracked skills out of model context
 ├── template.md
 ├── gsd-*/             # ~65 dirs — third-party, gitignored, not owned by this repo
 └── ...                # this repo's own README.md, RUNBOOK.md, CLAUDE.md, etc.
@@ -158,3 +159,26 @@ run unattended. An earlier ticket, `FSM-2`, tried to make `skills-tui` itself re
 no-`run.sh` skill directory — it's now `Wont do`, superseded by this flat + `.gitignore`-filtered
 layout (`FSM-3`), which solves the same underlying problem (distinguishing "mine" from
 "bundled") without needing `run.sh` presence as the signal.
+
+### Why every skill is user-invocable only
+
+Claude Code puts the name and description of every skill it may invoke on its own into the
+model's context at the start of **every** session. With ~35 skills here plus ~65 `gsd-*`
+plugin skills, that costs tokens in every session for skills that are only ever run on purpose,
+by typing `/<skill-name>` or through `skills`/`run.sh`. So none of them are model-invocable
+(AI-52):
+
+- **Skills this repo owns** set `disable-model-invocation: true` in their `SKILL.md`
+  frontmatter, and so does `template.md`. That setting is tracked, so it reaches every host
+  with `git pull`.
+- **Skills this repo does not own** (`gsd-*`, and the `vanco-skills` symlinks) cannot carry
+  that edit. `sync-skill-overrides.sh` covers them instead: for every skill that does not set
+  the flag, it adds a `"<skill>": "user-invocable-only"` entry under `skillOverrides` in the
+  host's `~/.claude/settings.json`. That file is per-machine and never reaches git, so the
+  script is **run once on each host** after pulling, and again after a `get-shit-done` update.
+  See `RUNBOOK.md`.
+
+Neither change affects `/<skill-name>`, `skills`, or `run.sh`, which pass the `SKILL.md`
+content to `claude` directly. What changes is that Claude no longer starts a skill on its own.
+To make a skill model-invocable again, remove the flag from its frontmatter. Do that only
+deliberately — see `~/ai/directives/when-creating-a-new-skill.md`.

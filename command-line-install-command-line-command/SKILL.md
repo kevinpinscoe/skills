@@ -2,6 +2,7 @@
 name: command-line-install-command-line-command
 category: command-line
 description: Prompts me for required information before installing a command line tool, generates a cheat sheet, and creates a runbook in ~/Projects/private/app-configuration
+disable-model-invocation: true
 ---
 
 # Install a Command-Line Tool

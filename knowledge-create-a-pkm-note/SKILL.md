@@ -2,6 +2,7 @@
 name: knowledge-create-a-pkm-note
 category: knowledge
 description: Creates a new KnowledgeVault (PKM) note from a link or pasted text by walking the MOC hierarchy (first → second → third level), inferring and suggesting a first-level MOC from the content, creating MOC levels on demand, and writing a classified Markdown note with YAML frontmatter and any grabbed images.
+disable-model-invocation: true
 ---
 
 # Create a PKM Note

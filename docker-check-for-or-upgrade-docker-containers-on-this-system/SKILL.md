@@ -2,6 +2,7 @@
 name: docker-check-for-or-upgrade-docker-containers-on-this-system
 category: docker
 description: Checks the current version or SHA of Docker images in the containers I have setup and reports if an upgrade can be performed and what version going to what upgrade version
+disable-model-invocation: true
 ---
 
 # Check for and Upgrade Docker Container Images

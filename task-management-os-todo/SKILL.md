@@ -2,6 +2,7 @@
 name: task-management-os-todo
 category: task-management
 description: Append a dated TODO entry to one or more platform TODO files (fedora, mac, rpi) and commit/push to the todo repo.
+disable-model-invocation: true
 ---
 
 # Add Platform TODO

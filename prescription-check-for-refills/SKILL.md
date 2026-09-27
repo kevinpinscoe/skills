@@ -2,6 +2,7 @@
 name: prescription-check-for-refills
 category: prescription
 description: Report which prescriptions are past due or coming due, from the Next due row of each sheet in the prescription inventory spreadsheet.
+disable-model-invocation: true
 ---
 
 # Check For Refills

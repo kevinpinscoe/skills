@@ -2,6 +2,7 @@
 name: project-review-all-checkpoints
 category: project
 description: Review every CHECKPOINT.md on this host and report which YouTrack issue each one tracks and which directory to resume it from.
+disable-model-invocation: true
 ---
 
 # Review All Checkpoints

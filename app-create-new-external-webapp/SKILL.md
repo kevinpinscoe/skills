@@ -2,6 +2,7 @@
 name: app-create-new-external-webapp
 category: app
 description: Stands up a brand-new external (public) static brochure website end-to-end on one of Kevin's Linode public web servers — validates DNS, creates the Linode domain + A record, scaffolds a Gitea repo modelled on datagiggle.com, wires Woodpecker CI to build the web-oci-builder OCI image, updates the chosen host's Ansible config, deploys, verifies, and registers the site in the service catalog and Uptime Kuma.
+disable-model-invocation: true
 ---
 
 # Create a New External Webapp

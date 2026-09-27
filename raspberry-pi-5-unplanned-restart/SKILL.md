@@ -2,6 +2,7 @@
 name: raspberry-pi-5-unplanned-restart
 category: raspberry-pi-5
 description: Diagnose why a Raspberry Pi 5 (host "core"/rpi5) restarted unexpectedly and log the post-mortem.
+disable-model-invocation: true
 ---
 
 # Raspberry Pi 5 — Unplanned Restart Analysis
