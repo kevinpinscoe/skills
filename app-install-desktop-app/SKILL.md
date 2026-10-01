@@ -20,7 +20,7 @@ disable-model-invocation: true
 1. **Read directives** — read the following files in full before taking any other action:
    - `~/.dotfiles/CLAUDE.md` — install paths, `gitsign` warning, GNU Stow conventions
    - `~/todo/CLAUDE.md` — TODO entry format and folder mapping
-   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules and guardrails that apply to all commits in `~/.dotfiles` and `~/todo`
+   - `~/ai/directives/when-working-in-a-git-tracked-repo.md` — rules for any work in a git repo, including the commit workflow and guardrails that apply in `~/.dotfiles` and `~/todo`
    - `~/ai/directives/when-creating-a-runbook.md` — runbook structure and template (required before step 4)
 
 2. **Detect current platform** — run `uname -s` and `uname -m`; on Linux also read `/etc/os-release`. Record the platform for use in step 4 (platform-specific config subdirectories inside the app directory, if needed):

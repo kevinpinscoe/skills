@@ -97,5 +97,5 @@ If the user's message already implies a mode, use it. Otherwise ask:
 
 - Always use today's absolute date — never "today", "tomorrow", or relative dates.
 - `~/TODO.md` is not in a git repo — no commit needed after writes.
-- For tasks that involve any repo under `~/Projects/`: read `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` before touching files there.
+- For tasks that involve any repo under `~/Projects/`: read `~/ai/directives/when-working-in-a-git-tracked-repo.md` before working there.
 - Related skill: `os-todo` — for platform-specific shell-command TODOs (fedora/mac/rpi).
