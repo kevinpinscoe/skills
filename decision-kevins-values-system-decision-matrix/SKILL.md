@@ -110,7 +110,7 @@ the wont ever get done task. If you love it put a due date on it!"*
 
 1. **Read required directives** — before writing anything, read and follow:
    - `~/ai/directives/root-directive.md` (dispatcher — follow anything it points to that applies)
-   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md`
+   - `~/ai/directives/when-working-in-a-git-tracked-repo.md`
    - `~/ai/directives/project-planning-with-ai.md` (for its `CHECKPOINT.md` collision check)
 
    Run the `CHECKPOINT.md` collision check in `~/Journal/personal-journal/` and `~/ai/` before

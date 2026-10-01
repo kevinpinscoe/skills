@@ -25,7 +25,7 @@ disable-model-invocation: true
 ## Instructions
 
 1. **Read directives** — read the following files in full before doing anything else:
-   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules, confirmation requirements, and guardrails that apply because `~/todo` is a git repo
+   - `~/ai/directives/when-working-in-a-git-tracked-repo.md` — rules for any work in a git repo (commit workflow, confirmation requirements, guardrails); applies because `~/todo` is a git repo
    - `~/todo/CLAUDE.md` — TODO entry format and platform-to-file mapping
 
 2. **Gather information** — ask one question at a time; wait for each answer before asking the next:

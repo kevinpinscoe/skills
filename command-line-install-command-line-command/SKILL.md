@@ -21,7 +21,7 @@ disable-model-invocation: true
 1. **Read grounding files** — read the following files in full before taking any other action:
    - `~/.dotfiles/CLAUDE.md` — binary install paths, gitsign warning, stow structure
    - `~/todo/CLAUDE.md` — TODO entry format and folder mapping
-   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md` — git workflow rules and guardrails that apply to all commits in `~/.dotfiles` and `~/todo`
+   - `~/ai/directives/when-working-in-a-git-tracked-repo.md` — rules for any work in a git repo, including the commit workflow and guardrails that apply in `~/.dotfiles` and `~/todo`
    - `~/ai/directives/when-creating-a-runbook.md` — runbook structure and template (required before step 5)
 
 2. **Gather information** — ask one question at a time; wait for each answer before asking the next:

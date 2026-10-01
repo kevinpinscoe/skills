@@ -40,7 +40,7 @@ disable-model-invocation: true
 
 1. **Read required directives** — before touching any repo, read and follow:
    - `~/ai/directives/root-directive.md` (dispatcher — follow any additional directives it points to that apply to this task)
-   - `~/ai/directives/when-making-changes-in-a-directory-that-is-also-a-git-repo.md`
+   - `~/ai/directives/when-working-in-a-git-tracked-repo.md`
    - `~/ai/directives/gitea.md`
    - `~/ai/directives/when-creating-or-cloning-a-git-repo.md`
    - `~/ai/directives/when-creating-a-runbook.md`
