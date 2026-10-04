@@ -67,6 +67,16 @@ PROTO_PRIORITY = "157-0"
 PROTO_TYPE = "157-1"
 PROTO_ASSIGNEE = "157-3"
 PROTO_DATE_ENTERED = "157-15"
+PROTO_REPO_URL = "157-17"
+
+# The follow-up's code change -- the rewrite utility its Part A creates -- lands
+# in this repository, so it owns the ticket's repository metadata
+# (when-creating-a-youtrack-ticket.md section 3): a "Repository:" comment with
+# the ~/ path, and the forge URL in Repo URL. The URL is derived from the repo's
+# origin at run time, never hardcoded. Obsidian note: none, so that comment is
+# omitted (section 4). Affected host stays unset: the work is about files and
+# YouTrack text, not one host's state (section 6).
+FOLLOWUP_REPO = "~/private-tools"
 
 # String custom fields whose values name real objects (branches, tabs, URLs).
 # YouTrack did not rewrite these on KSA-81 -> GLASS-2; if one ever changes by an
@@ -434,9 +444,14 @@ def snapshot(issue, scan=None, references_from=None):
     if references_from:
         before = _load(references_from)
         ids = {c["id"] for r in before.get("referencing_issues", []) for c in r["comments"]}
-        data["referencing_issues"] = [
-            fetch_ref_issue(r["id"], lambda c, ids=ids: c["id"] in ids)
-            for r in before.get("referencing_issues", [])]
+        data["referencing_issues"] = []
+        for r in before.get("referencing_issues", []):
+            try:
+                data["referencing_issues"].append(
+                    fetch_ref_issue(r["id"], lambda c, ids=ids: c["id"] in ids))
+            except Fail as exc:  # recorded, and compare() treats it as unverifiable
+                data["referencing_issues"].append(
+                    {"id": r["id"], "idReadable": r["idReadable"], "unreadable": str(exc)[:200]})
     if scan:
         meta, refs = scan_references(scan, eid)
         if references_from:
@@ -520,6 +535,7 @@ def compare(before, after):
            "scan": "run" if before.get("_scan") else "not run",
            "notes": [], "reference_rewrites": 0, "artifact_rewrites": [],
            "unexplained": [], "left_as_written": 0, "other_issues": 0,
+           "unverifiable_other_issues": [],
            "unclassified_other_issues": after.get("unclassified_referencing_issues", [])}
     prob, note = rep["structural"].append, rep["notes"].append
 
@@ -615,12 +631,18 @@ def compare(before, after):
     for r in before.get("referencing_issues", []):
         rep["other_issues"] += 1
         a = after_refs.get(r["id"])
-        if a is None:
-            note(f"{r['idReadable']}: not re-read after the move")
+        if a is None or a.get("unreadable"):
+            # Fails toward review, never toward clean: the promised check of this
+            # issue's side effects could not be made.
+            rep["unverifiable_other_issues"].append({
+                "issue": r["idReadable"], "where": "whole issue",
+                "reason": (a or {}).get("unreadable") or "not re-read after the move"})
             continue
         missing = {c["id"] for c in r["comments"]} - {c["id"] for c in a["comments"]}
-        if missing:
-            note(f"{r['idReadable']}: comments no longer readable: {sorted(missing)}")
+        for cid in sorted(missing):
+            rep["unverifiable_other_issues"].append({
+                "issue": r["idReadable"], "where": f"comment {cid}",
+                "reason": "captured before the move, not readable after it"})
         analyse_units(r["idReadable"], text_units(r, set()), text_units(a, set()),
                       old, new, rep)
     return rep
@@ -631,7 +653,8 @@ def verdicts(rep):
     structural = "PASS" if not rep["structural"] else "FAIL"
     if rep["immutable_id"] == "FAIL" or rep["structural"] or rep["unexplained"]:
         text, code = "FAIL", 1
-    elif rep["artifact_rewrites"] or rep["unclassified_other_issues"]:
+    elif (rep["artifact_rewrites"] or rep["unclassified_other_issues"]
+          or rep.get("unverifiable_other_issues")):
         text, code = "NEEDS REMEDIATION", 3
     else:
         text, code = "CLEAN", 0
@@ -647,6 +670,8 @@ def render(rep):
               for a in rep["artifact_rewrites"]]
     lines += [f"UNCLASSIFIED: {u['idReadable']} mentions {rep['new']} but was not in the "
               "pre-move evidence" for u in rep["unclassified_other_issues"]]
+    lines += [f"UNVERIFIABLE: {u['issue']} {u['where']}: {u['reason']}"
+              for u in rep.get("unverifiable_other_issues", [])]
     lines += [
         f"Moved: {rep['old']} -> {rep['new']}",
         f"Immutable issue ID preserved: {rep['immutable_id']}",
@@ -656,7 +681,8 @@ def render(rep):
         f"Unexplained changes: {len(rep['unexplained'])}",
         f"Old-ID mentions left as written (URLs, inline code, fields): {rep['left_as_written']}",
         f"Other issues compared: {rep['other_issues']}; mentioning {rep['new']} with no "
-        f"pre-move evidence: {len(rep['unclassified_other_issues'])}",
+        f"pre-move evidence: {len(rep['unclassified_other_issues'])}; could not be "
+        f"re-checked: {len(rep.get('unverifiable_other_issues', []))}",
         "Cross-issue scan: " + (SCAN_CLAIM if rep.get("scan") == "run" else "not run"),
         f"Text preservation: {text}",
     ]
@@ -666,7 +692,8 @@ def render(rep):
 # ---------------------------------------------------------------- follow-up
 
 def _remediation_needed(report):
-    return bool(report and (report["artifact_rewrites"] or report["unclassified_other_issues"]))
+    return bool(report and (report["artifact_rewrites"] or report["unclassified_other_issues"]
+                            or report.get("unverifiable_other_issues")))
 
 
 def followup_summary(old, new, report=None):
@@ -748,6 +775,12 @@ Kevin then reports the path of the generated file. **Do not rerun `rg`**, and do
         uncl = "\n".join(f"- {u['idReadable']}" for u in report["unclassified_other_issues"])
         uncl_block = (f"\nIssues that mention {new} but were not in the pre-move evidence, "
                       f"so their text could not be classified:\n{uncl}\n") if uncl else ""
+        unver = "\n".join(f"- {u['issue']} {u['where']}: {u['reason']}"
+                           for u in report.get("unverifiable_other_issues", []))
+        if unver:
+            uncl_block += (f"\nCould not be re-checked after the move (captured in the pre-move "
+                           f"evidence, unreadable afterwards). Check these by hand against "
+                           f"`~/tmp/{old}-before-project-move.api.json`:\n{unver}\n")
         part_b = f"""
 # Part B — historical text YouTrack rewrote
 
@@ -768,7 +801,31 @@ Locations (issue, place, reason, pre-move text):
     return head + part_a + part_b
 
 
+def forge_url(remote):
+    """Browser URL of a git remote on k-fed's forges; None when unrecognised."""
+    m = (re.match(r"^ssh://git@git\.kevininscoe\.com(?::\d+)?/(.+?)(?:\.git)?$", remote)
+         or re.match(r"^git@github\.com:(.+?)(?:\.git)?$", remote)
+         or re.match(r"^https://(?:git\.kevininscoe\.com|github\.com)/(.+?)(?:\.git)?$", remote))
+    if not m:
+        return None
+    host = "github.com" if "github.com" in remote else "git.kevininscoe.com"
+    return f"https://{host}/{m.group(1)}"
+
+
+def followup_repo_url():
+    """Forge URL of FOLLOWUP_REPO, read from its origin. Refuses rather than guesses."""
+    path = os.path.expanduser(FOLLOWUP_REPO)
+    proc = subprocess.run(["git", "-C", path, "remote", "get-url", "origin"],
+                          capture_output=True, text=True)
+    url = forge_url(proc.stdout.strip()) if proc.returncode == 0 else None
+    if not url:
+        raise Fail(f"cannot derive the forge URL of {FOLLOWUP_REPO} from its origin "
+                   f"({proc.stdout.strip() or proc.stderr.strip()!r}); not inventing one")
+    return url
+
+
 def create_followup(old, new, report=None, report_path=None):
+    repo_url = followup_repo_url()
     project = resolve_project(FOLLOWUP_PROJECT)
     sample = api("GET", "/api/issues", {
         "query": f"project: {FOLLOWUP_PROJECT}", "$top": 1,
@@ -782,6 +839,7 @@ def create_followup(old, new, report=None, report_path=None):
         PROTO_TYPE: {"name": "Task"},
         PROTO_ASSIGNEE: {"login": FOLLOWUP_ASSIGNEE},
         PROTO_DATE_ENTERED: int(time.time() * 1000),
+        PROTO_REPO_URL: repo_url,
     }
     fields = []
     for proto, value in wanted.items():
@@ -794,14 +852,31 @@ def create_followup(old, new, report=None, report_path=None):
             "description": followup_text(old, new, report, report_path),
             "customFields": fields}
     created = api("POST", "/api/issues", {"fields": "id,idReadable"}, body)
-    check = api("GET", f"/api/issues/{created['id']}",
-                {"fields": "idReadable,customFields(name,value(name,login))"})
+    api("POST", f"/api/issues/{created['id']}/comments", {"fields": "id"},
+        {"text": f"Repository: {FOLLOWUP_REPO}"})
+
+    # Read back: a write that reported success is only proven by the read.
+    check = api("GET", f"/api/issues/{created['id']}", {"fields":
+                "idReadable,customFields(name,projectCustomField(field(id)),value(name,login)),"
+                "comments(text)"})
+    got = {}
+    for f in check["customFields"]:
+        v = f.get("value")
+        got[f["projectCustomField"]["field"]["id"]] = (
+            (v.get("name") or v.get("login")) if isinstance(v, dict) else v)
+    expect = {PROTO_STATUS: "Not yet started", PROTO_PRIORITY: "Normal", PROTO_TYPE: "Task",
+              PROTO_ASSIGNEE: FOLLOWUP_ASSIGNEE, PROTO_REPO_URL: repo_url}
+    wrong = {p: got.get(p) for p, v in expect.items() if got.get(p) != v}
+    if not isinstance(got.get(PROTO_DATE_ENTERED), int):
+        wrong[PROTO_DATE_ENTERED] = got.get(PROTO_DATE_ENTERED)
+    if not any(c.get("text") == f"Repository: {FOLLOWUP_REPO}" for c in check.get("comments") or []):
+        wrong["Repository comment"] = None
+    if wrong:
+        raise Fail(f"{check['idReadable']} was created but reads back wrong: {wrong}")
     return {"idReadable": check["idReadable"], "id": created["id"],
             "url": f"{PUBLIC_URL}/issue/{check['idReadable']}",
             "remediation_section": _remediation_needed(report),
-            "fields": {f["name"]: (f["value"] or {}).get("name") or (f["value"] or {}).get("login")
-                       for f in check["customFields"]
-                       if f["name"] in ("Status", "Priority", "Type", "Assignee")}}
+            "repo_url": repo_url, "verified": sorted(expect) + [PROTO_DATE_ENTERED]}
 
 
 # ---------------------------------------------------------------------- CLI

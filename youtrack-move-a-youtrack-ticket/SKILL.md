@@ -125,6 +125,12 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 
    `--references-from` re-reads the other issues found before the move. `--scan NEW` finds issues that now mention `NEW` but were not in the pre-move evidence, so their text cannot be classified.
 
+   **Cross-issue checks fail toward review, never toward clean.** Each of the following is _unverifiable_ cross-issue state:
+   - a referencing issue from the pre-move evidence that cannot be re-read after the move;
+   - a comment captured from a referencing issue that is no longer readable afterwards.
+
+   Unverifiable state, like unclassified issues, makes the result exit `3`. It never makes it `0`, and on its own it never makes it `1`.
+
    **Structural preservation** holds when all of the following are true:
    - the entity ID is unchanged and the project changed;
    - created and resolved dates, reporter, votes and tags are identical;
@@ -139,7 +145,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
    | `compare` exit | Meaning | Next |
    | --- | --- | --- |
    | `0` | Structural preservation clean; no artifact remediation required | Step 10 (Part A only) |
-   | `3` | Structural preservation clean and the move itself succeeded, but historical-artifact rewrites (or unclassified issues) were detected and must go to the POE remediation section | Step 10 (Parts A and B) |
+   | `3` | Structural preservation clean and the move itself succeeded, but historical-artifact rewrites, unclassified issues or unverifiable cross-issue state were detected and must go to the POE remediation section | Step 10 (Parts A and B) |
    | `1` | Structural or unexplained textual discrepancy | **STOP.** The move is not verified |
 
    **On exit `1`, STOP.** Do not repair anything. Do not move the issue back. Do not create the POE follow-up. Report every `STRUCTURAL` and `UNEXPLAINED` line, both exports, both snapshots and the check files, then wait for Kevin's decision.
@@ -148,12 +154,14 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 
 10. **Create the POE follow-up: one ticket, separate sections.** First show Kevin the text with `python3 $H/yt_move.py followup-text OLD NEW --report ~/tmp/OLD-to-NEW-preservation-check.json`, then run `bash $H/yt-move create-followup OLD NEW --report ~/tmp/OLD-to-NEW-preservation-check.json`. It:
     - creates the issue in `POE`, with fields resolved by prototype ID from a live POE issue;
-    - sets `Status` `Not yet started`, `Priority` `Normal`, `Type` `Task`, `Assignee` `Claude_Code`, and `Date time entered` to now;
+    - sets `Status` `Not yet started`, `Priority` `Normal`, `Type` `Task`, `Assignee` `Claude_Code`, and `Date time entered` to now (epoch milliseconds);
+    - records the repository metadata (`when-creating-a-youtrack-ticket.md` §3). The follow-up's code change is Part A's rewrite utility, which lands in `~/private-tools`. So `~/private-tools` owns the ticket: a `Repository: ~/private-tools` comment, and its forge URL in `Repo URL` (`157-17`). The URL is derived from that repo's `origin` at run time, and creation is refused, before any API call, if it cannot be derived;
+    - omits what does not apply (§4): there is no Obsidian note line, and `Affected host` stays unset because the work is about files and issue text, not one host's state;
     - records `Old issue ID: OLD` and `New issue ID: NEW`, plus the paths of every evidence file;
     - always includes **Part A**, the home-directory Markdown cleanup. That covers the human-run boundary-aware `rg` inventory, the ban on AI recursive search, attaching the report, the `~/private-tools/yt-rewrite-moved-issue-id.py` contract and its tests, and the explicit-file diff review;
-    - includes **Part B**, historical-text remediation, only when the comparison found artifact rewrites or unclassified issues. Part B lists the locations, points at the pre-move snapshot, and requires that only verified literal artifacts are restored, location by location, with Kevin's approval and never by mass replacement;
+    - includes **Part B**, historical-text remediation, only when the comparison found artifact rewrites, unclassified issues or unverifiable cross-issue state. Part B lists the locations, names every issue and comment that could not be re-checked, points at the pre-move snapshot, and requires that only verified literal artifacts are restored, location by location, with Kevin's approval and never by mass replacement;
     - uses the summary `Update Markdown references after OLD moved to NEW`, or `Update Markdown references and restore historical text after OLD moved to NEW` when Part B is present;
-    - reads the issue back.
+    - reads the issue back, and fails if any of those fields or the `Repository:` comment does not read back as written.
 
     Filing is not starting. The issue stays `Not yet started`, with no start comment and no tab rename (§7, §11).
 
@@ -179,7 +187,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 
 - The issue's entity ID is unchanged, it is in the destination project, and it has a new readable ID.
 - Two validated human-run exports, two API snapshots and the comparison files exist in `~/tmp`. `compare` exited `0` or `3`, with `Structural preservation: PASS` and `Unexplained changes: 0`.
-- A POE issue exists with `Assignee` `Claude_Code`, `Status` `Not yet started`, both IDs, Part A, and Part B whenever artifacts were rewritten. Its full URL was reported.
+- A POE issue exists with `Assignee` `Claude_Code`, `Status` `Not yet started`, `Date time entered`, `Repo URL` and the `Repository:` comment, both IDs, Part A, and Part B whenever remediation or review is needed. It was read back, and its full URL was reported.
 - Nothing in the out-of-scope list below was done.
 
 ## Notes

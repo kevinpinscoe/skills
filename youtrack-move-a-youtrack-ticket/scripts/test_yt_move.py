@@ -179,6 +179,178 @@ class ExitSemantics(unittest.TestCase):
         self.assertEqual(self.run_cli(self.before, after), 1)
 
 
+class UnverifiableCrossIssue(unittest.TestCase):
+    """Cross-issue checks that could not be made fail toward review (3), never clean (0)."""
+
+    def setUp(self):
+        # Reduced to a moved issue that is itself clean, so only the cross-issue
+        # state can decide the verdict.
+        self.before = fixture("ksa81-before.json")
+        self.after = fixture("glass2-after.json")
+        for snap in (self.before, self.after):
+            snap["comments"] = [c for c in snap["comments"] if c["id"] == "7-101"]
+        ref_b = self.before["referencing_issues"][0]
+        ref_b["comments"][0]["text"] = "APP-43 remains blocked on KSA-81."
+        self.after["referencing_issues"][0]["comments"][0]["text"] = \
+            "APP-43 remains blocked on GLASS-2."
+
+    def verdict(self, after):
+        return yt_move.verdicts(yt_move.compare(self.before, after))
+
+    def test_baseline_is_clean(self):
+        self.assertEqual(self.verdict(self.after), ("PASS", "CLEAN", 0))
+
+    def test_referencing_issue_missing_after_move(self):
+        after = copy.deepcopy(self.after); after["referencing_issues"] = []
+        self.assertEqual(self.verdict(after), ("PASS", "NEEDS REMEDIATION", 3))
+
+    def test_referencing_issue_unreadable_after_move(self):
+        after = copy.deepcopy(self.after)
+        after["referencing_issues"] = [{"id": "3-77", "idReadable": "APP-43",
+                                        "unreadable": "GET ... -> HTTP 404"}]
+        rep = yt_move.compare(self.before, after)
+        self.assertEqual(yt_move.verdicts(rep)[2], 3)
+        self.assertIn("HTTP 404", rep["unverifiable_other_issues"][0]["reason"])
+
+    def test_captured_comment_unreadable_after_move(self):
+        after = copy.deepcopy(self.after)
+        after["referencing_issues"][0]["comments"] = []
+        rep = yt_move.compare(self.before, after)
+        self.assertEqual(yt_move.verdicts(rep), ("PASS", "NEEDS REMEDIATION", 3))
+        self.assertEqual(rep["unverifiable_other_issues"][0]["where"], "comment 7-201")
+
+    def test_never_exit_0_and_never_1_on_its_own(self):
+        for mutate in (lambda a: a.update(referencing_issues=[]),
+                       lambda a: a["referencing_issues"][0].update(comments=[]),
+                       lambda a: a["referencing_issues"][0].update(unreadable="x")):
+            after = copy.deepcopy(self.after); mutate(after)
+            self.assertEqual(self.verdict(after)[2], 3)
+
+    def test_with_moved_issue_discrepancy_it_is_1(self):
+        after = copy.deepcopy(self.after); after["referencing_issues"] = []
+        comment(after, "7-101")["text"] = "edited by hand"
+        self.assertEqual(self.verdict(after)[2], 1)
+
+    def test_part_b_names_unverifiable_locations(self):
+        after = copy.deepcopy(self.after)
+        after["referencing_issues"][0]["comments"] = []
+        rep = yt_move.compare(self.before, after)
+        text = yt_move.followup_text("KSA-81", "GLASS-2", rep)
+        self.assertIn("# Part B", text)
+        self.assertIn("Could not be re-checked after the move", text)
+        self.assertIn("- APP-43 comment 7-201:", text)
+        self.assertIn("UNVERIFIABLE: APP-43 comment 7-201", yt_move.render(rep))
+
+
+class CreateFollowupMocked(unittest.TestCase):
+    """create_followup() with every API call captured; nothing reaches YouTrack."""
+
+    PROTOS = {"157-2": ("Status", "StateIssueCustomField"),
+              "157-0": ("Priority", "SingleEnumIssueCustomField"),
+              "157-1": ("Type", "SingleEnumIssueCustomField"),
+              "157-3": ("Assignee", "SingleUserIssueCustomField"),
+              "157-15": ("Date time entered", "SimpleIssueCustomField"),
+              "157-17": ("Repo URL", "SimpleIssueCustomField"),
+              "157-32": ("Affected host", "SingleEnumIssueCustomField")}
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        repo = os.path.join(self.tmp.name, "private-tools")
+        os.makedirs(repo)
+        import subprocess
+        subprocess.run(["git", "init", "-q", repo], check=True)
+        subprocess.run(["git", "-C", repo, "remote", "add", "origin",
+                        "ssh://git@git.kevininscoe.com:2223/kinscoe/private-tools.git"], check=True)
+        self.saved = (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO)
+        yt_move.FOLLOWUP_REPO = repo
+        yt_move.resolve_project = lambda name: {"id": "0-50", "shortName": name}
+        self.calls, self.created = [], {}
+        yt_move.api = self.fake_api
+
+    def tearDown(self):
+        yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO = self.saved
+        self.tmp.cleanup()
+
+    def fake_api(self, method, path, params=None, body=None):
+        self.calls.append((method, path, params, body))
+        if method == "GET" and path == "/api/issues":
+            return [{"customFields": [{"name": n, "$type": t, "projectCustomField":
+                                       {"field": {"id": p}}} for p, (n, t) in self.PROTOS.items()]}]
+        if method == "POST" and path == "/api/issues":
+            self.created = body
+            return {"id": "3-9999", "idReadable": "POE-99"}
+        if method == "POST" and path.endswith("/comments"):
+            self.comment = body["text"]
+            return {"id": "7-1"}
+        if method == "GET" and path == "/api/issues/3-9999":
+            by_name = {f["name"]: f["value"] for f in self.created["customFields"]}
+            fields = []
+            for p, (n, _) in self.PROTOS.items():
+                fields.append({"projectCustomField": {"field": {"id": p}},
+                               "value": by_name.get(n)})
+            return {"idReadable": "POE-99", "customFields": fields,
+                    "comments": [{"text": self.comment}]}
+        raise AssertionError(f"unexpected call {method} {path}")
+
+    def test_payload_and_read_back(self):
+        rep = yt_move.compare(fixture("ksa81-before.json"), fixture("glass2-after.json"))
+        out = yt_move.create_followup("KSA-81", "GLASS-2", rep, "~/tmp/r.json")
+        body = self.created
+        self.assertEqual(body["project"], {"id": "0-50"})
+        self.assertTrue(body["summary"].startswith(
+            "Update Markdown references and restore historical text after KSA-81"))
+        f = {x["name"]: x for x in body["customFields"]}
+        self.assertEqual(f["Status"]["value"], {"name": "Not yet started"})
+        self.assertEqual(f["Priority"]["value"], {"name": "Normal"})
+        self.assertEqual(f["Type"]["value"], {"name": "Task"})
+        self.assertEqual(f["Assignee"]["value"], {"login": "Claude_Code"})
+        self.assertIsInstance(f["Date time entered"]["value"], int)
+        self.assertGreater(f["Date time entered"]["value"], 1_700_000_000_000)  # epoch ms
+        self.assertEqual(f["Repo URL"]["value"], "https://git.kevininscoe.com/kinscoe/private-tools")
+        self.assertEqual(f["Repo URL"]["$type"], "SimpleIssueCustomField")
+        self.assertNotIn("Affected host", f)                 # not about one host
+        self.assertNotIn("157-17", json.dumps(body))         # names, never prototype ids
+        for part in ("Old issue ID: KSA-81\nNew issue ID: GLASS-2", "# Part A", "# Part B",
+                     "searched all issues visible to the Claude_Code identity to exhaustion"):
+            self.assertIn(part, body["description"])
+        self.assertNotIn("N/A", body["description"])
+        self.assertEqual(self.comment, "Repository: " + yt_move.FOLLOWUP_REPO)
+        self.assertEqual(out["idReadable"], "POE-99")
+        self.assertEqual(out["url"], "https://youtrack.kevininscoe.com/issue/POE-99")
+        self.assertEqual(self.calls[-1][1], "/api/issues/3-9999")   # read back last
+
+    def test_part_a_only_without_remediation(self):
+        yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertNotIn("# Part B", self.created["description"])
+        self.assertEqual(self.created["summary"],
+                         "Update Markdown references after KTA-19 moved to GLASS-2")
+
+    def test_wrong_read_back_raises(self):
+        real = self.fake_api
+
+        def lying(method, path, params=None, body=None):
+            r = real(method, path, params, body)
+            if method == "GET" and path == "/api/issues/3-9999":
+                r["customFields"][0]["value"] = {"name": "To do"}
+            return r
+        yt_move.api = lying
+        with self.assertRaises(yt_move.Fail):
+            yt_move.create_followup("KTA-19", "GLASS-2")
+
+    def test_no_repo_url_is_invented(self):
+        yt_move.FOLLOWUP_REPO = os.path.join(self.tmp.name, "missing")
+        with self.assertRaises(yt_move.Fail):
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertEqual(self.calls, [])      # refused before any API call
+
+    def test_forge_url(self):
+        self.assertEqual(yt_move.forge_url("ssh://git@git.kevininscoe.com:2223/kinscoe/x.git"),
+                         "https://git.kevininscoe.com/kinscoe/x")
+        self.assertEqual(yt_move.forge_url("git@github.com:kevinpinscoe/skills.git"),
+                         "https://github.com/kevinpinscoe/skills")
+        self.assertIsNone(yt_move.forge_url("/some/local/path"))
+
+
 class CoverageClaim(unittest.TestCase):
     CLAIM = "searched all issues visible to the Claude_Code identity to exhaustion"
 
