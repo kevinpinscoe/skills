@@ -1,0 +1,156 @@
+{
+  "id": "3-2250",
+  "idReadable": "GLASS-2",
+  "numberInProject": 2,
+  "summary": "Deliver a secret to another host",
+  "description": "Tracks the work; GLASS-2 relies on KSA-93.",
+  "created": 1790000000000,
+  "updated": 1790001000000,
+  "resolved": 1790000800000,
+  "votes": 0,
+  "reporter": {
+    "login": "Claude_Code"
+  },
+  "project": {
+    "id": "0-62",
+    "shortName": "GLASS",
+    "name": "bao-breakglass"
+  },
+  "tags": [],
+  "customFields": [
+    {
+      "name": "Status",
+      "$type": "StateIssueCustomField",
+      "value": {
+        "name": "Done"
+      }
+    },
+    {
+      "name": "Working branch",
+      "$type": "SimpleIssueCustomField",
+      "value": "KSA-81"
+    },
+    {
+      "name": "Ghostty tab name",
+      "$type": "SimpleIssueCustomField",
+      "value": "KSA-81c"
+    },
+    {
+      "name": "Spent time",
+      "$type": "PeriodIssueCustomField",
+      "value": {
+        "$type": "PeriodValue",
+        "minutes": 3179,
+        "presentation": "52h 59m"
+      }
+    }
+  ],
+  "comments": [
+    {
+      "id": "7-101",
+      "text": "Blocked by GLASS-2 until the receiver exists.",
+      "created": 1790000100000,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-102",
+      "text": "Worktree created\nBranch:   GLASS-2\nWorktree: ~/private-tools/ai-wt/GLASS-2",
+      "created": 1790000100001,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-103",
+      "text": "Commit ec0084e\ndocs: GLASS-2 design for the delivery flow",
+      "created": 1790000100002,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-104",
+      "text": "Stacked branch GLASS-2-frodo-hostkey is open; see https://youtrack.kevininscoe.com/issue/KSA-81 for context.",
+      "created": 1790000100003,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "admin"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-105",
+      "text": "Committed on branch `KSA-81`, and `git log main..GLASS-2` was empty.",
+      "created": 1790000100004,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "admin"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-106",
+      "text": "Nothing here mentions the issue, and KSA-810 is a different one.",
+      "created": 1790000100005,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    }
+  ],
+  "attachments": [],
+  "links": [
+    {
+      "direction": "OUTWARD",
+      "linkType": {
+        "name": "Depend"
+      },
+      "issues": [
+        {
+          "id": "3-77",
+          "idReadable": "APP-43"
+        }
+      ]
+    }
+  ],
+  "workItems": {
+    "unavailable": "GET ... -> HTTP 403"
+  },
+  "referencing_issues": [
+    {
+      "id": "3-77",
+      "idReadable": "APP-43",
+      "summary": "Cross-host delivery",
+      "description": "",
+      "project": {
+        "shortName": "APP"
+      },
+      "comments": [
+        {
+          "id": "7-201",
+          "text": "APP-43 remains blocked on GLASS-2; branch GLASS-2 is not merged.",
+          "created": 1790000300000,
+          "author": {
+            "login": "Claude_Code"
+          }
+        }
+      ]
+    }
+  ],
+  "unclassified_referencing_issues": []
+}
