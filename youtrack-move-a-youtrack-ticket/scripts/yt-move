@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs a yt_move.py API subcommand inside `parzival exec`, so the YouTrack token
+# reaches only curl, through the RAM-backed $YOUTRACK_CURL_CONFIG parzival renders
+# for its child (~/ai/directives/when-creating-a-youtrack-ticket.md section 14).
+# Offline subcommands (check-id, check-export, compare, followup-text) need no
+# credentials; run them with plain python3 instead.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Claude Code's Bash tool runs a non-interactive shell that never reads .zshrc,
+# so source the AppRole environment here rather than assume the caller did.
+[[ -f "$HOME/.environment/openbao/openbao-env.sh" ]] && source "$HOME/.environment/openbao/openbao-env.sh"
+
+exec parzival exec --as ai youtrack-claude-code -- python3 "$SCRIPT_DIR/yt_move.py" "$@"

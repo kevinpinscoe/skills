@@ -118,6 +118,10 @@ prefix back out of the name would be ambiguous).
 ├── youtrack-create-ticket-in-youtrack/                 # symlink → vanco-skills
 ├── youtrack-get-my-assigned-tickets-from-jira-into-youtrack/  # symlink → vanco-skills
 ├── youtrack-insert-specific-jira-ticket-in-youtrack/   # symlink → vanco-skills
+├── youtrack-move-a-youtrack-ticket/
+│   ├── SKILL.md
+│   ├── run.sh
+│   └── scripts/              # yt_move.py, yt-move (parzival wrapper), tests, fixtures
 ├── youtrack-read-updates-from-tasks-and-generate-stand-up/    # symlink → vanco-skills
 ├── youtrack-reconcile/                                 # symlink → vanco-skills
 ├── youtrack-report-a-fldw-swap-issue-and-investigate/
@@ -140,7 +144,8 @@ chooser without the tool needing to know anything about `get-shit-done` specific
 
 ### Skills bridged in from `vanco-skills`
 
-`jira-*`, `youtrack-*`, and `daily-run-through-my-os-todo` are symlinks — their content lives
+`jira-*`, the `youtrack-*` entries marked as symlinks in the tree above, and
+`daily-run-through-my-os-todo` are symlinks — their content lives
 in, and is owned by, the private `~/Projects/private/vanco-skills` repo, not this one. Git
 tracks only the symlinks. `install.sh` recreates them if a target goes missing or a link gets
 clobbered; see `RUNBOOK.md`. `vanco-skills` itself now matches this naming convention (flat

@@ -1,0 +1,165 @@
+{
+  "id": "3-2250",
+  "idReadable": "KSA-81",
+  "numberInProject": 81,
+  "summary": "Deliver a secret to another host",
+  "description": "Tracks the work; KSA-81 relies on KSA-93.",
+  "created": 1790000000000,
+  "updated": 1790000900000,
+  "resolved": 1790000800000,
+  "votes": 0,
+  "reporter": {
+    "login": "Claude_Code"
+  },
+  "project": {
+    "id": "0-35",
+    "shortName": "KSA",
+    "name": "Secrets"
+  },
+  "tags": [],
+  "customFields": [
+    {
+      "name": "Status",
+      "$type": "StateIssueCustomField",
+      "value": {
+        "name": "Done"
+      }
+    },
+    {
+      "name": "Working branch",
+      "$type": "SimpleIssueCustomField",
+      "value": "KSA-81"
+    },
+    {
+      "name": "Ghostty tab name",
+      "$type": "SimpleIssueCustomField",
+      "value": "KSA-81c"
+    },
+    {
+      "name": "Spent time",
+      "$type": "PeriodIssueCustomField",
+      "value": {
+        "$type": "PeriodValue",
+        "minutes": 3179,
+        "presentation": "52h 59m"
+      }
+    }
+  ],
+  "comments": [
+    {
+      "id": "7-101",
+      "text": "Blocked by KSA-81 until the receiver exists.",
+      "created": 1790000100000,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-102",
+      "text": "Worktree created\nBranch:   KSA-81\nWorktree: ~/private-tools/ai-wt/KSA-81",
+      "created": 1790000100001,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-103",
+      "text": "Commit ec0084e\ndocs: KSA-81 design for the delivery flow",
+      "created": 1790000100002,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-104",
+      "text": "Stacked branch KSA-81-frodo-hostkey is open; see https://youtrack.kevininscoe.com/issue/KSA-81 for context.",
+      "created": 1790000100003,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "admin"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-105",
+      "text": "Committed on branch `KSA-81`, and `git log main..KSA-81` was empty.",
+      "created": 1790000100004,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "admin"
+      },
+      "attachments": []
+    },
+    {
+      "id": "7-106",
+      "text": "Nothing here mentions the issue, and KSA-810 is a different one.",
+      "created": 1790000100005,
+      "updated": null,
+      "deleted": false,
+      "author": {
+        "login": "Claude_Code"
+      },
+      "attachments": []
+    }
+  ],
+  "attachments": [],
+  "links": [
+    {
+      "direction": "OUTWARD",
+      "linkType": {
+        "name": "Depend"
+      },
+      "issues": [
+        {
+          "id": "3-77",
+          "idReadable": "APP-43"
+        }
+      ]
+    }
+  ],
+  "workItems": {
+    "unavailable": "GET ... -> HTTP 403"
+  },
+  "referencing_issues": [
+    {
+      "id": "3-77",
+      "idReadable": "APP-43",
+      "summary": "Cross-host delivery",
+      "description": "",
+      "project": {
+        "shortName": "APP"
+      },
+      "comments": [
+        {
+          "id": "7-201",
+          "text": "APP-43 remains blocked on KSA-81; branch KSA-81 is not merged.",
+          "created": 1790000300000,
+          "author": {
+            "login": "Claude_Code"
+          }
+        }
+      ]
+    }
+  ],
+  "_scan": {
+    "queries": [
+      "KSA-81",
+      "\"KSA-81\"",
+      "\"issue/KSA-81\""
+    ],
+    "hits": 1,
+    "complete": true,
+    "visible_to": "Claude_Code (projects on its team only)"
+  }
+}
