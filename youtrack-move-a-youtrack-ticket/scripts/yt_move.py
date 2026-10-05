@@ -24,7 +24,7 @@ API subcommands (run through ./yt-move, which wraps them in
                                  full structured snapshot of an issue to JSON;
                                  --scan records other issues mentioning ID,
                                  --references-from re-reads the ones BEFORE found
-  move ENTITY_ID PROJECT_ID      POST /api/issues/{id}/project, then re-resolve
+  move ENTITY_ID PROJECT_ID      POST /api/issues/{id} {"project": ...}, then re-resolve
   create-followup OLD NEW [--report R]
                                  file the POE follow-up issue
 
@@ -473,8 +473,13 @@ def move(entity_id, project_id):
     if not PROJECT_ID_RE.match(project_id):
         raise Fail(f"not a project database id: {project_id!r} (expected e.g. 0-50)")
     refuse_destination(resolve_issue(entity_id), resolve_project(project_id))
-    api("POST", f"/api/issues/{entity_id}/project",
-        {"fields": "id,shortName,name"}, {"id": project_id})
+    # Move by updating the issue's project attribute. JetBrains also documents
+    # POST /api/issues/{id}/project with {"id": ...}, but on this instance
+    # (YouTrack 2026.2, build 17765) that returned 200 and moved nothing:
+    # KSA-117 -> GLASS, 2026-10-04. The re-read below is what caught it, and it
+    # stays: a write that reports success is only proven by the read.
+    api("POST", f"/api/issues/{entity_id}",
+        {"fields": "id,idReadable,project(id,shortName)"}, {"project": {"id": project_id}})
     after = resolve_issue(entity_id)
     if after["project"]["id"] != project_id:
         raise Fail(f"move reported success but issue is in {after['project']['shortName']}")

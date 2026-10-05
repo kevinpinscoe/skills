@@ -351,6 +351,44 @@ class CreateFollowupMocked(unittest.TestCase):
         self.assertIsNone(yt_move.forge_url("/some/local/path"))
 
 
+class MoveMocked(unittest.TestCase):
+    """move(): the exact call it makes, and that an ignored move still fails."""
+
+    def setUp(self):
+        self.saved = (yt_move.api, yt_move.resolve_project)
+        self.calls, self.project = [], {"id": "0-35", "shortName": "KSA"}
+        yt_move.resolve_project = lambda pid: {"id": pid, "shortName": "GLASS",
+                                               "name": "bao-breakglass", "searchable_issue": True}
+        yt_move.api = self.fake_api
+        self.honour = True
+
+    def tearDown(self):
+        yt_move.api, yt_move.resolve_project = self.saved
+
+    def fake_api(self, method, path, params=None, body=None):
+        self.calls.append((method, path, body))
+        if method == "GET":
+            return {"id": "3-2405", "idReadable": "KSA-117" if self.project["id"] == "0-35"
+                    else "GLASS-3", "summary": "s", "project": dict(self.project)}
+        if method == "POST" and self.honour:
+            self.project = {"id": body["project"]["id"], "shortName": "GLASS"}
+        return {}
+
+    def test_uses_issue_update_form(self):
+        out = yt_move.move("3-2405", "0-66")
+        posts = [c for c in self.calls if c[0] == "POST"]
+        self.assertEqual(posts, [("POST", "/api/issues/3-2405", {"project": {"id": "0-66"}})])
+        self.assertNotIn("/api/issues/3-2405/project", [c[1] for c in self.calls])
+        self.assertEqual(out["idReadable"], "GLASS-3")
+        self.assertEqual(self.calls[-1][0], "GET")        # re-read after the write
+
+    def test_ignored_move_fails(self):
+        self.honour = False                               # the KSA-117 behaviour
+        with self.assertRaises(yt_move.Fail) as ctx:
+            yt_move.move("3-2405", "0-66")
+        self.assertIn("issue is in KSA", str(ctx.exception))
+
+
 class CoverageClaim(unittest.TestCase):
     CLAIM = "searched all issues visible to the Claude_Code identity to exhaustion"
 

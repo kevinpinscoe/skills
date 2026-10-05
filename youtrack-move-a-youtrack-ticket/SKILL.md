@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 > Move an existing YouTrack issue to another YouTrack project through the REST API, preserve and verify its data, then create a POE follow-up ticket for updating home-directory Markdown references to the issue's new ID.
 
-This is a real move of the existing issue with `POST /api/issues/{id}/project`, so its history stays attached. It never recreates or copies the issue, and it never automates the web UI.
+This is a real move of the existing issue, made by updating its project with `POST /api/issues/{id}` and `{"project": {"id": ...}}`, so its history stays attached. It never recreates or copies the issue, and it never automates the web UI.
 
 The evidence is gathered in a fixed order. Each step needs the one before it:
 
@@ -109,7 +109,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 
    An **archived** destination cannot be detected for the same reason. When showing Kevin the resolved project, say so, so he can catch one himself. `bash $H/yt-move move` applies the same refusals again just before it posts.
 
-7. **Confirm, then move.** Tell Kevin exactly what will happen: "Move `OLD` (entity `EID`, _summary_) from _source project_ to _destination project_ (`PID`). YouTrack will rewrite about _N_ mentions in issue text, about _M_ of them literal artifacts." Wait for an explicit yes. Then run `bash $H/yt-move move EID PID`. It posts `{"id": "PID"}` to `/api/issues/EID/project` and re-resolves the issue **by entity ID**, so the changing readable ID cannot confuse it. Record the new readable ID as `NEW` (`OLD -> NEW`). If the call errors, re-resolve with `bash $H/yt-move resolve-issue EID` before saying anything. The move may have landed even though the response failed.
+7. **Confirm, then move.** Tell Kevin exactly what will happen: "Move `OLD` (entity `EID`, _summary_) from _source project_ to _destination project_ (`PID`). YouTrack will rewrite about _N_ mentions in issue text, about _M_ of them literal artifacts." Wait for an explicit yes. Then run `bash $H/yt-move move EID PID`. It posts `{"project": {"id": "PID"}}` to `/api/issues/EID` and re-resolves the issue **by entity ID**, so the changing readable ID cannot confuse it. If the re-read still shows the source project, the helper fails with `move reported success but issue is in …`. That is a stop: nothing moved, the pre-move evidence stays valid, and Kevin decides what happens next. Record the new readable ID as `NEW` (`OLD -> NEW`). If the call errors, re-resolve with `bash $H/yt-move resolve-issue EID` before saying anything. The move may have landed even though the response failed.
 
 8. **Ask Kevin to run the post-move export, then STOP.** As in step 2, but for the new ID: `yt-export NEW --out ~/tmp/NEW-after-project-move.md` (or `~/tmp/yt-export-NEW-after.sh` if the line is long). Wait for the reported path. Then validate it with `python3 $H/yt_move.py check-export <reported path> NEW --project-name "<destination project name>"`. On any `FAIL`, stop and report.
 
@@ -202,6 +202,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
   Bypassing the human-only `rg` wrapper or the Parzival boundary is out of scope for everyone.
 - **The artifact classifier is deliberately conservative. Do not tune it to match a hand count.** It looks at paths, `-suffix` names, branch, worktree and command words, commit-subject prefixes and code spans. On the real KSA-81 data it put 150 of 233 rewrites in kind B, where an earlier hand estimate was about 111. A false positive costs one human check in Part B. A false negative would leave a real branch, path or commit identifier silently wrong. Part B's per-location approval is the safety mechanism.
 - **Boundary-aware matching on the filesystem.** Part A matches `OLD` only where the character before it is not a letter, digit or hyphen, and the character after it is not a digit. So `KTA-19` never rewrites `KTA-190` or `ABC-KTA-19`. The `rg` inventory and the rewrite utility share that one pattern.
+- **Use the issue-update form, not the `/project` sub-resource.** JetBrains documents `POST /api/issues/{id}/project` with `{"id": ...}`. On this instance (YouTrack 2026.2, build 17765) it returned 200 and moved nothing: KSA-117 -> GLASS, 2026-10-04. `Claude_Code` held every issue permission in both projects, so that was not the cause. The issue-update form was proven the same day: a throwaway TEST-7 was moved by the helper to AI-70, confirmed by entity ID, and deleted. Keep the re-read check whichever form is used.
 - **YouTrack's cross-project move warning is boilerplate.** Field data is actually lost only when the source carries a field, or a bundle value, that the destination lacks. The structural check catches that.
 - **Activity history is not compared.** The `Claude_Code` token cannot see every activity record (`reference/custom-fields.md`). The exports and snapshots are the record.
 - Test the helper with `python3 $H/test_yt_move.py`. It is offline and fixtures-only, never moves anything, and its regression fixtures model the KSA-81 -> GLASS-2 behaviour with synthetic text.
