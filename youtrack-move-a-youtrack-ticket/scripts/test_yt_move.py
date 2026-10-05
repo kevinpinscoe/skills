@@ -252,6 +252,7 @@ class CreateFollowupMocked(unittest.TestCase):
               "157-15": ("Date time entered", "SimpleIssueCustomField"),
               "157-17": ("Repo URL", "SimpleIssueCustomField"),
               "157-32": ("Affected host", "SingleEnumIssueCustomField")}
+    DISPLAY_NAMES = {"Claude_Code": "Claude Code"}
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -286,8 +287,12 @@ class CreateFollowupMocked(unittest.TestCase):
             by_name = {f["name"]: f["value"] for f in self.created["customFields"]}
             fields = []
             for p, (n, _) in self.PROTOS.items():
-                fields.append({"projectCustomField": {"field": {"id": p}},
-                               "value": by_name.get(n)})
+                v = copy.deepcopy(by_name.get(n))
+                if isinstance(v, dict) and "login" in v:
+                    # What YouTrack really returns for a user: login plus display
+                    # name. Omitting the name is how POE-27's bug got past this test.
+                    v["name"] = self.DISPLAY_NAMES.get(v["login"], v["login"])
+                fields.append({"projectCustomField": {"field": {"id": p}}, "value": v})
             return {"idReadable": "POE-99", "customFields": fields,
                     "comments": [{"text": self.comment}]}
         raise AssertionError(f"unexpected call {method} {path}")
@@ -318,6 +323,28 @@ class CreateFollowupMocked(unittest.TestCase):
         self.assertEqual(out["idReadable"], "POE-99")
         self.assertEqual(out["url"], "https://youtrack.kevininscoe.com/issue/POE-99")
         self.assertEqual(self.calls[-1][1], "/api/issues/3-9999")   # read back last
+
+    def test_user_display_name_does_not_fail_read_back(self):
+        # Regression for POE-27 (KSA-117 -> GLASS-3, 2026-10-04): the Assignee read
+        # back as {"login": "Claude_Code", "name": "Claude Code"} and the helper
+        # compared the name, so a correct ticket was reported wrong.
+        out = yt_move.create_followup("KSA-117", "GLASS-3")
+        self.assertEqual(out["idReadable"], "POE-99")
+        self.assertIn("157-3", out["verified"])
+
+    def test_wrong_assignee_login_still_fails(self):
+        real = self.fake_api
+
+        def other_user(method, path, params=None, body=None):
+            r = real(method, path, params, body)
+            if method == "GET" and path == "/api/issues/3-9999":
+                for f in r["customFields"]:
+                    if f["projectCustomField"]["field"]["id"] == "157-3":
+                        f["value"] = {"login": "admin", "name": "Claude_Code"}
+            return r
+        yt_move.api = other_user
+        with self.assertRaises(yt_move.Fail):
+            yt_move.create_followup("KTA-19", "GLASS-2")
 
     def test_part_a_only_without_remediation(self):
         yt_move.create_followup("KTA-19", "GLASS-2")

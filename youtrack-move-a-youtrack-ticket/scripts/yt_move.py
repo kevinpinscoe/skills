@@ -829,6 +829,31 @@ def followup_repo_url():
     return url
 
 
+def followup_read_back_problems(check, repo_url):
+    """Compare a read-back follow-up issue with what create_followup() set.
+
+    Returns (wrong, expect): wrong maps each mismatching prototype (or
+    "Repository comment") to the value read back; empty means it matches.
+    """
+    got = {}
+    for f in check["customFields"]:
+        v = f.get("value")
+        # A user value carries both login and display name ("Claude_Code" /
+        # "Claude Code"); compare logins. Enum and state values carry only a name.
+        # Reading name first made POE-27's correct Assignee read back as wrong.
+        if isinstance(v, dict):
+            v = v["login"] if v.get("login") else v.get("name")
+        got[f["projectCustomField"]["field"]["id"]] = v
+    expect = {PROTO_STATUS: "Not yet started", PROTO_PRIORITY: "Normal", PROTO_TYPE: "Task",
+              PROTO_ASSIGNEE: FOLLOWUP_ASSIGNEE, PROTO_REPO_URL: repo_url}
+    wrong = {p: got.get(p) for p, v in expect.items() if got.get(p) != v}
+    if not isinstance(got.get(PROTO_DATE_ENTERED), int):
+        wrong[PROTO_DATE_ENTERED] = got.get(PROTO_DATE_ENTERED)
+    if not any(c.get("text") == f"Repository: {FOLLOWUP_REPO}" for c in check.get("comments") or []):
+        wrong["Repository comment"] = None
+    return wrong, expect
+
+
 def create_followup(old, new, report=None, report_path=None):
     repo_url = followup_repo_url()
     project = resolve_project(FOLLOWUP_PROJECT)
@@ -864,18 +889,7 @@ def create_followup(old, new, report=None, report_path=None):
     check = api("GET", f"/api/issues/{created['id']}", {"fields":
                 "idReadable,customFields(name,projectCustomField(field(id)),value(name,login)),"
                 "comments(text)"})
-    got = {}
-    for f in check["customFields"]:
-        v = f.get("value")
-        got[f["projectCustomField"]["field"]["id"]] = (
-            (v.get("name") or v.get("login")) if isinstance(v, dict) else v)
-    expect = {PROTO_STATUS: "Not yet started", PROTO_PRIORITY: "Normal", PROTO_TYPE: "Task",
-              PROTO_ASSIGNEE: FOLLOWUP_ASSIGNEE, PROTO_REPO_URL: repo_url}
-    wrong = {p: got.get(p) for p, v in expect.items() if got.get(p) != v}
-    if not isinstance(got.get(PROTO_DATE_ENTERED), int):
-        wrong[PROTO_DATE_ENTERED] = got.get(PROTO_DATE_ENTERED)
-    if not any(c.get("text") == f"Repository: {FOLLOWUP_REPO}" for c in check.get("comments") or []):
-        wrong["Repository comment"] = None
+    wrong, expect = followup_read_back_problems(check, repo_url)
     if wrong:
         raise Fail(f"{check['idReadable']} was created but reads back wrong: {wrong}")
     return {"idReadable": check["idReadable"], "id": created["id"],
