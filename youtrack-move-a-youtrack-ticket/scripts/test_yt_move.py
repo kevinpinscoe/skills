@@ -416,6 +416,105 @@ class MoveMocked(unittest.TestCase):
         self.assertIn("issue is in KSA", str(ctx.exception))
 
 
+class UtilityBootstrapProtocol(unittest.TestCase):
+    """Part A decides who creates the shared utility from repository state.
+
+    Regression for POE-27/POE-28 (2026-10-05): every follow-up said "create the
+    utility", so POE-28 waited on POE-27's plan while no implementation existed.
+    """
+
+    def setUp(self):
+        self.text = yt_move.followup_text("KTA-19", "GLASS-2")
+        self.a3 = self.text[self.text.index("## A3"):self.text.index("## A4")]
+
+    def test_no_ticket_is_named_as_creator(self):
+        self.assertIsNone(re.search(r"\bPOE-\d+", self.text))
+        for phrase in ("first ticket", "created first", "older ticket", "creation order"):
+            self.assertNotIn(phrase, self.text.lower())
+
+    def test_never_waits_on_an_open_ticket(self):
+        low = self.text.lower()
+        for phrase in ("if another open ticket exists, wait", "another ticket creates",
+                       "that poe", "creates the utility"):
+            self.assertNotIn(phrase, low)
+        self.assertIn("An open POE ticket is not a lock. A planned implementation is not a lock.",
+                      self.text)
+
+    def test_case_1_reuse_from_main_after_validation(self):
+        self.assertIn("### Case 1 — the utility already exists on `private-tools` main", self.a3)
+        for need in ("tracked by git on `main`", "Run its tests", "reuse it",
+                     "Do not create another implementation",
+                     "does not meet the A4 contract, STOP"):
+            self.assertIn(need, self.a3)
+        self.assertIn("ls-tree --name-only origin/main -- yt-rewrite-moved-issue-id.py", self.a3)
+
+    def test_case_2_concrete_state_not_tickets(self):
+        self.assertIn("### Case 2 — absent from main, but a concrete implementation is in progress",
+                      self.a3)
+        self.assertIn("Another open POE issue is not, by itself, proof", self.a3)
+        for need in ("open `private-tools` pull request", "pushed branch",
+                     "committed implementation", "STOP before performing any rewrite",
+                     "Never write a competing copy", "two concrete implementations"):
+            self.assertIn(need, self.a3)
+
+    def test_case_3_current_ticket_bootstraps_via_prerequisite_pr(self):
+        self.assertIn("### Case 3 — absent, and no concrete implementation exists", self.a3)
+        self.assertIn("**This POE ticket becomes the bootstrap owner.**", self.a3)
+        case3 = self.a3[self.a3.index("### Case 3"):]
+        order = ["Implement the canonical utility", "Add the tests", "Run the tests",
+                 "Open a `private-tools` pull request",
+                 "STOP before using the utility for any cross-repository rewrite",
+                 "Ask Kevin to merge that prerequisite", "fast-forward `~/private-tools` main",
+                 "rerun its tests from main", "continue with A6"]
+        positions = [case3.index(step) for step in order]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_rewrites_only_after_a3(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("Only once A3 has established a tested utility on `private-tools` main", a6)
+
+    def test_full_utility_contract(self):
+        a4 = self.text[self.text.index("## A4"):self.text.index("## A5")]
+        for need in ("yt-rewrite-moved-issue-id.py OLD_ID NEW_ID FILE",
+                     "exactly one explicitly named file", "Never recursively search",
+                     "only a regular `.md` file", "Refuse symlinks and non-regular files",
+                     "^[A-Z][A-Z0-9_]*-[1-9][0-9]*$", "OLD_ID equals NEW_ID", "Escape OLD_ID",
+                     "(?<![A-Za-z0-9-])OLD_ID(?![0-9])", "Never use unrestricted `str.replace()`",
+                     "zero boundary-aware matches", "exact number of substitutions",
+                     "no line-ending normalisation", "permission mode",
+                     "temporary file in the same directory", "Remove the temporary file",
+                     "Exit non-zero", "verify that the file's content is exactly",
+                     "never print unrelated file contents"):
+            self.assertIn(need, a4)
+        self.assertEqual(len(re.findall(r"^\d+\. ", a4, re.M)), 18)
+
+    def test_required_utility_tests(self):
+        a5 = self.text[self.text.index("## A5"):self.text.index("## A6")]
+        for need in ("`KTA-19`", "`(KTA-19)`", "`KTA-19.`", "`KTA-19,`",
+                     "`https://youtrack.kevininscoe.com/issue/KTA-19`", "`KTA-190`", "`KTA-191`",
+                     "`XKTA-19`", "`ABC-KTA-19`", "Several approved matches",
+                     "Zero matches: refused, file unchanged", "invalid old ID", "invalid new ID",
+                     "identical old and new IDs", "non-`.md` file, a directory, and a symlink",
+                     "Permission mode preserved", "CRLF input stays CRLF", "no final newline",
+                     "failed atomic write leaves the original intact",
+                     "second invocation after a successful rewrite refuses",
+                     "Temporary fixtures only"):
+            self.assertIn(need, a5)
+
+    def test_rg_ban_and_artifact_review_kept(self):
+        self.assertIn("AI agents are forbidden from running recursive `rg`", self.text)
+        self.assertIn("**Do not rerun `rg`**", self.text)
+        self.assertIn("**Required:** before changing a Markdown hit that looks like a branch name",
+                      self.text)
+        self.assertIn("Never use recursive `rg` to verify", self.text)
+
+    def test_same_protocol_with_part_b(self):
+        rep = yt_move.compare(fixture("ksa81-before.json"), fixture("glass2-after.json"))
+        text = yt_move.followup_text("KSA-81", "GLASS-2", rep)
+        self.assertIn("**This POE ticket becomes the bootstrap owner.**", text)
+        self.assertIn("# Part B", text)
+
+
 class CoverageClaim(unittest.TestCase):
     CLAIM = "searched all issues visible to the Claude_Code identity to exhaustion"
 
