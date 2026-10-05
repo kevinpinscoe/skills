@@ -454,7 +454,7 @@ class UtilityBootstrapProtocol(unittest.TestCase):
         self.assertIn("Another open POE issue is not, by itself, proof", self.a3)
         for need in ("open `private-tools` pull request", "pushed branch",
                      "committed implementation", "STOP before performing any rewrite",
-                     "Never write a competing copy", "two concrete implementations"):
+                     "Never write a competing copy", "two genuinely active concrete implementations"):
             self.assertIn(need, self.a3)
 
     def test_case_3_current_ticket_bootstraps_via_prerequisite_pr(self):
@@ -482,8 +482,8 @@ class UtilityBootstrapProtocol(unittest.TestCase):
                      "(?<![A-Za-z0-9-])OLD_ID(?![0-9])", "Never use unrestricted `str.replace()`",
                      "zero boundary-aware matches", "exact number of substitutions",
                      "no line-ending normalisation", "permission mode",
-                     "temporary file in the same directory", "Remove the temporary file",
-                     "Exit non-zero", "verify that the file's content is exactly",
+                     "temporary file in the same directory", "remove the temporary file",
+                     "Exit non-zero", "against the exact expected regex-substitution result",
                      "never print unrelated file contents"):
             self.assertIn(need, a4)
         self.assertEqual(len(re.findall(r"^\d+\. ", a4, re.M)), 18)
@@ -507,6 +507,89 @@ class UtilityBootstrapProtocol(unittest.TestCase):
         self.assertIn("**Required:** before changing a Markdown hit that looks like a branch name",
                       self.text)
         self.assertIn("Never use recursive `rg` to verify", self.text)
+
+    # ---- PR 24 review: worktree path mapping (A6)
+    def test_a6_inventory_is_authority_worktree_is_target(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("The inventory path is the authority for *which* file may change; "
+                      "the corresponding worktree path is *where* it is changed.", a6)
+        self.assertIn("Use only paths explicitly present in the inventory", a6)
+        self.assertIn("Run `yt-rewrite-moved-issue-id.py` against the **worktree copy**", a6)
+
+    def test_a6_forbids_editing_the_main_checkout_path(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("**Never modify the original inventory pathname in the main checkout**", a6)
+
+    def test_a6_requires_relative_path_mapping_in_order(self):
+        a6 = self.text[self.text.index("## A6"):]
+        steps = ["Determine which Git repository owns the file",
+                 "inside that repository's normal (main) working tree",
+                 "Create or use this POE ticket's worktree",
+                 "Derive the path relative to the repository root",
+                 "Build the target inside the POE worktree from that same relative path",
+                 "resolves lexically beneath that worktree root",
+                 "against the **worktree copy**", "Review the worktree diff",
+                 "open that repository's pull request"]
+        pos = [a6.index(x) for x in steps]
+        self.assertEqual(pos, sorted(pos))
+        self.assertIn("preserving nested directories exactly", a6)
+        self.assertIn("`~/Projects/private/host-frodo-config/ai-wt/<this issue>/README.md`", a6)
+
+    def test_a6_no_target_outside_the_worktree(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("No file outside the worktree may be substituted as a target.", a6)
+
+    # ---- PR 24 review: stale branches are not locks (A3)
+    def test_a3_branch_with_file_is_not_automatically_owner(self):
+        self.assertIn("**File presence is not ownership.**", self.a3)
+        self.assertIn("A hit is evidence to investigate, not a lock: file existence on a remote "
+                      "branch is not sufficient.", self.a3)
+        self.assertNotIn("a pushed branch containing it, or", self.a3)   # 1433e7d wording
+
+    def test_a3_branch_needs_current_ownership_evidence(self):
+        self.assertIn("a pushed branch with committed implementation **plus** current recorded "
+                      "ownership tying it to an active ticket or lane", self.a3)
+        self.assertIn("Confirm that the branch is actively owned by a current implementation "
+                      "ticket/lane or open PR. Otherwise report the stale/unowned branch and "
+                      "continue determining whether the current ticket should bootstrap the "
+                      "utility.", self.a3)
+
+    def test_a3_stale_branches_are_not_locks(self):
+        for need in ("a remote branch containing the file with no current owning ticket, lane "
+                     "or pull request", "an old merged branch", "an abandoned or stale branch",
+                     "neither does a stale or unowned branch that contains the file",
+                     "ask Kevin rather than assuming it owns the implementation"):
+            self.assertIn(need, self.a3)
+
+    def test_a3_two_active_implementations_still_go_to_kevin(self):
+        self.assertIn("If two genuinely active concrete implementations exist at the same time, "
+                      "STOP both paths and ask Kevin", self.a3)
+
+    # ---- PR 24 review: safe-write sequence (A4, A5)
+    def test_a4_safe_write_sequence_in_order(self):
+        a4 = self.text[self.text.index("## A4"):self.text.index("## A5")]
+        seq = ["Read the original bytes", "Compute the expected output entirely in memory",
+               "Create a temporary file in the same directory",
+               "Write the complete expected bytes", "Flush and `fsync` the temporary file",
+               "Re-read the temporary file and verify",
+               "Give the temporary file the original's permission mode",
+               "Only then atomically replace the original",
+               "Re-read the final pathname and verify",
+               "remove the temporary file if it still exists"]
+        pos = [a4.index(x) for x in seq]
+        self.assertEqual(pos, sorted(pos))
+        self.assertIn("A failure at any step before the replacement leaves the original untouched",
+                      a4)
+
+    def test_a4_does_not_promise_restore_after_rename(self):
+        a4 = self.text[self.text.index("## A4"):self.text.index("## A5")]
+        self.assertIn("keeps no backup", a4)
+        self.assertIn("does not restore the old content", a4)
+
+    def test_a5_pre_replace_verification_failure_test(self):
+        a5 = self.text[self.text.index("## A5"):self.text.index("## A6")]
+        self.assertIn("A simulated pre-replacement verification failure (step 6 reads back "
+                      "different bytes) leaves the original byte-for-byte unchanged", a5)
 
     def test_same_protocol_with_part_b(self):
         rep = yt_move.compare(fixture("ksa81-before.json"), fixture("glass2-after.json"))
