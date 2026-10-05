@@ -338,7 +338,7 @@ the wont ever get done task. If you love it put a due date on it!"*
       if newly created, and `TODO/todo-today.md` if step 10c was accepted. Never `git add -A`.
       Commit as `docs: add decision record <slug>` and push.
     - `~/ai/` — only if the values file changed. `~/ai` is on the confirm-before-commit list in
-      `~/skills/CLAUDE.md`, so **ask the human explicitly** before staging. Stage only
+      `~/.claude/skills/CLAUDE.md`, so **ask the human explicitly** before staging. Stage only
       `kevins-values.md`. Commit as `docs: update life values weights` and push.
 
     Report both commit hashes.

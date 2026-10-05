@@ -356,8 +356,8 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 16. **Offer to create a note under this MOC** — After the completion summary, ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
     - **If no**: stop. The skill is complete.
     - **If yes**: ask which vault the note belongs in — "Which vault should this note live in: **PCM** or **PKM**? (A note lives in only one vault; MOCs may exist in both.)" Then execute the matching note skill, using **this third-level MOC as the target MOC** for the note:
-      - **PCM** → `~/skills/skills/knowledge/create-a-pcm-note/SKILL.md`
-      - **PKM** → `~/skills/skills/knowledge/create-a-pkm-note/SKILL.md`
+      - **PCM** → `~/.claude/skills/knowledge-create-a-pcm-note/SKILL.md`
+      - **PKM** → `~/.claude/skills/knowledge-create-a-pkm-note/SKILL.md`
 
       Read that file and follow its Instructions, but **skip its MOC chooser chain** — the target is already known. Set the note's `deepest_*` values from the MOC just created here:
       - `deepest_slug` = this MOC's `<slug>`

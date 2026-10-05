@@ -20,9 +20,9 @@ This is an **orchestrator**. It reuses the existing knowledge skills rather than
 | Step | Delegates to |
 |---|---|
 | List / suggest first-level MOC | first-level chooser (inline Python, below) |
-| Create a new first-level MOC | `~/skills/skills/knowledge/first-moc-level/SKILL.md` |
-| Select / create a second-level MOC | `~/skills/skills/knowledge/second-moc-level/SKILL.md` |
-| Select / create a third-level MOC | `~/skills/skills/knowledge/third-moc-level/SKILL.md` |
+| Create a new first-level MOC | `~/.claude/skills/knowledge-first-moc-level/SKILL.md` |
+| Select / create a second-level MOC | `~/.claude/skills/knowledge-second-moc-level/SKILL.md` |
+| Select / create a third-level MOC | `~/.claude/skills/knowledge-third-moc-level/SKILL.md` |
 | Write the note + link into the MOC | this skill (the **PKM-only** note creator) |
 
 Everything happens in one sequential Claude session. The human is asked before each MOC level is selected or created. **At a minimum a note must have a first-level MOC** — the first-level step can never be skipped. The second and third levels are optional. The note inherits its LCC classification from the **deepest MOC selected**.
@@ -31,7 +31,7 @@ Everything happens in one sequential Claude session. The human is asked before e
 
 - `~/KnowledgeVault/PKM/` exists with `moc/`, `notes/`, `attachments/`, `lcc/`, and `templates/note-template.md`
 - `~/KnowledgeVault/PKM/moc/` contains at least one first-level MOC (or the human is willing to create one)
-- The MOC-creation skills exist under `~/skills/skills/knowledge/`
+- The MOC-creation skills exist under `~/.claude/skills/knowledge-*/`
 - Python 3 available (`python3`)
 - `curl` available (for best-effort image downloads)
 - Network access if the input is a link
@@ -153,7 +153,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
 5. **Resolve the first-level MOC (required).** Based on the human's choice in Step 3:
    - **Accept the suggestion or pick another number** → record `l1_slug`, `l1_title`, `l1_cls`, `l1_lbl` from the chosen row.
-   - **None fit / create new** → execute the `first-moc-level` skill at `~/skills/skills/knowledge/first-moc-level/SKILL.md`: read it and follow its Instructions to create the new first-level MOC. When it finishes, use the MOC it created as `l1_*`. **Do not** follow that skill's own "offer to create a second-level MOC / note" tail steps — return here. **Then immediately link the new first-level MOC into `home.md` (see Step 5a).**
+   - **None fit / create new** → execute the `first-moc-level` skill at `~/.claude/skills/knowledge-first-moc-level/SKILL.md`: read it and follow its Instructions to create the new first-level MOC. When it finishes, use the MOC it created as `l1_*`. **Do not** follow that skill's own "offer to create a second-level MOC / note" tail steps — return here. **Then immediately link the new first-level MOC into `home.md` (see Step 5a).**
 
    Set `deepest_slug = l1_slug`, `deepest_title = l1_title`, `deepest_cls = l1_cls`, `deepest_lbl = l1_lbl`.
 
@@ -214,7 +214,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
              print(f"{i}. {title}  [{cls} — {lbl}]  ({slug})")
      ```
 
-     - If `NONE` or the human wants a new one → execute the `second-moc-level` skill at `~/skills/skills/knowledge/second-moc-level/SKILL.md`; when it finishes, use the MOC it created as `l2_*`. Do not run that skill's own offer-tail; return here.
+     - If `NONE` or the human wants a new one → execute the `second-moc-level` skill at `~/.claude/skills/knowledge-second-moc-level/SKILL.md`; when it finishes, use the MOC it created as `l2_*`. Do not run that skill's own offer-tail; return here.
      - If they pick an existing one → record it as `l2_slug`, `l2_title`, `l2_cls`, `l2_lbl`.
 
      Update `deepest_* = l2_*`.
@@ -225,7 +225,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
    - **Keep at second level** → skip to Step 8.
    - **Use / create a third-level MOC** → list existing third-level MOCs under `<l2_slug>` / `<l2_title>` using the same Python pattern as Step 6 (substitute the second-level slug/title for the parent).
-     - If `NONE` or the human wants a new one → execute the `third-moc-level` skill at `~/skills/skills/knowledge/third-moc-level/SKILL.md`; when it finishes, use the MOC it created as `l3_*`. Do not run its offer-tail; return here.
+     - If `NONE` or the human wants a new one → execute the `third-moc-level` skill at `~/.claude/skills/knowledge-third-moc-level/SKILL.md`; when it finishes, use the MOC it created as `l3_*`. Do not run its offer-tail; return here.
      - If they pick an existing one → record it as `l3_slug`, `l3_title`, `l3_cls`, `l3_lbl`.
 
      Update `deepest_* = l3_*`.
