@@ -514,7 +514,7 @@ class UtilityBootstrapProtocol(unittest.TestCase):
         self.assertIn("The inventory path is the authority for *which* file may change; "
                       "the corresponding worktree path is *where* it is changed.", a6)
         self.assertIn("Use only paths explicitly present in the inventory", a6)
-        self.assertIn("Run `yt-rewrite-moved-issue-id.py` against the **worktree copy**", a6)
+        self.assertIn("Only then run `yt-rewrite-moved-issue-id.py` against the **worktree copy**", a6)
 
     def test_a6_forbids_editing_the_main_checkout_path(self):
         a6 = self.text[self.text.index("## A6"):]
@@ -522,12 +522,13 @@ class UtilityBootstrapProtocol(unittest.TestCase):
 
     def test_a6_requires_relative_path_mapping_in_order(self):
         a6 = self.text[self.text.index("## A6"):]
-        steps = ["Determine which Git repository owns the file",
-                 "inside that repository's normal (main) working tree",
-                 "Create or use this POE ticket's worktree",
+        steps = ["Determine whether it belongs to a Git repository",
+                 "the repository's normal (main) working tree",
                  "Derive the path relative to the repository root",
-                 "Build the target inside the POE worktree from that same relative path",
-                 "resolves lexically beneath that worktree root",
+                 "tracked by Git on the base the POE worktree is made from",
+                 "Create or use this POE ticket's worktree",
+                 "Build the candidate target inside the POE worktree from that same relative path",
+                 "Check containment both ways",
                  "against the **worktree copy**", "Review the worktree diff",
                  "open that repository's pull request"]
         pos = [a6.index(x) for x in steps]
@@ -538,6 +539,54 @@ class UtilityBootstrapProtocol(unittest.TestCase):
     def test_a6_no_target_outside_the_worktree(self):
         a6 = self.text[self.text.index("## A6"):]
         self.assertIn("No file outside the worktree may be substituted as a target.", a6)
+
+    # ---- PR 24 second review: real-path containment (A6)
+    def a6(self):
+        return self.text[self.text.index("## A6"):]
+
+    def test_a6_both_lexical_and_resolved_containment(self):
+        self.assertIn("**Both lexical and resolved containment are required. A symlinked "
+                      "directory must not allow the rewrite target to escape the POE worktree.**",
+                      self.a6())
+
+    def test_a6_resolved_containment_is_path_aware(self):
+        a6 = self.a6()
+        for need in ("resolve the worktree root canonically", "Path.resolve(strict=True)",
+                     "`Path.is_relative_to`", "`os.path.commonpath`",
+                     "never by string-prefix comparison",
+                     "Reject a target that escapes through any symlinked component",
+                     "must be a regular file and not a symlink (`os.lstat`)",
+                     "contain no `..` component"):
+            self.assertIn(need, a6)
+        self.assertNotIn("resolves lexically beneath that worktree root", a6)   # ecdf169
+
+    def test_a6_containment_checked_before_the_utility_runs(self):
+        a6 = self.a6()
+        self.assertLess(a6.index("Check containment both ways"),
+                        a6.index("Only then run `yt-rewrite-moved-issue-id.py`"))
+
+    # ---- PR 24 second review: unmanaged / untracked / other-worktree paths (A6)
+    def test_a6_untracked_and_non_git_paths_fail_closed(self):
+        a6 = self.a6()
+        self.assertIn("**Unmanaged or unmappable approved paths fail closed.**", a6)
+        for need in ("is outside any Git repository", "is untracked",
+                     "belongs to another worktree rather than the normal checkout",
+                     "no corresponding tracked file in the new POE worktree",
+                     "STOP for that file"):
+            self.assertIn(need, a6)
+
+    def test_a6_other_worktree_is_not_a_source_checkout(self):
+        self.assertIn("not an `ai-wt/` or other linked worktree", self.a6())
+        self.assertIn("--git-common-dir", self.a6())
+
+    def test_a6_tracked_on_the_worktree_base(self):
+        self.assertIn("ls-tree --name-only <base> -- <relative path>", self.a6())
+
+    def test_a6_unmappable_reported_never_dropped_or_edited_in_place(self):
+        a6 = self.a6()
+        self.assertIn("Report it to Kevin as an unmanaged/unmappable approved path", a6)
+        self.assertIn("Never fall back to editing the original inventory pathname", a6)
+        self.assertIn("never silently drop it from the approved set", a6)
 
     # ---- PR 24 review: stale branches are not locks (A3)
     def test_a3_branch_with_file_is_not_automatically_owner(self):

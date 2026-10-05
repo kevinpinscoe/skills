@@ -869,17 +869,24 @@ Only once A3 has established a tested utility on `private-tools` main:
 3. Attach the original inventory to this issue through the YouTrack API (`POST /api/issues/<this issue>/attachments`, multipart `upload=@<file>`), as retained evidence.
 4. **Required:** before changing a Markdown hit that looks like a branch name, worktree path, commit subject, command, filename or other literal historical artifact, show it to Kevin rather than rewriting it, and let him decide. Those names still exist under {old}; rewriting them blindly repeats the damage Part B exists to repair.
 5. **Map each approved inventory path to its worktree copy.** The inventory path is the authority for *which* file may change; the corresponding worktree path is *where* it is changed. **Never modify the original inventory pathname in the main checkout**, even though that exact path appears in the inventory. For each approved path:
-   1. Determine which Git repository owns the file.
-   2. Confirm the inventory path is inside that repository's normal (main) working tree.
-   3. Create or use this POE ticket's worktree for that repository, per the normal directives (`<repo-root>/ai-wt/<this issue>`).
-   4. Derive the path relative to the repository root.
-   5. Build the target inside the POE worktree from that same relative path, preserving nested directories exactly.
-   6. Verify the target exists in the worktree and resolves lexically beneath that worktree root. No file outside the worktree may be substituted as a target.
-   7. Run `{UTILITY_NAME}` against the **worktree copy**, with `{old}` and `{new}`.
-   8. Review the worktree diff.
-   9. Commit, push and open that repository's pull request, per the normal directives.
+   1. Determine whether it belongs to a Git repository (`git -C <its directory> rev-parse --show-toplevel`).
+   2. Confirm that checkout is the repository's normal (main) working tree, not an `ai-wt/` or other linked worktree: its top level must equal the parent of `git rev-parse --path-format=absolute --git-common-dir`.
+   3. Derive the path relative to the repository root. It must be relative and contain no `..` component.
+   4. Confirm that relative path is tracked by Git on the base the POE worktree is made from (`git -C <repo-root> ls-tree --name-only <base> -- <relative path>` prints it).
+   5. Create or use this POE ticket's worktree for that repository, per the normal directives (`<repo-root>/ai-wt/<this issue>`).
+   6. Build the candidate target inside the POE worktree from that same relative path, preserving nested directories exactly.
+   7. Check containment both ways. **Both lexical and resolved containment are required. A symlinked directory must not allow the rewrite target to escape the POE worktree.**
+      - Lexical: the normalised candidate path lies beneath the worktree root.
+      - Resolved: resolve the worktree root canonically (`Path.resolve()` / `realpath`) and resolve the existing target canonically (`Path.resolve(strict=True)`). The resolved target must lie beneath the resolved root, tested path-aware (`Path.is_relative_to`, or `os.path.commonpath`), never by string-prefix comparison. Reject a target that escapes through any symlinked component.
+      - The target itself must be a regular file and not a symlink (`os.lstat`).
+      No file outside the worktree may be substituted as a target.
+   8. Only then run `{UTILITY_NAME}` against the **worktree copy**, with `{old}` and `{new}`.
+   9. Review the worktree diff.
+   10. Commit, push and open that repository's pull request, per the normal directives.
 
    Example: the inventory reports `~/Projects/private/host-frodo-config/README.md`. The repository root is `~/Projects/private/host-frodo-config`, the POE worktree is `~/Projects/private/host-frodo-config/ai-wt/<this issue>`, and the relative path is `README.md`. So the rewrite target is `~/Projects/private/host-frodo-config/ai-wt/<this issue>/README.md`.
+
+   **Unmanaged or unmappable approved paths fail closed.** If an approved inventory path is outside any Git repository, is untracked, belongs to another worktree rather than the normal checkout, or otherwise has no corresponding tracked file in the new POE worktree, STOP for that file. Report it to Kevin as an unmanaged/unmappable approved path and ask how it should be handled: separately, added to a repository, or left unchanged. Never fall back to editing the original inventory pathname, and never silently drop it from the approved set.
 6. Skip the move evidence files listed above and the inventory itself, and say that you did.
 7. Review each resulting diff file by file, using explicit-file commands only (`git diff -- <file>` in the worktree, or `diff` against a copy). Never use recursive `rg` to verify.
 8. Keep repository boundaries: each repository gets its own worktree, branch and pull request under this issue, as the normal directives require.
