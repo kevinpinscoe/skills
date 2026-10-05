@@ -147,8 +147,14 @@ chooser without the tool needing to know anything about `get-shit-done` specific
 `jira-*`, the `youtrack-*` entries marked as symlinks in the tree above, and
 `daily-run-through-my-os-todo` are symlinks — their content lives
 in, and is owned by, the private `~/Projects/private/vanco-skills` repo, not this one. Git
-tracks only the symlinks. `install.sh` recreates them if a target goes missing or a link gets
-clobbered; see `RUNBOOK.md`. `vanco-skills` itself now matches this naming convention (flat
+tracks only the symlinks, and they are **relative** (`../../Projects/private/vanco-skills/skills/<name>`,
+resolved from `~/.claude/skills`), so the committed text is identical on every host and never needs a
+local rewrite (AI-53). `install.sh` recreates them if a target goes missing or a link gets clobbered,
+and rewrites an old absolute link to the relative form; see `RUNBOOK.md`. The relative text assumes
+this repo is checked out at `~/.claude/skills` (the FLDW layout). Where it is not — the work Mac keeps
+its clone at `~/Projects/public/skills` and wires `~/.claude/skills` with `vanco-skills`'s
+`wire-claude-skills.sh` — the links dangle inside the clone (harmless: Claude Code reads only
+`~/.claude/skills`), and `install.sh` leaves them untouched and says so. `vanco-skills` itself now matches this naming convention (flat
 `jira-<skill-name>`/`youtrack-<skill-name>` directories with complete frontmatter) as of
 WORK-193.
 
