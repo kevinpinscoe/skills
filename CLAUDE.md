@@ -27,8 +27,8 @@ Kevin's personal collection of AI task automation skills, plus the `skills` Go C
 │   └── SKILL.md
 ├── task-management-human-todos/
 │   └── SKILL.md
-├── jira-create-a-jira-ticket/    # symlink → ~/Projects/private/vanco-skills
-├── youtrack-reconcile/           # symlink → ~/Projects/private/vanco-skills
+├── jira-create-a-jira-ticket/    # relative symlink → ../../Projects/private/vanco-skills/skills/…
+├── youtrack-reconcile/           # relative symlink (same, AI-53)
 ├── gsd-*/                        # ~65 dirs — third-party get-shit-done plugin content,
 └── ...                           # gitignored, never tracked by this repo
 ```
