@@ -1,11 +1,11 @@
 ---
 title: RUNBOOK.md — skills
 tags: [runbook, operations]
-vault_link: runbooks/home-kinscoe-skills.md
+vault_link: runbooks/home-kinscoe-.claude-skills.md
 source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 ---
 
-> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills.md` (symlink → this file).
+> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-.claude-skills.md` (symlink → this file).
 >
 # RUNBOOK.md — skills
 

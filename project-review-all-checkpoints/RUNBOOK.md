@@ -1,11 +1,11 @@
 ---
 title: RUNBOOK.md — review-all-checkpoints
 tags: [runbook, operations]
-vault_link: runbooks/home-kinscoe-skills-skills-project-review-all-checkpoints.md
+vault_link: runbooks/home-kinscoe-.claude-skills-project-review-all-checkpoints.md
 source_path: /home/kinscoe/.claude/skills/project-review-all-checkpoints/RUNBOOK.md
 ---
 
-> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills-skills-project-review-all-checkpoints.md` (symlink → this file).
+> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-.claude-skills-project-review-all-checkpoints.md` (symlink → this file).
 # RUNBOOK.md — review-all-checkpoints
 
 ## Metadata
