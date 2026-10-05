@@ -416,6 +416,237 @@ class MoveMocked(unittest.TestCase):
         self.assertIn("issue is in KSA", str(ctx.exception))
 
 
+class UtilityBootstrapProtocol(unittest.TestCase):
+    """Part A decides who creates the shared utility from repository state.
+
+    Regression for POE-27/POE-28 (2026-10-05): every follow-up said "create the
+    utility", so POE-28 waited on POE-27's plan while no implementation existed.
+    """
+
+    def setUp(self):
+        self.text = yt_move.followup_text("KTA-19", "GLASS-2")
+        self.a3 = self.text[self.text.index("## A3"):self.text.index("## A4")]
+
+    def test_no_ticket_is_named_as_creator(self):
+        self.assertIsNone(re.search(r"\bPOE-\d+", self.text))
+        for phrase in ("first ticket", "created first", "older ticket", "creation order"):
+            self.assertNotIn(phrase, self.text.lower())
+
+    def test_never_waits_on_an_open_ticket(self):
+        low = self.text.lower()
+        for phrase in ("if another open ticket exists, wait", "another ticket creates",
+                       "that poe", "creates the utility"):
+            self.assertNotIn(phrase, low)
+        self.assertIn("An open POE ticket is not a lock. A planned implementation is not a lock.",
+                      self.text)
+
+    def test_case_1_reuse_from_main_after_validation(self):
+        self.assertIn("### Case 1 — the utility already exists on `private-tools` main", self.a3)
+        for need in ("tracked by git on `main`", "Run its tests", "reuse it",
+                     "Do not create another implementation",
+                     "does not meet the A4 contract, STOP"):
+            self.assertIn(need, self.a3)
+        self.assertIn("ls-tree --name-only origin/main -- yt-rewrite-moved-issue-id.py", self.a3)
+
+    def test_case_2_concrete_state_not_tickets(self):
+        self.assertIn("### Case 2 — absent from main, but a concrete implementation is in progress",
+                      self.a3)
+        self.assertIn("Another open POE issue is not, by itself, proof", self.a3)
+        for need in ("open `private-tools` pull request", "pushed branch",
+                     "committed implementation", "STOP before performing any rewrite",
+                     "Never write a competing copy", "two genuinely active concrete implementations"):
+            self.assertIn(need, self.a3)
+
+    def test_case_3_current_ticket_bootstraps_via_prerequisite_pr(self):
+        self.assertIn("### Case 3 — absent, and no concrete implementation exists", self.a3)
+        self.assertIn("**This POE ticket becomes the bootstrap owner.**", self.a3)
+        case3 = self.a3[self.a3.index("### Case 3"):]
+        order = ["Implement the canonical utility", "Add the tests", "Run the tests",
+                 "Open a `private-tools` pull request",
+                 "STOP before using the utility for any cross-repository rewrite",
+                 "Ask Kevin to merge that prerequisite", "fast-forward `~/private-tools` main",
+                 "rerun its tests from main", "continue with A6"]
+        positions = [case3.index(step) for step in order]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_rewrites_only_after_a3(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("Only once A3 has established a tested utility on `private-tools` main", a6)
+
+    def test_full_utility_contract(self):
+        a4 = self.text[self.text.index("## A4"):self.text.index("## A5")]
+        for need in ("yt-rewrite-moved-issue-id.py OLD_ID NEW_ID FILE",
+                     "exactly one explicitly named file", "Never recursively search",
+                     "only a regular `.md` file", "Refuse symlinks and non-regular files",
+                     "^[A-Z][A-Z0-9_]*-[1-9][0-9]*$", "OLD_ID equals NEW_ID", "Escape OLD_ID",
+                     "(?<![A-Za-z0-9-])OLD_ID(?![0-9])", "Never use unrestricted `str.replace()`",
+                     "zero boundary-aware matches", "exact number of substitutions",
+                     "no line-ending normalisation", "permission mode",
+                     "temporary file in the same directory", "remove the temporary file",
+                     "Exit non-zero", "against the exact expected regex-substitution result",
+                     "never print unrelated file contents"):
+            self.assertIn(need, a4)
+        self.assertEqual(len(re.findall(r"^\d+\. ", a4, re.M)), 18)
+
+    def test_required_utility_tests(self):
+        a5 = self.text[self.text.index("## A5"):self.text.index("## A6")]
+        for need in ("`KTA-19`", "`(KTA-19)`", "`KTA-19.`", "`KTA-19,`",
+                     "`https://youtrack.kevininscoe.com/issue/KTA-19`", "`KTA-190`", "`KTA-191`",
+                     "`XKTA-19`", "`ABC-KTA-19`", "Several approved matches",
+                     "Zero matches: refused, file unchanged", "invalid old ID", "invalid new ID",
+                     "identical old and new IDs", "non-`.md` file, a directory, and a symlink",
+                     "Permission mode preserved", "CRLF input stays CRLF", "no final newline",
+                     "failed atomic write leaves the original intact",
+                     "second invocation after a successful rewrite refuses",
+                     "Temporary fixtures only"):
+            self.assertIn(need, a5)
+
+    def test_rg_ban_and_artifact_review_kept(self):
+        self.assertIn("AI agents are forbidden from running recursive `rg`", self.text)
+        self.assertIn("**Do not rerun `rg`**", self.text)
+        self.assertIn("**Required:** before changing a Markdown hit that looks like a branch name",
+                      self.text)
+        self.assertIn("Never use recursive `rg` to verify", self.text)
+
+    # ---- PR 24 review: worktree path mapping (A6)
+    def test_a6_inventory_is_authority_worktree_is_target(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("The inventory path is the authority for *which* file may change; "
+                      "the corresponding worktree path is *where* it is changed.", a6)
+        self.assertIn("Use only paths explicitly present in the inventory", a6)
+        self.assertIn("Only then run `yt-rewrite-moved-issue-id.py` against the **worktree copy**", a6)
+
+    def test_a6_forbids_editing_the_main_checkout_path(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("**Never modify the original inventory pathname in the main checkout**", a6)
+
+    def test_a6_requires_relative_path_mapping_in_order(self):
+        a6 = self.text[self.text.index("## A6"):]
+        steps = ["Determine whether it belongs to a Git repository",
+                 "the repository's normal (main) working tree",
+                 "Derive the path relative to the repository root",
+                 "tracked by Git on the base the POE worktree is made from",
+                 "Create or use this POE ticket's worktree",
+                 "Build the candidate target inside the POE worktree from that same relative path",
+                 "Check containment both ways",
+                 "against the **worktree copy**", "Review the worktree diff",
+                 "open that repository's pull request"]
+        pos = [a6.index(x) for x in steps]
+        self.assertEqual(pos, sorted(pos))
+        self.assertIn("preserving nested directories exactly", a6)
+        self.assertIn("`~/Projects/private/host-frodo-config/ai-wt/<this issue>/README.md`", a6)
+
+    def test_a6_no_target_outside_the_worktree(self):
+        a6 = self.text[self.text.index("## A6"):]
+        self.assertIn("No file outside the worktree may be substituted as a target.", a6)
+
+    # ---- PR 24 second review: real-path containment (A6)
+    def a6(self):
+        return self.text[self.text.index("## A6"):]
+
+    def test_a6_both_lexical_and_resolved_containment(self):
+        self.assertIn("**Both lexical and resolved containment are required. A symlinked "
+                      "directory must not allow the rewrite target to escape the POE worktree.**",
+                      self.a6())
+
+    def test_a6_resolved_containment_is_path_aware(self):
+        a6 = self.a6()
+        for need in ("resolve the worktree root canonically", "Path.resolve(strict=True)",
+                     "`Path.is_relative_to`", "`os.path.commonpath`",
+                     "never by string-prefix comparison",
+                     "Reject a target that escapes through any symlinked component",
+                     "must be a regular file and not a symlink (`os.lstat`)",
+                     "contain no `..` component"):
+            self.assertIn(need, a6)
+        self.assertNotIn("resolves lexically beneath that worktree root", a6)   # ecdf169
+
+    def test_a6_containment_checked_before_the_utility_runs(self):
+        a6 = self.a6()
+        self.assertLess(a6.index("Check containment both ways"),
+                        a6.index("Only then run `yt-rewrite-moved-issue-id.py`"))
+
+    # ---- PR 24 second review: unmanaged / untracked / other-worktree paths (A6)
+    def test_a6_untracked_and_non_git_paths_fail_closed(self):
+        a6 = self.a6()
+        self.assertIn("**Unmanaged or unmappable approved paths fail closed.**", a6)
+        for need in ("is outside any Git repository", "is untracked",
+                     "belongs to another worktree rather than the normal checkout",
+                     "no corresponding tracked file in the new POE worktree",
+                     "STOP for that file"):
+            self.assertIn(need, a6)
+
+    def test_a6_other_worktree_is_not_a_source_checkout(self):
+        self.assertIn("not an `ai-wt/` or other linked worktree", self.a6())
+        self.assertIn("--git-common-dir", self.a6())
+
+    def test_a6_tracked_on_the_worktree_base(self):
+        self.assertIn("ls-tree --name-only <base> -- <relative path>", self.a6())
+
+    def test_a6_unmappable_reported_never_dropped_or_edited_in_place(self):
+        a6 = self.a6()
+        self.assertIn("Report it to Kevin as an unmanaged/unmappable approved path", a6)
+        self.assertIn("Never fall back to editing the original inventory pathname", a6)
+        self.assertIn("never silently drop it from the approved set", a6)
+
+    # ---- PR 24 review: stale branches are not locks (A3)
+    def test_a3_branch_with_file_is_not_automatically_owner(self):
+        self.assertIn("**File presence is not ownership.**", self.a3)
+        self.assertIn("A hit is evidence to investigate, not a lock: file existence on a remote "
+                      "branch is not sufficient.", self.a3)
+        self.assertNotIn("a pushed branch containing it, or", self.a3)   # 1433e7d wording
+
+    def test_a3_branch_needs_current_ownership_evidence(self):
+        self.assertIn("a pushed branch with committed implementation **plus** current recorded "
+                      "ownership tying it to an active ticket or lane", self.a3)
+        self.assertIn("Confirm that the branch is actively owned by a current implementation "
+                      "ticket/lane or open PR. Otherwise report the stale/unowned branch and "
+                      "continue determining whether the current ticket should bootstrap the "
+                      "utility.", self.a3)
+
+    def test_a3_stale_branches_are_not_locks(self):
+        for need in ("a remote branch containing the file with no current owning ticket, lane "
+                     "or pull request", "an old merged branch", "an abandoned or stale branch",
+                     "neither does a stale or unowned branch that contains the file",
+                     "ask Kevin rather than assuming it owns the implementation"):
+            self.assertIn(need, self.a3)
+
+    def test_a3_two_active_implementations_still_go_to_kevin(self):
+        self.assertIn("If two genuinely active concrete implementations exist at the same time, "
+                      "STOP both paths and ask Kevin", self.a3)
+
+    # ---- PR 24 review: safe-write sequence (A4, A5)
+    def test_a4_safe_write_sequence_in_order(self):
+        a4 = self.text[self.text.index("## A4"):self.text.index("## A5")]
+        seq = ["Read the original bytes", "Compute the expected output entirely in memory",
+               "Create a temporary file in the same directory",
+               "Write the complete expected bytes", "Flush and `fsync` the temporary file",
+               "Re-read the temporary file and verify",
+               "Give the temporary file the original's permission mode",
+               "Only then atomically replace the original",
+               "Re-read the final pathname and verify",
+               "remove the temporary file if it still exists"]
+        pos = [a4.index(x) for x in seq]
+        self.assertEqual(pos, sorted(pos))
+        self.assertIn("A failure at any step before the replacement leaves the original untouched",
+                      a4)
+
+    def test_a4_does_not_promise_restore_after_rename(self):
+        a4 = self.text[self.text.index("## A4"):self.text.index("## A5")]
+        self.assertIn("keeps no backup", a4)
+        self.assertIn("does not restore the old content", a4)
+
+    def test_a5_pre_replace_verification_failure_test(self):
+        a5 = self.text[self.text.index("## A5"):self.text.index("## A6")]
+        self.assertIn("A simulated pre-replacement verification failure (step 6 reads back "
+                      "different bytes) leaves the original byte-for-byte unchanged", a5)
+
+    def test_same_protocol_with_part_b(self):
+        rep = yt_move.compare(fixture("ksa81-before.json"), fixture("glass2-after.json"))
+        text = yt_move.followup_text("KSA-81", "GLASS-2", rep)
+        self.assertIn("**This POE ticket becomes the bootstrap owner.**", text)
+        self.assertIn("# Part B", text)
+
+
 class CoverageClaim(unittest.TestCase):
     CLAIM = "searched all issues visible to the Claude_Code identity to exhaustion"
 

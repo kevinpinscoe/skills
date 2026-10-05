@@ -77,6 +77,10 @@ PROTO_REPO_URL = "157-17"
 # omitted (section 4). Affected host stays unset: the work is about files and
 # YouTrack text, not one host's state (section 6).
 FOLLOWUP_REPO = "~/private-tools"
+# The shared rewrite utility Part A uses. Which follow-up creates it is decided
+# from repository state (Part A, A3), never by ticket number or creation order.
+UTILITY_NAME = "yt-rewrite-moved-issue-id.py"
+UTILITY_PATH = f"{FOLLOWUP_REPO}/{UTILITY_NAME}"
 
 # String custom fields whose values name real objects (branches, tabs, URLs).
 # YouTrack did not rewrite these on KSA-81 -> GLASS-2; if one ever changes by an
@@ -750,23 +754,142 @@ Kevin then reports the path of the generated file. **Do not rerun `rg`**, and do
 | `{old}`, `({old})`, `{old}.`, `{old},`, `.../issue/{old}` | yes |
 | `{old}0`, `{old}1`, `X{old}`, `ABC-{old}` | no |
 
-## A3 — what the agent working this ticket does
+## A3 — Ensure the rewrite utility exists (bootstrap or reuse)
 
-1. Read the human-generated report and parse its `path:line:text` lines.
-2. Deduplicate the Markdown file paths.
-3. Attach the original report to this issue through the YouTrack API (`POST /api/issues/<this issue>/attachments`, multipart `upload=@<file>`), as retained evidence.
-4. Create a small reusable Python utility, `~/private-tools/yt-rewrite-moved-issue-id.py`, invoked as `yt-rewrite-moved-issue-id.py OLD_ID NEW_ID FILE`. It must:
-   - operate only on the one explicit file passed to it, and never recurse or search the filesystem;
-   - require a `.md` file;
-   - validate both IDs, `re.escape` the old one, and replace only matches of the boundary pattern above, never `str.replace()`;
-   - refuse, changing nothing, when the old ID has no boundary match in the file;
-   - report the number of substitutions;
-   - preserve the file's permissions and make no other change to its content or formatting;
-   - write through a temporary file in the same directory and rename it into place, failing safely on read or write errors.
-5. Test it before using it on the full set. The tests include at least every case in the table above, a non-`.md` refusal, a no-match refusal, and a permissions-preserved check.
-6. **Required:** before changing a Markdown hit that looks like a branch name, worktree path, commit subject, command, filename or other literal historical artifact, show it to Kevin rather than rewriting it, and let him decide. Those names still exist under {old}; rewriting them blindly repeats the damage Part B exists to repair.
-7. Run the utility once per approved path, with `{old}` and `{new}`. Skip the move evidence files listed above and the inventory itself, and say that you did.
-8. Review each resulting diff file by file, using explicit-file commands only (`git diff -- <file>`, or `diff` against a copy). Do not use `rg` to verify.
+The rewrites in A6 use one shared utility, `{UTILITY_PATH}`, owned by the repository `~/private-tools`. Before rewriting anything, decide from **repository state** which of three cases applies. Every check below names explicit refs, files or pull requests; none of them is a recursive filesystem search.
+
+> **An open POE ticket is not a lock. A planned implementation is not a lock.** Only concrete implementation state — a tracked utility on main, an implementation PR, or an active recorded branch/worktree with committed implementation — establishes ownership. If no such state exists, the current follow-up is allowed to bootstrap the utility.
+
+**File presence is not ownership.** These establish concrete, *active* ownership:
+
+- a currently open `private-tools` pull request adding or modifying the canonical utility;
+- an active recorded ticket, lane or worktree with committed implementation, where that ticket or lane explicitly identifies the branch or worktree as owning the utility;
+- a pushed branch with committed implementation **plus** current recorded ownership tying it to an active ticket or lane.
+
+These do **not** establish ownership by themselves: another open POE ticket merely mentioning or planning the utility; an untracked local file; a remote branch containing the file with no current owning ticket, lane or pull request; an old merged branch; an abandoned or stale branch.
+
+How to read the state:
+
+- On main: `git -C ~/private-tools fetch origin`, then `git -C ~/private-tools ls-tree --name-only origin/main -- {UTILITY_NAME}`. Output means it is tracked on main; an untracked local file does not count.
+- Open pull requests against `private-tools` (Gitea, `kinscoe/private-tools`) whose changed files include `{UTILITY_NAME}`.
+- Pushed branches: for each `origin/*` ref, `git -C ~/private-tools ls-tree --name-only <ref> -- {UTILITY_NAME}`. A hit is evidence to investigate, not a lock: file existence on a remote branch is not sufficient. Confirm that the branch is actively owned by a current implementation ticket/lane or open PR. Otherwise report the stale/unowned branch and continue determining whether the current ticket should bootstrap the utility. If an apparently stale branch leaves real doubt, ask Kevin rather than assuming it owns the implementation.
+- Worktrees and lanes: `git -C ~/private-tools worktree list`, and the `## Lane` sections of `~/private-tools/CHECKPOINT.md`. Only a worktree or branch with **committed** implementation of this file, recorded as owning it, counts.
+
+### Case 1 — the utility already exists on `private-tools` main
+
+1. Confirm it is tracked by git on `main`, not an untracked or local-only file.
+2. Inspect it and its tests.
+3. Confirm it implements the contract in A4.
+4. Run its tests.
+5. If the tests and the contract pass, reuse it.
+6. Do not create another implementation.
+
+If it exists but does not meet the A4 contract, STOP and report the mismatch. Do not modify a shared utility as part of this Markdown work without Kevin's approval.
+
+### Case 2 — absent from main, but a concrete implementation is in progress
+
+Another open POE issue is not, by itself, proof that someone else owns the implementation, and neither is a branch that merely contains the file. This case applies only when **active ownership**, as defined above, exists: an open `private-tools` pull request for the utility, or committed implementation on a branch or worktree that a current ticket or lane explicitly records as owning it. If it does:
+
+1. Identify the owning ticket, branch and pull request.
+2. Record the dependency in a comment on this POE issue.
+3. STOP before performing any rewrite.
+4. Tell Kevin exactly which pull request or implementation must land.
+5. Once it is merged, update `~/private-tools` main, verify the utility and its tests from main (Case 1), then resume this same POE ticket.
+
+Never write a competing copy. If two genuinely active concrete implementations exist at the same time, STOP both paths and ask Kevin which one owns the canonical utility; do not race or merge them.
+
+### Case 3 — absent, and no concrete implementation exists
+
+**This POE ticket becomes the bootstrap owner.** Another open ticket that only says it plans to create the utility does not block this case, and neither does a stale or unowned branch that contains the file (report it). Only active ownership, as defined above, sends you to Case 2.
+
+1. Create this ticket's normal `private-tools` worktree and branch (`~/private-tools/ai-wt/<this issue>`, branch named after this issue), recorded on this issue per the directives.
+2. Implement the canonical utility there, to the A4 contract.
+3. Add the tests listed in A5.
+4. Run the tests.
+5. Open a `private-tools` pull request containing the utility and its tests.
+6. STOP before using the utility for any cross-repository rewrite.
+7. Ask Kevin to merge that prerequisite utility pull request.
+8. After Kevin merges it: fast-forward `~/private-tools` main, verify the utility is present and tracked on main, rerun its tests from main, then continue with A6 in this same ticket.
+
+## A4 — the utility contract
+
+`yt-rewrite-moved-issue-id.py OLD_ID NEW_ID FILE`. The utility must:
+
+1. Operate on exactly one explicitly named file.
+2. Never recursively search or discover files.
+3. Accept only a regular `.md` file.
+4. Refuse symlinks and non-regular files, rather than replacing a symlink itself.
+5. Validate both issue IDs with the readable-ID rule the move tooling uses: `^[A-Z][A-Z0-9_]*-[1-9][0-9]*$`.
+6. Refuse when OLD_ID equals NEW_ID.
+7. Escape OLD_ID before building the regex.
+8. Use exactly this boundary contract: `(?<![A-Za-z0-9-])OLD_ID(?![0-9])`.
+9. Never use unrestricted `str.replace()`.
+10. Refuse, leaving the file unmodified, when there are zero boundary-aware matches.
+11. Calculate and report the exact number of substitutions.
+12. Preserve every byte other than the approved substitutions: no line-ending normalisation, no Markdown reformatting. The IDs and the boundary alphabet are ASCII, so work on bytes (a `bytes` regex) rather than decoding and re-encoding.
+13. Preserve the file's permission mode.
+14. Write safely, in exactly this order:
+    1. Read the original bytes.
+    2. Compute the expected output entirely in memory.
+    3. Create a temporary file in the same directory.
+    4. Write the complete expected bytes to it.
+    5. Flush and `fsync` the temporary file.
+    6. Re-read the temporary file and verify it equals the expected bytes.
+    7. Give the temporary file the original's permission mode.
+    8. Only then atomically replace the original (`os.replace`).
+    9. Re-read the final pathname and verify it equals the expected bytes.
+    10. On any failure, remove the temporary file if it still exists.
+15. A failure at any step before the replacement leaves the original untouched, byte for byte. The utility keeps no backup, so a failure detected after the replacement (step 9) is reported with a non-zero exit, but it does not restore the old content.
+16. Exit non-zero on a validation, read, write or verification failure.
+17. Verify both the temporary file before the replacement and the final file after it (steps 6 and 9), each against the exact expected regex-substitution result.
+18. Print a concise result naming the file and the replacement count; never print unrelated file contents.
+
+## A5 — required tests for the utility
+
+Temporary fixtures only: the tests never search the real home directory and never touch real repository files. At least:
+
+- Replaced: `KTA-19`, `(KTA-19)`, `KTA-19.`, `KTA-19,`, `https://youtrack.kevininscoe.com/issue/KTA-19`.
+- Not replaced: `KTA-190`, `KTA-191`, `XKTA-19`, `ABC-KTA-19`.
+- Several approved matches in one file, with the correct count reported.
+- Zero matches: refused, file unchanged.
+- An invalid old ID; an invalid new ID; identical old and new IDs.
+- A non-`.md` file, a directory, and a symlink: each refused.
+- Permission mode preserved.
+- CRLF input stays CRLF, and a file with no final newline keeps none.
+- A failed atomic write leaves the original intact and no temporary file behind.
+- A simulated pre-replacement verification failure (step 6 reads back different bytes) leaves the original byte-for-byte unchanged, exits non-zero, and leaves no temporary file.
+- A second invocation after a successful rewrite refuses, because no OLD_ID matches remain, rather than silently succeeding.
+
+## A6 — rewriting the Markdown files
+
+Only once A3 has established a tested utility on `private-tools` main:
+
+1. Read the human-generated inventory and parse its `path:line:text` lines.
+2. Deduplicate the Markdown file paths. Use only paths explicitly present in the inventory.
+3. Attach the original inventory to this issue through the YouTrack API (`POST /api/issues/<this issue>/attachments`, multipart `upload=@<file>`), as retained evidence.
+4. **Required:** before changing a Markdown hit that looks like a branch name, worktree path, commit subject, command, filename or other literal historical artifact, show it to Kevin rather than rewriting it, and let him decide. Those names still exist under {old}; rewriting them blindly repeats the damage Part B exists to repair.
+5. **Map each approved inventory path to its worktree copy.** The inventory path is the authority for *which* file may change; the corresponding worktree path is *where* it is changed. **Never modify the original inventory pathname in the main checkout**, even though that exact path appears in the inventory. For each approved path:
+   1. Determine whether it belongs to a Git repository (`git -C <its directory> rev-parse --show-toplevel`).
+   2. Confirm that checkout is the repository's normal (main) working tree, not an `ai-wt/` or other linked worktree: its top level must equal the parent of `git rev-parse --path-format=absolute --git-common-dir`.
+   3. Derive the path relative to the repository root. It must be relative and contain no `..` component.
+   4. Confirm that relative path is tracked by Git on the base the POE worktree is made from (`git -C <repo-root> ls-tree --name-only <base> -- <relative path>` prints it).
+   5. Create or use this POE ticket's worktree for that repository, per the normal directives (`<repo-root>/ai-wt/<this issue>`).
+   6. Build the candidate target inside the POE worktree from that same relative path, preserving nested directories exactly.
+   7. Check containment both ways. **Both lexical and resolved containment are required. A symlinked directory must not allow the rewrite target to escape the POE worktree.**
+      - Lexical: the normalised candidate path lies beneath the worktree root.
+      - Resolved: resolve the worktree root canonically (`Path.resolve()` / `realpath`) and resolve the existing target canonically (`Path.resolve(strict=True)`). The resolved target must lie beneath the resolved root, tested path-aware (`Path.is_relative_to`, or `os.path.commonpath`), never by string-prefix comparison. Reject a target that escapes through any symlinked component.
+      - The target itself must be a regular file and not a symlink (`os.lstat`).
+      No file outside the worktree may be substituted as a target.
+   8. Only then run `{UTILITY_NAME}` against the **worktree copy**, with `{old}` and `{new}`.
+   9. Review the worktree diff.
+   10. Commit, push and open that repository's pull request, per the normal directives.
+
+   Example: the inventory reports `~/Projects/private/host-frodo-config/README.md`. The repository root is `~/Projects/private/host-frodo-config`, the POE worktree is `~/Projects/private/host-frodo-config/ai-wt/<this issue>`, and the relative path is `README.md`. So the rewrite target is `~/Projects/private/host-frodo-config/ai-wt/<this issue>/README.md`.
+
+   **Unmanaged or unmappable approved paths fail closed.** If an approved inventory path is outside any Git repository, is untracked, belongs to another worktree rather than the normal checkout, or otherwise has no corresponding tracked file in the new POE worktree, STOP for that file. Report it to Kevin as an unmanaged/unmappable approved path and ask how it should be handled: separately, added to a repository, or left unchanged. Never fall back to editing the original inventory pathname, and never silently drop it from the approved set.
+6. Skip the move evidence files listed above and the inventory itself, and say that you did.
+7. Review each resulting diff file by file, using explicit-file commands only (`git diff -- <file>` in the worktree, or `diff` against a copy). Never use recursive `rg` to verify.
+8. Keep repository boundaries: each repository gets its own worktree, branch and pull request under this issue, as the normal directives require.
 """
     part_b = ""
     if _remediation_needed(report):
