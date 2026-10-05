@@ -286,14 +286,14 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name MOCc`.
 
 14. **Offer to create a second-level MOC** — After the completion summary, ask the human: "Do you want to create a second-level MOC under **[this MOC's Display Title]**?" Wait for their answer.
-    - **If yes**: execute the `second-moc-level` skill at `~/skills/skills/knowledge/second-moc-level/SKILL.md` — read that file and follow its Instructions section from Step 1 (the parent chooser). The MOC just created here will appear in that chooser as an eligible parent.
+    - **If yes**: execute the `second-moc-level` skill at `~/.claude/skills/knowledge-second-moc-level/SKILL.md` — read that file and follow its Instructions section from Step 1 (the parent chooser). The MOC just created here will appear in that chooser as an eligible parent.
     - **If no**: continue to Step 15.
 
 15. **Offer to create a note under this MOC** — Ask the human: "Do you want to create a note under **[this MOC's Display Title]**?" Wait for their answer.
     - **If no**: stop. The skill is complete.
     - **If yes**: ask which vault the note belongs in — "Which vault should this note live in: **PCM** or **PKM**? (A note lives in only one vault; MOCs may exist in both.)" Then execute the matching note skill, using **this first-level MOC as the target MOC** for the note:
-      - **PCM** → `~/skills/skills/knowledge/create-a-pcm-note/SKILL.md`
-      - **PKM** → `~/skills/skills/knowledge/create-a-pkm-note/SKILL.md`
+      - **PCM** → `~/.claude/skills/knowledge-create-a-pcm-note/SKILL.md`
+      - **PKM** → `~/.claude/skills/knowledge-create-a-pkm-note/SKILL.md`
 
       Read that file and follow its Instructions, but **skip its MOC chooser chain** — the target is already known. Set the note's `deepest_*` values from the MOC just created here:
       - `deepest_slug` = this MOC's `<slug>`

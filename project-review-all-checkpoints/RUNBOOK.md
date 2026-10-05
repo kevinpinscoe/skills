@@ -2,7 +2,7 @@
 title: RUNBOOK.md — review-all-checkpoints
 tags: [runbook, operations]
 vault_link: runbooks/home-kinscoe-skills-skills-project-review-all-checkpoints.md
-source_path: /home/kinscoe/skills/skills/project/review-all-checkpoints/RUNBOOK.md
+source_path: /home/kinscoe/.claude/skills/project-review-all-checkpoints/RUNBOOK.md
 ---
 
 > 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-skills-skills-project-review-all-checkpoints.md` (symlink → this file).
@@ -13,11 +13,11 @@ source_path: /home/kinscoe/skills/skills/project/review-all-checkpoints/RUNBOOK.
 | Field | Value |
 |---|---|
 | **Owner** | Kevin Inscoe |
-| **Last Updated** | 2026-08-12 |
+| **Last Updated** | 2026-10-05 |
 | **Last Tested** | 2026-08-12 — run against nine live checkpoints on the FLDW |
 | **Expected Duration** | Under a minute for the collector; a few minutes for the full reviewed report |
 | **Risk Level** | Low — read-only, no writes anywhere |
-| **Repo** | `~/skills` (GitHub `kevinpinscoe/skills`) |
+| **Repo** | `~/.claude/skills` (GitHub `kevinpinscoe/skills`) |
 
 ---
 
@@ -71,7 +71,7 @@ do I stand to resume it* — without opening nine files by hand.
 judgment comes from here.
 
 ```bash
-cd ~/skills/skills/project/review-all-checkpoints
+cd ~/.claude/skills/project-review-all-checkpoints
 python3 collect-checkpoints.py --format text
 ```
 
@@ -95,13 +95,13 @@ python3 collect-checkpoints.py --format text
 checkpoints are blocked on Kevin, which on each other, and which are done but retained.
 
 ```bash
-bash ~/skills/skills/project/review-all-checkpoints/run.sh
+bash ~/.claude/skills/project-review-all-checkpoints/run.sh
 ```
 
 Or launch it interactively from the skill chooser:
 
 ```bash
-~/skills/skills
+skills
 ```
 
 **If this fails:** `~/.local/bin/claude` not found means the Claude Code CLI moved — update the
@@ -123,7 +123,7 @@ python3 collect-checkpoints.py --path ~/Projects/public/vermilian/CHECKPOINT.md
 ## Verification
 
 ```bash
-cd ~/skills/skills/project/review-all-checkpoints
+cd ~/.claude/skills/project-review-all-checkpoints
 diff <(check-git-repos --checkpoint | wc -l) \
      <(python3 collect-checkpoints.py | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')
 ```
@@ -143,9 +143,9 @@ None required — the skill writes nothing. If a run was interrupted, re-run it.
 
 If a change to `collect-checkpoints.py` broke the parser, revert the file:
 
-1. `cd ~/skills`
-2. `git log --oneline -- skills/project/review-all-checkpoints/collect-checkpoints.py`
-3. `git checkout <good-sha> -- skills/project/review-all-checkpoints/collect-checkpoints.py`
+1. `cd ~/.claude/skills`
+2. `git log --oneline -- project-review-all-checkpoints/collect-checkpoints.py`
+3. `git checkout <good-sha> -- project-review-all-checkpoints/collect-checkpoints.py`
 
 ---
 

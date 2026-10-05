@@ -16,7 +16,7 @@ disable-model-invocation: true
 - Linode API credentials, located via the **credential map** (`~/.secrets/CREDENTIAL-MAP.md`): the DNS key `~/.secrets/certbot.ini` (`dns_linode_key`, used by the existing `scripts/*dns*.sh` helpers) and/or the account PAT `~/.secrets/kevin-linode.pat` (used by `linode-cli`). **Never read a secret value into a file or the transcript** — pass it through the CLI/API only.
 - `tea` CLI authenticated with Gitea (`tea whoami`). The token comes from OpenBao at `app/gitea` via the `tea` shell-function wrapper — there is no on-disk token file (`~/.config/gitea/api` was shredded on 2026-07-12). See `~/ai/directives/gitea.md`.
 - SSH access to Gitea (`ssh -T git@git.kevininscoe.com -p 2223`) and to the chosen web server over Tailscale.
-- The sibling skill `~/skills/skills/git/create-a-repo/SKILL.md` (used verbatim for the repo-creation step).
+- The sibling skill `~/.claude/skills/git-create-a-repo/SKILL.md` (used verbatim for the repo-creation step).
 - Reference project checkouts present locally:
   - `~/Projects/private/datagiggle.com` — the scaffold/brochure/CI template to copy.
   - `~/Projects/private/web-oci-builder` — the buildah-based lighttpd2 OCI builder (the build engine; not modified by this skill).
@@ -61,7 +61,7 @@ Follow the global directives: **ask for each required input directly and one at 
 
 7. **Register the site in the service catalog** — Following directive `service-catalog.md`, add a row for `$FQDN` to the appropriate HTTPS table in `~/Projects/private/fedora-dashboard/kevins-federated-unix-universe-services.md`: `Endpoint = $FQDN`, `Service Type = HTTPS`, `Host FQDN = <server>.kevininscoe.com`, `Notes = Public website`, `Purpose` per the directive. Keep the table sorted as the file requires.
 
-8. **Create the Gitea repo via the `create-a-repo` skill** — Invoke `~/skills/skills/git/create-a-repo/SKILL.md` to create a **public Gitea** repo named exactly `$FQDN` and clone it to `~/Projects/private/$FQDN`. Follow that skill's steps (it handles `.gitignore`, README/RUNBOOK interview, `mise.toml`, and the parent-README entry). The clone path and repo name are both the FQDN.
+8. **Create the Gitea repo via the `create-a-repo` skill** — Invoke `~/.claude/skills/git-create-a-repo/SKILL.md` to create a **public Gitea** repo named exactly `$FQDN` and clone it to `~/Projects/private/$FQDN`. Follow that skill's steps (it handles `.gitignore`, README/RUNBOOK interview, `mise.toml`, and the parent-README entry). The clone path and repo name are both the FQDN.
 
 9. **Scaffold the repo like `datagiggle.com`** — Copy the structural shape of `~/Projects/private/datagiggle.com` into the new repo (do not blindly copy datagiggle's content):
    - `web/` — `index.html` plus `assets/css/` and `assets/img/`.
@@ -136,7 +136,7 @@ Follow the global directives: **ask for each required input directly and one at 
     ansible-lint ansible/            # if available
     ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --check --diff --limit <server>
     ```
-    Resolve any errors and show the check/diff to the user. Commit the config-repo changes (only the relevant files; confirm before committing/pushing per `~/skills/CLAUDE.md`).
+    Resolve any errors and show the check/diff to the user. Commit the config-repo changes (only the relevant files; confirm before committing/pushing per `~/.claude/skills/CLAUDE.md`).
 
 16. **Deploy to the chosen host** — Only after confirming (Step 13) the OCI image is present and publicly pullable from `git.kevininscoe.com/kinscoe/<image>`, converge Ansible on the host:
     ```bash
@@ -187,6 +187,6 @@ Follow the global directives: **ask for each required input directly and one at 
 - **`web-oci-builder` is the build engine, not a per-site repo** — it is cloned by CI and by `scripts/publish.sh`; this skill does not modify it.
 - **Image naming** follows datagiggle's convention (`<site>-lighttpd2`); keep it consistent so the CI script, Ansible pull, and registry path all agree.
 - Gitea SSH uses port 2223; the default branch is always `main`; SSH is the only git protocol used here.
-- **Confirm before committing/pushing** in `linode-*-config`, `observability`, and any repo outside `~/skills` — commit only the relevant files, never `git add -A` across an unrelated tree (see `~/skills/CLAUDE.md`).
+- **Confirm before committing/pushing** in `linode-*-config`, `observability`, and any repo outside `~/.claude/skills` — commit only the relevant files, never `git add -A` across an unrelated tree (see `~/.claude/skills/CLAUDE.md`).
 - Related skills: `git/create-a-repo` (Step 8), `docker/create-a-self-hosted-docker-container`. Related runbooks: `datagiggle.com/RUNBOOK.md`, `web-oci-builder/RUNBOOK.md`, `linode-<server>-config/RUNBOOK.md`.
 - Consider adding an equivalent action to `~/todo/mac/TODO.md` / `~/todo/rpi/TODO.md` only if it applies to those hosts — ask first (these sites are Linode-hosted, so it usually does not).
