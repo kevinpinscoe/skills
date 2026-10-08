@@ -62,7 +62,7 @@ disable-model-invocation: true
       | `KevinI-MBP24` | `mac` | `Work` | `work-macbook` (physical work Mac, macOS) |
       | `kevin` | `fedora` | `Home` | `FLDW` (home Fedora workstation) — **this label means FLDW specifically, never any other Linux/Fedora host** |
       | `core` | `rpi` | `Home` | `RPi5 "core"` (aka rpi5) |
-      | `b38e685e79b8` | `mac-container` | `Work` | `mac-container` (Docker container on `work-macbook`, OS is Fedora Linux but is its own host — **Work category despite running Linux**) |
+      | `mac-container` | `mac-container` | `Work` | `mac-container` (Docker container on `work-macbook`, OS is Fedora Linux but is its own host — **Work category despite running Linux**) |
 
       Run `hostname` and match it against this table (fall back to `kevins-federated-unix-universe.md`
       directly if the table above has drifted from that file). If the hostname matches none of
