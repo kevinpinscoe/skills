@@ -320,8 +320,8 @@ action, right after the create:
    tmux. Otherwise skip it silently.
 2. **`Ghostty tab name` field:** write `<KSI-n>`. If step 1 was skipped, leave the field empty.
    An empty field is the record that the host skipped the rule.
-3. **Start record.** On a host `yt-elapsed` supports (the FLDW today; see
-   `~/private-tools/yt-elapsed-hosts.json`), the start is one command. It runs the `doctor`
+3. **Start record.** The start is one command, and it works only on a host `yt-elapsed`
+   supports (the FLDW today; see `~/private-tools/yt-elapsed-hosts.json`). It runs the `doctor`
    preflight, reads the clock, and posts the start comment with its ledger record:
 
    ```bash
@@ -329,10 +329,11 @@ action, right after the create:
      yt-elapsed start --issue <KSI-n> --session <session UUID from this session's scratchpad path>
    ```
 
-   Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. If it exits 2,
-   do not start the investigation: tell Kevin what `doctor` reported. On a Home host that
-   `yt-elapsed` does not support, post the same two lines as a prose comment instead, with the
-   time read off the clock in the same action, and write no time field.
+   Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. **If it exits 2,
+   do not start the investigation** — whatever the reason: the host is not Supported (`core`
+   until made Supported), the Parzival profile is absent, the identity does not match, or the
+   maintenance flag is set. Tell Kevin what `doctor` reported and stop. There is no fallback:
+   no hand-written start comment, and no write to `Elapsed time` or `Spent time`.
 
 4. **Checkpoint.** An investigation usually runs long. It is not inside a git repository, so
    **do not create a `CHECKPOINT.md` yourself**. Ask Kevin whether he wants one, and where: the
@@ -529,7 +530,7 @@ If and only if the disposition is **Confirmed security or access-control failure
 Every time work on the ticket stops, finished or not
 (`when-creating-a-youtrack-ticket.md` §5 and §9):
 
-1. **Stop record.** On a supported host:
+1. **Stop record:**
 
    ```bash
    parzival exec --as ai youtrack-claude-code -- \
@@ -541,8 +542,7 @@ Every time work on the ticket stops, finished or not
    It posts `Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>` with
    its ledger record, then writes and verifies `Elapsed time`. **Do not write `Spent time`.** It
    is effort, and only Kevin writes it. If YouTrack is unreachable, the stop is spooled
-   (`SPOOLED`); tell Kevin. On an unsupported host, post the same lines as a prose comment and
-   write no time field.
+   (`SPOOLED`); tell Kevin.
 
    If the session is being shut down (for a storm, a power outage, or a reboot), record the stop
    **first**, before anything else.
@@ -609,7 +609,7 @@ Also:
 - `Status` was `In Progress` from creation. `Date time entered`, `Priority` (Kevin's choice),
   `Issue domain`, and `Assignee` read back correctly.
 - The live value-list check in step 3 ran before the create, and passed.
-- The start and stop exist as `yt-elapsed` records with clock-read times. On a supported host,
+- The start and stop exist as `yt-elapsed` records with clock-read times, and
   `yt-elapsed reconcile --issue <KSI-n> --check` exits 0, so `Elapsed time` matches the ledger
   (invariant I1). `Spent time` was not written by this session.
 - No state-changing action was taken without Kevin's explicit authorization, and any that was
