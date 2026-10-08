@@ -87,7 +87,22 @@ disable-model-invocation: true
      run `brew install`/`brew reinstall` to "fix" it. Reinstalling cannot work, and each attempt
      raises a detection in ACST's Falcon console. Use one of these instead, in order of
      preference:
-       1. **Run the real tool on `mac-container`**, where it is installed at
+       1. **`~/bin/check-git-repos-via-container`** — the default on this host. It runs the
+          real tool on `mac-container` (option 2 below) over SSH, warns if the container's ignore
+          file is missing, then does all the filtering option 2 leaves to you: it re-applies the
+          Mac's ignore list against the `~/`-relative path (working around the `--ignore-prefix`
+          cross-mount bug in the Notes), drops the container's own repos, drops `CHECKPOINT`-only
+          repos, and prints the survivors as `~/...` paths ready to act on:
+          ```
+          check-git-repos-via-container --show-dropped
+          ```
+          The scan walks the whole tree over the Docker mount and takes several minutes, so run
+          it in the background. Its output is the repo list for steps 4–8; no manual filtering is
+          needed. To re-filter without re-scanning, capture `--raw` output to a file and pass it
+          back as `CGR_SCAN_FILE=<file>`. Verified 2026-10-08: on that day's scan it produced
+          exactly the result manual filtering did (78 lines, 0 in scope). Fall back to option 2
+          only if the script is missing or fails.
+       2. **Run the real tool on `mac-container` directly**, where it is installed at
           `/usr/bin/check-git-repos` — outside Homebrew, and not quarantined. It reaches this
           Mac's repositories through the `/mac-home` mount:
           ```
@@ -123,12 +138,12 @@ disable-model-invocation: true
           check presence every run, and treat any repo path reported under one of these trees as
           a scan bug to fix (missing/stale ignore file), not as a repo to process: skip it and say
           so in the final report rather than syncing it.
-       2. **`~/bin/check-git-repos-shell`** — a pure-shell stand-in using stock git, reading the
+       3. **`~/bin/check-git-repos-shell`** — a pure-shell stand-in using stock git, reading the
           same `~/.config/check-git-repos-source/ignore.txt` and emitting the same
           `BEHIND`/`AHEAD`/`STAGED`/`UNSTAGED`/`UNTRACKED` statuses. Run
           `check-git-repos-shell --ignore-prefix`. Slower, and it has no `--worktree`,
           `--remove-locks` or stash-staleness support.
-     Report which of the two was used in the final report, since their repo lists differ.
+     Report which of the three was used in the final report, since their repo lists differ.
    - On every other host, locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
    - If `$HOST_CATEGORY=Work` (per step 2a — this includes `mac-container`, even though it
      runs Linux), run: `check-git-repos --ignore-prefix`
@@ -333,8 +348,9 @@ disable-model-invocation: true
   `linux` vs `mac` check would get this wrong.
 - **On `work-macbook`, `check-git-repos` is quarantined by CrowdStrike Falcon and cannot be
   installed** — Homebrew is not an approved channel, so the binary is deleted within seconds of
-  each install. Never try to reinstall it there. Prefer running the real tool on `mac-container`
-  over SSH (it is outside Homebrew and reaches the Mac via `/mac-home`), or fall back to
+  each install. Never try to reinstall it there. Prefer `~/bin/check-git-repos-via-container`,
+  which runs the real tool on `mac-container` over SSH (outside Homebrew, reaching the Mac via
+  `/mac-home`) and does the out-of-scope filtering itself; then the raw SSH command; then
   `~/bin/check-git-repos-shell`. The two hosts keep separate ignore files (reconciled 2026-09-02,
   but nothing keeps them in step — and as of 2026-09-16 the container's copy can go missing
   entirely after a rebuild, not just drift, which silently disables all filtering rather than
