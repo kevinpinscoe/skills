@@ -262,14 +262,22 @@ class CreateFollowupMocked(unittest.TestCase):
         subprocess.run(["git", "init", "-q", repo], check=True)
         subprocess.run(["git", "-C", repo, "remote", "add", "origin",
                         "ssh://git@git.kevininscoe.com:2223/kinscoe/private-tools.git"], check=True)
-        self.saved = (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO)
+        self.saved = (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO,
+                      yt_move.EVIDENCE_DIR)
         yt_move.FOLLOWUP_REPO = repo
+        yt_move.EVIDENCE_DIR = os.path.join(self.tmp.name, "ticket-moves")
+        os.makedirs(yt_move.EVIDENCE_DIR)
+        for old, new in (("KSA-81", "GLASS-2"), ("KSA-117", "GLASS-3"), ("KTA-19", "GLASS-2")):
+            for _, path in yt_move.evidence_paths(old, new):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write("evidence\n")
         yt_move.resolve_project = lambda name: {"id": "0-50", "shortName": name}
         self.calls, self.created = [], {}
         yt_move.api = self.fake_api
 
     def tearDown(self):
-        yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO = self.saved
+        (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO,
+         yt_move.EVIDENCE_DIR) = self.saved
         self.tmp.cleanup()
 
     def fake_api(self, method, path, params=None, body=None):
@@ -294,6 +302,7 @@ class CreateFollowupMocked(unittest.TestCase):
                     v["name"] = self.DISPLAY_NAMES.get(v["login"], v["login"])
                 fields.append({"projectCustomField": {"field": {"id": p}}, "value": v})
             return {"idReadable": "POE-99", "customFields": fields,
+                    "description": self.created["description"],
                     "comments": [{"text": self.comment}]}
         raise AssertionError(f"unexpected call {method} {path}")
 
@@ -345,6 +354,40 @@ class CreateFollowupMocked(unittest.TestCase):
         yt_move.api = other_user
         with self.assertRaises(yt_move.Fail):
             yt_move.create_followup("KTA-19", "GLASS-2")
+
+    def test_description_lists_every_evidence_file_by_full_path(self):
+        out = yt_move.create_followup("KTA-19", "GLASS-2")
+        paths = [p for _, p in yt_move.evidence_paths("KTA-19", "GLASS-2")]
+        self.assertEqual(len(paths), 6)
+        for p in paths:
+            self.assertIn(f"- {p} — ", self.created["description"])
+        self.assertEqual(out["evidence_paths"], paths)
+
+    def test_missing_evidence_refuses_before_any_api_call(self):
+        os.remove(yt_move.evidence_paths("KTA-19", "GLASS-2")[1][1])
+        with self.assertRaises(yt_move.Fail) as cm:
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertIn("GLASS-2-after-project-move.md", str(cm.exception))
+        self.assertEqual(self.calls, [])
+
+    def test_empty_evidence_refuses(self):
+        open(yt_move.evidence_paths("KTA-19", "GLASS-2")[0][1], "w").close()
+        with self.assertRaises(yt_move.Fail):
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertEqual(self.calls, [])
+
+    def test_evidence_path_lost_on_read_back_raises(self):
+        real = self.fake_api
+
+        def truncating(method, path, params=None, body=None):
+            r = real(method, path, params, body)
+            if method == "GET" and path == "/api/issues/3-9999":
+                r["description"] = r["description"].replace("preservation-check.json", "")
+            return r
+        yt_move.api = truncating
+        with self.assertRaises(yt_move.Fail) as cm:
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertIn("Evidence paths", str(cm.exception))
 
     def test_part_a_only_without_remediation(self):
         yt_move.create_followup("KTA-19", "GLASS-2")
@@ -751,7 +794,8 @@ class FollowupTests(unittest.TestCase):
         self.assertIn("# Part A", text)
         self.assertIn("# Part B", text)
         self.assertIn("Never mass-replace GLASS-2 back to KSA-81", text)
-        self.assertIn("~/tmp/KSA-81-before-project-move.api.json", text)
+        self.assertIn("~/archives/youtrack/ticket-moves/KSA-81-before-project-move.api.json", text)
+        self.assertNotIn("~/tmp/KSA-81-before-project-move", text)
         self.assertIn("comment 7-102", text)
         self.assertTrue(yt_move.followup_summary("KSA-81", "GLASS-2", rep)
                         .startswith("Update Markdown references and restore historical text"))

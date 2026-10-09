@@ -82,6 +82,10 @@ FOLLOWUP_REPO = "~/private-tools"
 UTILITY_NAME = "yt-rewrite-moved-issue-id.py"
 UTILITY_PATH = f"{FOLLOWUP_REPO}/{UTILITY_NAME}"
 
+# Where the move evidence (exports, snapshots, comparison) is kept for a later
+# audit. Not ~/tmp, which is a scratchpad and gets cleared.
+EVIDENCE_DIR = "~/archives/youtrack/ticket-moves"
+
 # String custom fields whose values name real objects (branches, tabs, URLs).
 # YouTrack did not rewrite these on KSA-81 -> GLASS-2; if one ever changes by an
 # OLD -> NEW substitution it is a historical-artifact rewrite, not a reference.
@@ -711,10 +715,40 @@ def followup_summary(old, new, report=None):
     return f"Update Markdown references after {old} moved to {new}"
 
 
+def evidence_paths(old, new):
+    """The move's evidence files, as (description, full ~/ path) pairs.
+
+    The follow-up ticket lists every one of these by full path, and
+    create_followup() refuses to file it unless each exists and reads back.
+    """
+    d = EVIDENCE_DIR
+    return [
+        ("pre-move yt-export (human-run)", f"{d}/{old}-before-project-move.md"),
+        ("post-move yt-export (human-run)", f"{d}/{new}-after-project-move.md"),
+        ("pre-move API snapshot", f"{d}/{old}-before-project-move.api.json"),
+        ("post-move API snapshot", f"{d}/{new}-after-project-move.api.json"),
+        ("comparison report (text)", f"{d}/{old}-to-{new}-preservation-check.txt"),
+        ("comparison report (JSON)", f"{d}/{old}-to-{new}-preservation-check.json"),
+    ]
+
+
+def missing_evidence(old, new):
+    """Return the evidence paths that are absent or empty on this host."""
+    missing = []
+    for _, path in evidence_paths(old, new):
+        full = os.path.expanduser(path)
+        if not os.path.isfile(full) or os.path.getsize(full) == 0:
+            missing.append(path)
+    return missing
+
+
 def followup_text(old, new, report=None, report_path=None, max_locations=60):
     pat = boundary_pattern(old)
     inv = f"~/tmp/{old}-home-markdown-references.txt"
-    also = f" and {report_path}" if report_path else ""
+    evidence = "\n".join(f"- {path} — {what}" for what, path in evidence_paths(old, new))
+    canonical = {os.path.expanduser(p) for _, p in evidence_paths(old, new)}
+    if report_path and os.path.expanduser(report_path) not in canonical:
+        evidence += f"\n- {report_path} — comparison report as passed to this helper"
     head = f"""Old issue ID: {old}
 New issue ID: {new}
 
@@ -722,10 +756,8 @@ New issue ID: {new}
 Cross-issue scan coverage: {SCAN_CLAIM}. Issues in projects that identity cannot see were not scanned.
 The old key {old}, and every URL {PUBLIC_URL}/issue/{old}, still resolve to the same issue.
 
-Move evidence (kept, never rewritten by this work):
-- ~/tmp/{old}-before-project-move.md and ~/tmp/{new}-after-project-move.md (human-run yt-export)
-- ~/tmp/{old}-before-project-move.api.json and ~/tmp/{new}-after-project-move.api.json (API snapshots)
-- ~/tmp/{old}-to-{new}-preservation-check.txt{also} (comparison)
+Move evidence, by full path (kept for audit, never rewritten or deleted by this work):
+{evidence}
 """
     part_a = f"""
 # Part A — home-directory Markdown references
@@ -908,7 +940,7 @@ Only once A3 has established a tested utility on `private-tools` main:
         if unver:
             uncl_block += (f"\nCould not be re-checked after the move (captured in the pre-move "
                            f"evidence, unreadable afterwards). Check these by hand against "
-                           f"`~/tmp/{old}-before-project-move.api.json`:\n{unver}\n")
+                           f"`{EVIDENCE_DIR}/{old}-before-project-move.api.json`:\n{unver}\n")
         part_b = f"""
 # Part B — historical text YouTrack rewrote
 
@@ -919,7 +951,7 @@ Locations (issue, place, reason, pre-move text):
 {uncl_block}
 ## B1 — what the agent working this ticket does
 
-1. Attach the comparison report and the pre-move snapshot (`~/tmp/{old}-before-project-move.api.json`) to this issue as retained evidence.
+1. Attach the comparison report and the pre-move snapshot (`{EVIDENCE_DIR}/{old}-before-project-move.api.json`) to this issue as retained evidence.
 2. For each location, read the pre-move text from the snapshot and the current text from the API. Restore {old} **only** where the occurrence is a verified literal historical artifact. Keep genuine issue references as {new}.
 3. **Never mass-replace {new} back to {old}**, in a comment or anywhere else. That would revert legitimate references.
 4. Show Kevin the proposed restorations, location by location, and get his approval before writing anything.
@@ -952,11 +984,12 @@ def followup_repo_url():
     return url
 
 
-def followup_read_back_problems(check, repo_url):
+def followup_read_back_problems(check, repo_url, evidence=()):
     """Compare a read-back follow-up issue with what create_followup() set.
 
     Returns (wrong, expect): wrong maps each mismatching prototype (or
-    "Repository comment") to the value read back; empty means it matches.
+    "Repository comment", or "Evidence paths") to the value read back; empty
+    means it matches. evidence is the full paths the description must carry.
     """
     got = {}
     for f in check["customFields"]:
@@ -974,11 +1007,20 @@ def followup_read_back_problems(check, repo_url):
         wrong[PROTO_DATE_ENTERED] = got.get(PROTO_DATE_ENTERED)
     if not any(c.get("text") == f"Repository: {FOLLOWUP_REPO}" for c in check.get("comments") or []):
         wrong["Repository comment"] = None
+    absent = [p for p in evidence if p not in (check.get("description") or "")]
+    if absent:
+        wrong["Evidence paths"] = absent
     return wrong, expect
 
 
 def create_followup(old, new, report=None, report_path=None):
     repo_url = followup_repo_url()
+    # The ticket names every evidence file by full path; refuse, before any API
+    # call, to point it at evidence that is not actually there.
+    missing = missing_evidence(old, new)
+    if missing:
+        raise Fail("evidence missing or empty, so the follow-up was not filed: "
+                   + ", ".join(missing))
     project = resolve_project(FOLLOWUP_PROJECT)
     sample = api("GET", "/api/issues", {
         "query": f"project: {FOLLOWUP_PROJECT}", "$top": 1,
@@ -1010,15 +1052,17 @@ def create_followup(old, new, report=None, report_path=None):
 
     # Read back: a write that reported success is only proven by the read.
     check = api("GET", f"/api/issues/{created['id']}", {"fields":
-                "idReadable,customFields(name,projectCustomField(field(id)),value(name,login)),"
+                "idReadable,description,customFields(name,projectCustomField(field(id)),value(name,login)),"
                 "comments(text)"})
-    wrong, expect = followup_read_back_problems(check, repo_url)
+    evidence = [p for _, p in evidence_paths(old, new)]
+    wrong, expect = followup_read_back_problems(check, repo_url, evidence)
     if wrong:
         raise Fail(f"{check['idReadable']} was created but reads back wrong: {wrong}")
     return {"idReadable": check["idReadable"], "id": created["id"],
             "url": f"{PUBLIC_URL}/issue/{check['idReadable']}",
             "remediation_section": _remediation_needed(report),
-            "repo_url": repo_url, "verified": sorted(expect) + [PROTO_DATE_ENTERED]}
+            "repo_url": repo_url, "verified": sorted(expect) + [PROTO_DATE_ENTERED],
+            "evidence_paths": evidence}
 
 
 # ---------------------------------------------------------------------- CLI
