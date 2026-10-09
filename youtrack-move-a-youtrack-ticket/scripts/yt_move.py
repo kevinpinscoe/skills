@@ -95,10 +95,13 @@ UTILITY_PATH = f"{FOLLOWUP_REPO}/{UTILITY_NAME}"
 EVIDENCE_DIR = "~/archives/youtrack/ticket-moves"
 
 # Directories Part A's human-run rg inventory leaves out: scratch space, downloads,
-# and the evidence directory the inventory itself is written to. Anchored with a
-# leading "/", so they match only directly under the search root (the search runs
-# from that root). The system /tmp is outside the search root and is never reached.
-INVENTORY_EXCLUDE_DIRS = ("tmp", "Downloads", EVIDENCE_DIR.removeprefix("~/"))
+# the evidence directory the inventory itself is written to, and rootless Podman's
+# storage, whose overlay work/work directories are unreadable and made rg exit 2
+# (AI-80, 2026-10-09). Anchored with a leading "/", so they match only at that path
+# under the search root (the search runs from that root). The system /tmp is
+# outside the search root and is never reached.
+INVENTORY_EXCLUDE_DIRS = ("tmp", "Downloads", EVIDENCE_DIR.removeprefix("~/"),
+                          ".local/share/containers")
 INVENTORY_EXCLUDES = ("!.git/",) + tuple(f"!/{d}/" for d in INVENTORY_EXCLUDE_DIRS)
 
 # The one definition of the inventory search. The inventory helper and its
@@ -239,7 +242,9 @@ def inventory_selftest_script(old):
     hit = f"see {old} here"
     included = ("notes/normal.md", ".hidden/hidden.md", "ignored/ignored.md",
                 "repo/gi/gitignored.md", "repo/tmp/nested.md")
+    included += (".local/share/other/kept.md",)
     excluded = ("tmp/scratch.md", "Downloads/download.md",
+                ".local/share/containers/storage/overlay/layer/diff/image.md",
                 f"{EVIDENCE_DIR.removeprefix('~/')}/evidence.md",
                 ".git/top.md", "repo/.git/repo.md", "repo/sub/deep/.git/deep.md",
                 "notes/upper.MD", "notes/long.markdown")
@@ -272,7 +277,9 @@ mk() {{  # mk RELPATH LINE... : write a fixture file under $root
 }}
 
 # Included: plain, hidden, .ignore'd, .gitignore'd, and a nested repo tmp/.
-# Excluded: root tmp/, Downloads/ and evidence dir, .git at three depths,
+# Included too: .local/share/other/, beside the excluded container storage.
+# Excluded: root tmp/, Downloads/, evidence dir and .local/share/containers/,
+# .git at three depths,
 # and the out-of-scope .MD and .markdown extensions.
 {mk}
 printf 'ignored/\\n' > "$root/.ignore"
@@ -1067,6 +1074,7 @@ The search runs **from** the home directory (inside the helper, so it does not m
 - `--hidden` and `--no-ignore`: hidden files and directories, and paths excluded by `.gitignore`, `.ignore` or other ignore rules, **are** searched.
 - `--glob '!.git/'`: `.git` directories are excluded at every depth.
 - `--glob '!/tmp/'`, `--glob '!/Downloads/'`, `--glob '!/{evidence_rel}/'`: anchored, so they exclude only `~/tmp`, `~/Downloads` and `{EVIDENCE_DIR}`. A `tmp/` directory inside a repository is still searched. The system `/tmp` lies outside the search root.
+- `--glob '!/.local/share/containers/'`: rootless Podman's image and container storage. Its overlay `work/work` directories are unreadable, which made `rg` exit 2 and fail the whole inventory. It holds container filesystems, not Kevin's Markdown. The rest of `~/.local/share` is still searched.
 - `--glob '*.md'`: lowercase `.md` only, because the rewrite utility accepts only `.md`. `.MD` and `.markdown` files are outside this scope.
 - `--no-follow`: symlinks are not followed.
 - `--with-filename --line-number --no-heading --color=never`: every line is `absolute-path:line-number:text`, whatever the terminal or configuration.

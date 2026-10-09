@@ -971,6 +971,7 @@ class FollowupTests(unittest.TestCase):
         for opt in ("--no-config", "--hidden", "--no-ignore", "--no-follow",
                     "--with-filename", "--line-number", "--no-heading", "--color=never",
                     "--glob '!.git/'", "--glob '!/tmp/'", "--glob '!/Downloads/'",
+                    "--glob '!/.local/share/containers/'",
                     "--glob '!/archives/youtrack/ticket-moves/'"):
             self.assertIn(opt, text)
         self.assertNotIn("~/tmp/KTA-19-home-markdown-references", text)
@@ -1080,7 +1081,7 @@ case $STUB_MODE in
   race) printf 'OTHER\n' > "$STUB_INVENTORY"; printf '%s\n' "$root/a.md:1:KTA-19"; exit 0 ;;
   interrupt) printf '%s\n' "$root/a.md:1:partial"; kill -TERM "$PPID"; sleep 0.2; exit 0 ;;
   selftest-pass|selftest-extra)
-    for p in notes/normal.md .hidden/hidden.md ignored/ignored.md repo/gi/gitignored.md repo/tmp/nested.md; do
+    for p in notes/normal.md .hidden/hidden.md ignored/ignored.md repo/gi/gitignored.md repo/tmp/nested.md .local/share/other/kept.md; do
       printf '%s\n' "$root/$p:2:see KTA-19 here"
     done
     [[ $STUB_MODE == selftest-extra ]] && printf '%s\n' "$root/tmp/scratch.md:2:see KTA-19 here"
@@ -1165,7 +1166,8 @@ class InventoryHelperTests(unittest.TestCase):
         for flag in ("--hidden", "--no-ignore", "--no-config", "--no-follow", "--with-filename",
                      "--line-number", "--no-heading", "--color=never"):
             self.assertIn(flag, args)
-        for g in ("*.md", "!.git/", "!/tmp/", "!/Downloads/", "!/archives/youtrack/ticket-moves/"):
+        for g in ("*.md", "!.git/", "!/tmp/", "!/Downloads/", "!/archives/youtrack/ticket-moves/",
+                  "!/.local/share/containers/"):
             self.assertIn(g, args)
         self.assertNotIn("-L", args)
         self.assertNotIn("--follow", args)
@@ -1259,6 +1261,8 @@ class InventoryHelperTests(unittest.TestCase):
         script = yt_move.inventory_selftest_script(self.OLD)
         for want in ("mk .hidden/hidden.md", "mk ignored/ignored.md", "printf 'ignored/\\n' > \"$root/.ignore\"",
                      "mk repo/tmp/nested.md", "mk tmp/scratch.md", "mk Downloads/download.md",
+                     "mk .local/share/containers/storage/overlay/layer/diff/image.md",
+                     "mk .local/share/other/kept.md",
                      "mk archives/youtrack/ticket-moves/evidence.md", "mk .git/top.md",
                      "mk repo/.git/repo.md", "mk repo/sub/deep/.git/deep.md",
                      "mk notes/boundary.md KTA-190 XKTA-19 ABC-KTA-19",
