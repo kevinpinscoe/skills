@@ -151,7 +151,11 @@ class UrlRewrites(unittest.TestCase):
         "prose": "see {u}{k} for the plan",
         "fenced": "Log:\n```\ncurl {u}{k}\n```",
         "inline": "run `open {u}{k}` now",
+        "tilde": "Log:\n~~~\ncurl {u}{k}\n~~~\nThat was the log.",
+        "double_tick": "run ``open `{u}{k}` `` now",
     }
+    CODE_REASONS = {"fenced": "code block", "inline": "inline code",
+                    "tilde": "code block", "double_tick": "inline code"}
 
     def setUp(self):
         # A moved issue with no text of its own, as KSA-101 had, so only the
@@ -212,7 +216,7 @@ class UrlRewrites(unittest.TestCase):
         self.assertEqual(yt_move.verdicts(rep), ("PASS", "CLEAN", 0))
 
     def test_url_rewritten_in_code_goes_to_part_b(self):
-        for form, reason in (("fenced", "code block"), ("inline", "inline code")):
+        for form, reason in self.CODE_REASONS.items():
             with self.subTest(form=form):
                 rep = self.pair(self.text(form, "KSA-81"), self.text(form, "GLASS-2"))
                 self.assertEqual(rep["reference_rewrites"], 0)
@@ -222,6 +226,27 @@ class UrlRewrites(unittest.TestCase):
                 part_b = yt_move.followup_text("KSA-81", "GLASS-2", rep)
                 self.assertIn("# Part B", part_b)
                 self.assertIn(f"({reason})", part_b)
+
+    def test_code_classification_does_not_leak_into_prose(self):
+        # Each code form, closed, then an issue URL in prose on a later line or
+        # after the closing delimiter: both rewritten, one kind B, one kind A.
+        tail = {"fenced": "\nSee {u}{k} too.", "tilde": "\nSee {u}{k} too.",
+                "inline": " and {u}{k} too.", "double_tick": " and {u}{k} too."}
+        for form, reason in self.CODE_REASONS.items():
+            with self.subTest(form=form):
+                t = self.TEXTS[form] + tail[form]
+                rep = self.pair(t.format(u=self.URL, k="KSA-81"), t.format(u=self.URL, k="GLASS-2"))
+                self.assertEqual(rep["reference_rewrites"], 1)
+                self.assertEqual([a["reason"] for a in rep["artifact_rewrites"]], [reason])
+                self.assertEqual(rep["unexplained"], [])
+                self.assertEqual(yt_move.verdicts(rep)[2], 3)
+
+    def test_unrelated_change_beside_a_code_url_is_unexplained(self):
+        t = self.TEXTS["tilde"]
+        rep = self.pair(t.format(u=self.URL, k="KSA-81"),
+                        t.format(u=self.URL, k="GLASS-2").replace("curl", "wget"))
+        self.assertEqual(len(rep["unexplained"]), 1)
+        self.assertEqual(yt_move.verdicts(rep)[2], 1)
 
     def test_unrelated_change_beside_a_url_is_unexplained(self):
         rep = self.pair(self.text("prose", "KSA-81"),
@@ -845,6 +870,11 @@ class WalkTests(unittest.TestCase):
             "see (https://youtrack.kevininscoe.com/issue/KSA-81).": "reference",
             "`https://youtrack.kevininscoe.com/issue/KSA-81`": "artifact",
             "```\ncurl https://youtrack.kevininscoe.com/issue/KSA-81\n```": "artifact",
+            "~~~\ncurl https://youtrack.kevininscoe.com/issue/KSA-81\n~~~": "artifact",
+            "``open https://youtrack.kevininscoe.com/issue/KSA-81``": "artifact",
+            "~~~\nx\n~~~\nsee https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
+            "``a`` see https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
+            "a ` stray, then https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
             "branch KSA-81": "artifact",
             "ai-wt/KSA-81": "artifact",
             "KSA-81-frodo-hostkey": "artifact",
@@ -858,6 +888,36 @@ class WalkTests(unittest.TestCase):
         for text, kind in cases.items():
             i = text.index("KSA-81")
             self.assertEqual(yt_move.classify(text, i, "KSA-81")[0], kind, text)
+
+
+class CodeContextTests(unittest.TestCase):
+    """Markdown code detection behind classify()'s "code wins" rule."""
+
+    def ctx(self, text, marker="X"):
+        return yt_move.code_context(text, text.index(marker))
+
+    def test_fences(self):
+        self.assertEqual(self.ctx("```\nX\n```"), "code block")
+        self.assertEqual(self.ctx("~~~\nX\n~~~"), "code block")
+        self.assertEqual(self.ctx("  ~~~~ text\nX"), "code block")       # unclosed, info string
+        self.assertEqual(self.ctx("```bash X\n```"), "code block")       # the opening line
+        self.assertIsNone(self.ctx("```\na\n```\nX"))
+        self.assertIsNone(self.ctx("~~~\na\n~~~\nX"))
+
+    def test_fence_closes_only_on_matching_delimiter(self):
+        self.assertEqual(self.ctx("~~~\n```\nX\n~~~"), "code block")   # ``` cannot close ~~~
+        self.assertEqual(self.ctx("````\n```\nX\n````"), "code block")  # shorter cannot close
+        self.assertEqual(self.ctx("```\na\n``` trailing\nX"), "code block")  # text after: not a close
+        self.assertIsNone(self.ctx("```\na\n`````\nX"))                 # longer closes
+
+    def test_inline_spans(self):
+        self.assertEqual(self.ctx("a `X` b"), "inline code")
+        self.assertEqual(self.ctx("a ``X`` b"), "inline code")
+        self.assertEqual(self.ctx("a `` `X` `` b"), "inline code")       # single ticks inside double
+        self.assertIsNone(self.ctx("a `b` X"))
+        self.assertIsNone(self.ctx("a ``b`` X"))
+        self.assertIsNone(self.ctx("a ` X"))                             # unmatched run is literal
+        self.assertIsNone(self.ctx("a ``b` X"))                          # run lengths differ
 
 
 class PagerTests(unittest.TestCase):

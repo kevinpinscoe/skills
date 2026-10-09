@@ -433,6 +433,55 @@ _GIT_AFTER_RE = re.compile(
     r"at\s+[0-9a-f]{7})\b)")
 
 
+_FENCE_RE = re.compile(r"[ \t]*(`{3,}|~{3,})(.*)$")
+_TICKS_RE = re.compile(r"`+")
+
+
+def code_context(text, i):
+    """'code block', 'inline code' or None for the character at offset i.
+
+    Markdown code, close to CommonMark: a fence is a run of 3+ backticks or 3+
+    tildes, closed only by the same character, at least as long, with nothing
+    after it; an unclosed fence runs to the end of the text, and its opening
+    line (the info string) counts as code. An inline span opens on a backtick
+    run and closes on the next run of exactly the same length; a run with no
+    match is literal. Fence indentation is not limited, so fences in list
+    items count, and inline spans are taken within one line.
+    """
+    ls = text.rfind("\n", 0, i) + 1
+    fence = None  # (char, length) of the open fence
+    for line in text[:ls].splitlines():
+        m = _FENCE_RE.match(line)
+        if fence is None:
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                fence = (m.group(1)[0], len(m.group(1)))
+        elif m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] \
+                and not m.group(2).strip():
+            fence = None
+    le = text.find("\n", i)
+    line = text[ls:len(text) if le == -1 else le]
+    if fence is not None:
+        return "code block"
+    m = _FENCE_RE.match(line)
+    if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+        return "code block"  # the opening fence line itself
+    col = i - ls
+    pos = 0
+    while True:
+        opener = _TICKS_RE.search(line, pos)
+        if opener is None or opener.start() > col:
+            return None
+        n = len(opener.group())
+        closer = next((r for r in _TICKS_RE.finditer(line, opener.end())
+                       if len(r.group()) == n), None)
+        if closer is None:
+            pos = opener.end()  # unmatched run: literal backticks
+            continue
+        if opener.end() <= col < closer.start():
+            return "inline code"
+        pos = closer.end()
+
+
 def classify(text, i, old):
     """Classify one occurrence: ('reference'|'artifact', reason).
 
@@ -442,14 +491,12 @@ def classify(text, i, old):
     le = text.find("\n", i)
     le = len(text) if le == -1 else le
     pre, post = text[ls:i], text[i + len(old):le]
-    fenced = sum(1 for ln in text[:ls].splitlines() if ln.lstrip().startswith("```")) % 2
     # Code is tested before URLs (Kevin, AI-80, 2026-10-09): an issue URL quoted
     # in a command, example or log is literal text, so a rewritten one goes to
     # Part B's per-location review. A URL in prose is a reference.
-    if fenced:
-        return "artifact", "code block"
-    if pre.count("`") % 2:
-        return "artifact", "inline code"
+    code = code_context(text, i)
+    if code:
+        return "artifact", code
     if _is_url(pre):
         return "reference", "url"
     if pre.endswith("/") or re.search(r"\.\.$", pre):
