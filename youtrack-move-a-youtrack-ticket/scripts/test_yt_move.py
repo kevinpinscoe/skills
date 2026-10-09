@@ -13,6 +13,7 @@ import copy
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -781,7 +782,7 @@ class FollowupTests(unittest.TestCase):
         text = yt_move.followup_text("KTA-19", "GLASS-2")
         self.assertIn("Old issue ID: KTA-19\nNew issue ID: GLASS-2", text)
         self.assertIn("(?<![A-Za-z0-9-])KTA\\-19(?![0-9])", text)
-        self.assertIn("rg -n -P --glob '*.md'", text)
+        self.assertIn("--glob '*.md'", text)
         self.assertIn("~/private-tools/yt-rewrite-moved-issue-id.py", text)
         self.assertIn("# Part A", text)
         self.assertNotIn("# Part B", text)
@@ -792,14 +793,21 @@ class FollowupTests(unittest.TestCase):
         text = yt_move.followup_text("KTA-19", "GLASS-2")
         inv = "~/archives/youtrack/ticket-moves/KTA-19-home-markdown-references.txt"
         self.assertEqual(yt_move.inventory_path("KTA-19"), inv)
-        self.assertIn(f"' ~ > {inv}\n", text)
-        self.assertIn("mkdir -p ~/archives/youtrack/ticket-moves\ncd ~\nrg ", text)
-        for glob in ("--glob '!/tmp/**'", "--glob '!/Downloads/**'",
-                     "--glob '!/archives/youtrack/ticket-moves/**'"):
-            self.assertIn(glob, text)
+        for opt in ("--no-config", "--hidden", "--no-ignore", "--no-follow",
+                    "--with-filename", "--line-number", "--no-heading", "--color=never",
+                    "--glob '!.git/'", "--glob '!/tmp/'", "--glob '!/Downloads/'",
+                    "--glob '!/archives/youtrack/ticket-moves/'"):
+            self.assertIn(opt, text)
         self.assertNotIn("~/tmp/KTA-19-home-markdown-references", text)
-        self.assertNotIn("mkdir -p ~/tmp", text)
+        self.assertNotIn("That is accepted", text)
         self.assertIn("kept for audit", text)
+        self.assertIn("`.MD` and `.markdown` files are outside this scope", text)
+        self.assertIn("never proves that no reference to KTA-19 exists", text)
+        # Both helpers are given in full, with one bash line each.
+        self.assertIn(yt_move.inventory_script("KTA-19").rstrip(), text)
+        self.assertIn(yt_move.inventory_selftest_script("KTA-19").rstrip(), text)
+        self.assertIn("`bash ~/tmp/KTA-19-markdown-inventory-selftest.sh`", text)
+        self.assertIn("`bash ~/tmp/KTA-19-markdown-inventory.sh`", text)
         # The inventory is produced later, by the POE work; it must not gate creation.
         self.assertNotIn(inv, [p for _, p in yt_move.evidence_paths("KTA-19", "GLASS-2")])
 
@@ -880,6 +888,207 @@ class ExportTests(unittest.TestCase):
         self.assertTrue(yt_move.check_export("/nonexistent/x.md", "DEMO-19"))
         with tempfile.NamedTemporaryFile(suffix=".md") as fh:
             self.assertIn("empty", yt_move.check_export(fh.name, "DEMO-19")[0])
+
+
+STUB_RG = r"""#!/usr/bin/env bash
+# Stand-in for rg: records how it was called and behaves per $STUB_MODE.
+# No real search ever runs in these tests.
+printf '%s\n' "$PWD" > "$STUB_LOG.cwd"
+printf '%s\n' "$@" > "$STUB_LOG.args"
+printf '%s' "$STUB_PROMPT" >&2
+root=${@: -1}
+case $STUB_MODE in
+  hits) printf '%s\n' "$root/notes/a.md:3:see KTA-19 here"; exit 0 ;;
+  empty) exit 1 ;;
+  refused) echo "rg: not confirmed -- denying." >&2; exit 1 ;;
+  error) printf '%s\n' "$root/notes/a.md:3:partial"; echo "rg: some error" >&2; exit 2 ;;
+  race) printf 'OTHER\n' > "$STUB_INVENTORY"; printf '%s\n' "$root/a.md:1:KTA-19"; exit 0 ;;
+  interrupt) printf '%s\n' "$root/a.md:1:partial"; kill -TERM "$PPID"; sleep 0.2; exit 0 ;;
+  selftest-pass|selftest-extra)
+    for p in notes/normal.md .hidden/hidden.md ignored/ignored.md repo/gi/gitignored.md repo/tmp/nested.md; do
+      printf '%s\n' "$root/$p:2:see KTA-19 here"
+    done
+    [[ $STUB_MODE == selftest-extra ]] && printf '%s\n' "$root/tmp/scratch.md:2:see KTA-19 here"
+    exit 0 ;;
+esac
+exit 99
+"""
+
+
+class InventoryHelperTests(unittest.TestCase):
+    """The generated helpers, run end to end against a stub rg on PATH."""
+
+    OLD = "KTA-19"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = self.tmp.name
+        self.home = os.path.join(t, "home")
+        self.elsewhere = os.path.join(t, "elsewhere")
+        self.bin = os.path.join(t, "bin")
+        self.fixtures = os.path.join(t, "fixtures-tmp")
+        for d in (self.home, self.elsewhere, self.bin, self.fixtures):
+            os.makedirs(d)
+        with open(os.path.join(self.bin, "rg"), "w") as fh:
+            fh.write(STUB_RG)
+        os.chmod(os.path.join(self.bin, "rg"), 0o755)
+        self.log = os.path.join(t, "stub")
+        self.evidence = os.path.join(self.home, "archives/youtrack/ticket-moves")
+        self.inventory = os.path.join(self.evidence, f"{self.OLD}-home-markdown-references.txt")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_helper(self, script, mode, prompt=yt_move.WRAPPER_PROMPT):
+        path = os.path.join(self.tmp.name, "helper.sh")
+        with open(path, "w") as fh:
+            fh.write(script)
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": self.home, "TMPDIR": self.fixtures,
+               "STUB_MODE": mode, "STUB_LOG": self.log, "STUB_PROMPT": prompt,
+               "STUB_INVENTORY": self.inventory, "RIPGREP_CONFIG_PATH": "/nonexistent"}
+        return subprocess.run(["bash", path], cwd=self.elsewhere, env=env, stdin=subprocess.DEVNULL,
+                              capture_output=True, text=True, timeout=30)
+
+    def stub_args(self):
+        with open(self.log + ".args") as fh:
+            return fh.read().splitlines()
+
+    def stub_cwd(self):
+        with open(self.log + ".cwd") as fh:
+            return fh.read().strip()
+
+    def leftovers(self):
+        return [n for n in os.listdir(self.evidence) if n.startswith(".")]
+
+    def read_inventory(self):
+        with open(self.inventory) as fh:
+            return fh.read()
+
+    # -- the inventory helper ----------------------------------------------------
+
+    def test_syntax(self):
+        for script in (yt_move.inventory_script(self.OLD), yt_move.inventory_selftest_script(self.OLD)):
+            r = subprocess.run(["bash", "-n"], input=script, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_hits_published_and_search_runs_from_home(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "hits")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read_inventory(), f"{self.home}/notes/a.md:3:see KTA-19 here\n")
+        self.assertIn("(1 matching lines)", r.stdout)
+        self.assertEqual(self.stub_cwd(), self.home)  # launched from elsewhere
+        self.assertEqual(self.leftovers(), [])
+
+    def test_exact_rg_arguments(self):
+        self.run_helper(yt_move.inventory_script(self.OLD), "hits")
+        args = self.stub_args()
+        expected = list(yt_move.INVENTORY_RG_OPTIONS)
+        for g in yt_move.INVENTORY_GLOBS:
+            expected += ["--glob", g]
+        expected += ["--", yt_move.boundary_pattern(self.OLD), self.home]
+        self.assertEqual(args, expected)
+        for flag in ("--hidden", "--no-ignore", "--no-config", "--no-follow", "--with-filename",
+                     "--line-number", "--no-heading", "--color=never"):
+            self.assertIn(flag, args)
+        for g in ("*.md", "!.git/", "!/tmp/", "!/Downloads/", "!/archives/youtrack/ticket-moves/"):
+            self.assertIn(g, args)
+        self.assertNotIn("-L", args)
+        self.assertNotIn("--follow", args)
+
+    def test_zero_hits_is_a_kept_empty_inventory(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "empty")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read_inventory(), "")
+        self.assertIn("Zero hits within the covered scope", r.stdout)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_wrapper_refusal_is_not_an_empty_inventory(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "refused")
+        self.assertEqual(r.returncode, 2)
+        self.assertFalse(os.path.exists(self.inventory))
+        self.assertIn("Not treating that as an empty result", r.stderr)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_exit_1_without_the_prompt_still_counts_as_empty(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "empty", prompt="")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read_inventory(), "")
+
+    def test_failed_search_keeps_nothing(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "error")
+        self.assertEqual(r.returncode, 2)
+        self.assertFalse(os.path.exists(self.inventory))
+        self.assertIn("rg exited 2", r.stderr)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_interrupted_search_keeps_nothing(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "interrupt")
+        self.assertEqual(r.returncode, 143)
+        self.assertFalse(os.path.exists(self.inventory))
+        self.assertEqual(self.leftovers(), [])
+
+    def test_existing_inventory_is_refused_untouched(self):
+        os.makedirs(self.evidence)
+        with open(self.inventory, "w") as fh:
+            fh.write("KEEP\n")
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "hits")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("already exists", r.stderr)
+        self.assertEqual(self.read_inventory(), "KEEP\n")
+        self.assertFalse(os.path.exists(self.log + ".args"))  # rg never ran
+        self.assertEqual(self.leftovers(), [])
+
+    def test_inventory_appearing_during_the_run_is_not_overwritten(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "race")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("appeared during the run", r.stderr)
+        self.assertEqual(self.read_inventory(), "OTHER\n")
+        self.assertEqual(self.leftovers(), [])
+
+    # -- the self-test helper ----------------------------------------------------
+
+    def test_helpers_share_one_search_definition(self):
+        block = yt_move.inventory_search_block(self.OLD)
+        self.assertIn(block, yt_move.inventory_script(self.OLD))
+        self.assertIn(block, yt_move.inventory_selftest_script(self.OLD))
+
+    def test_selftest_pass_cleans_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "selftest-pass")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("PASS:", r.stdout)
+        cwd = self.stub_cwd()
+        self.assertTrue(cwd.startswith(self.fixtures) and cwd.endswith("/home"), cwd)
+        self.assertEqual(self.stub_args()[-1], cwd)
+        self.assertEqual(os.listdir(self.fixtures), [])
+        self.assertFalse(os.path.exists(self.evidence))  # never touches the real inventory
+
+    def test_selftest_unexpected_hit_fails_and_cleans_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "selftest-extra")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("FAIL:", r.stdout)
+        self.assertIn("tmp/scratch.md:2:see KTA-19 here", r.stdout)
+        self.assertEqual(os.listdir(self.fixtures), [])
+
+    def test_selftest_missing_hits_fail_and_clean_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "empty")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("FAIL:", r.stdout)
+        self.assertEqual(os.listdir(self.fixtures), [])
+
+    def test_selftest_interrupt_cleans_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "interrupt")
+        self.assertEqual(r.returncode, 143)
+        self.assertEqual(os.listdir(self.fixtures), [])
+
+    def test_selftest_fixture_covers_the_contract(self):
+        script = yt_move.inventory_selftest_script(self.OLD)
+        for want in ("mk .hidden/hidden.md", "mk ignored/ignored.md", "printf 'ignored/\\n' > \"$root/.ignore\"",
+                     "mk repo/tmp/nested.md", "mk tmp/scratch.md", "mk Downloads/download.md",
+                     "mk archives/youtrack/ticket-moves/evidence.md", "mk .git/top.md",
+                     "mk repo/.git/repo.md", "mk repo/sub/deep/.git/deep.md",
+                     "mk notes/boundary.md KTA-190 XKTA-19 ABC-KTA-19",
+                     'ln -s -- "$outside/dir" "$root/linkdir"', 'ln -s -- "$outside/file.md" "$root/link.md"'):
+            self.assertIn(want, script)
 
 
 if __name__ == "__main__":
