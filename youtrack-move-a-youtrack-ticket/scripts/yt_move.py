@@ -86,6 +86,18 @@ UTILITY_PATH = f"{FOLLOWUP_REPO}/{UTILITY_NAME}"
 # audit. Not ~/tmp, which is a scratchpad and gets cleared.
 EVIDENCE_DIR = "~/archives/youtrack/ticket-moves"
 
+# Directories Part A's human-run rg inventory leaves out: scratch space, downloads,
+# and the evidence directory the inventory itself is written to. Anchored with a
+# leading "/", so they match only directly under ~ (the inventory runs after `cd ~`).
+# The system /tmp is outside the search root and is never reached.
+INVENTORY_EXCLUDE_DIRS = ("tmp", "Downloads", EVIDENCE_DIR.removeprefix("~/"))
+INVENTORY_EXCLUDES = " ".join(f"--glob '!/{d}/**'" for d in INVENTORY_EXCLUDE_DIRS)
+
+
+def inventory_path(old):
+    """Where Part A's rg inventory is written and kept for audit."""
+    return f"{EVIDENCE_DIR}/{old}-home-markdown-references.txt"
+
 # String custom fields whose values name real objects (branches, tabs, URLs).
 # YouTrack did not rewrite these on KSA-81 -> GLASS-2; if one ever changes by an
 # OLD -> NEW substitution it is a historical-artifact rewrite, not a reference.
@@ -744,7 +756,7 @@ def missing_evidence(old, new):
 
 def followup_text(old, new, report=None, report_path=None, max_locations=60):
     pat = boundary_pattern(old)
-    inv = f"~/tmp/{old}-home-markdown-references.txt"
+    inv = inventory_path(old)
     evidence = "\n".join(f"- {path} — {what}" for what, path in evidence_paths(old, new))
     canonical = {os.path.expanduser(p) for _, p in evidence_paths(old, new)}
     if report_path and os.path.expanduser(report_path) not in canonical:
@@ -771,11 +783,18 @@ AI agents are forbidden from running recursive `rg`, `ripgrep` or `ugrep` search
 Ask Kevin to run this from his own interactive terminal, answering the wrapper's "Are you human?" prompt himself. Hand it to him as a `~/tmp` script plus a single `bash ~/tmp/<name>.sh` line, per `root-directive.md`, because it is too long to paste safely:
 
 ```bash
-mkdir -p ~/tmp
-rg -n -P --glob '*.md' '{pat}' ~ > {inv}
+mkdir -p {EVIDENCE_DIR}
+cd ~
+rg -n -P --glob '*.md' \\
+  {INVENTORY_EXCLUDES} \\
+  '{pat}' ~ > {inv}
 ```
 
 Kevin then reports the path of the generated file. **Do not rerun `rg`**, and do not go looking for files the inventory does not list. (By default `rg` skips hidden and gitignored files. That is accepted; the inventory is the scope.)
+
+The `cd ~` is required. A `--glob` that starts with `/` is anchored to the current directory, so with it each exclusion names exactly one directory under the home directory: `~/tmp`, `~/Downloads` and `{EVIDENCE_DIR}`. A `tmp/` directory inside some repository is still searched. The system `/tmp` lies outside the search root, and `rg` does not follow symlinks without `-L`, so it is never searched either.
+
+The inventory is written to `{inv}`, beside the move evidence, and is **kept for audit**. Never delete, move or rewrite it. Like the evidence above, it is not a rewrite target.
 
 ## A2 — the matching contract
 

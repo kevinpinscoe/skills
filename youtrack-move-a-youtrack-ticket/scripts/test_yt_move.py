@@ -788,6 +788,21 @@ class FollowupTests(unittest.TestCase):
         self.assertEqual(yt_move.followup_summary("KTA-19", "GLASS-2"),
                          "Update Markdown references after KTA-19 moved to GLASS-2")
 
+    def test_inventory_excludes_and_is_archived(self):
+        text = yt_move.followup_text("KTA-19", "GLASS-2")
+        inv = "~/archives/youtrack/ticket-moves/KTA-19-home-markdown-references.txt"
+        self.assertEqual(yt_move.inventory_path("KTA-19"), inv)
+        self.assertIn(f"' ~ > {inv}\n", text)
+        self.assertIn("mkdir -p ~/archives/youtrack/ticket-moves\ncd ~\nrg ", text)
+        for glob in ("--glob '!/tmp/**'", "--glob '!/Downloads/**'",
+                     "--glob '!/archives/youtrack/ticket-moves/**'"):
+            self.assertIn(glob, text)
+        self.assertNotIn("~/tmp/KTA-19-home-markdown-references", text)
+        self.assertNotIn("mkdir -p ~/tmp", text)
+        self.assertIn("kept for audit", text)
+        # The inventory is produced later, by the POE work; it must not gate creation.
+        self.assertNotIn(inv, [p for _, p in yt_move.evidence_paths("KTA-19", "GLASS-2")])
+
     def test_with_remediation(self):
         rep = yt_move.compare(fixture("ksa81-before.json"), fixture("glass2-after.json"))
         text = yt_move.followup_text("KSA-81", "GLASS-2", rep, "~/tmp/r.json")
