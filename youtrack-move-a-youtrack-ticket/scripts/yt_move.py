@@ -715,10 +715,40 @@ def followup_summary(old, new, report=None):
     return f"Update Markdown references after {old} moved to {new}"
 
 
+def evidence_paths(old, new):
+    """The move's evidence files, as (description, full ~/ path) pairs.
+
+    The follow-up ticket lists every one of these by full path, and
+    create_followup() refuses to file it unless each exists and reads back.
+    """
+    d = EVIDENCE_DIR
+    return [
+        ("pre-move yt-export (human-run)", f"{d}/{old}-before-project-move.md"),
+        ("post-move yt-export (human-run)", f"{d}/{new}-after-project-move.md"),
+        ("pre-move API snapshot", f"{d}/{old}-before-project-move.api.json"),
+        ("post-move API snapshot", f"{d}/{new}-after-project-move.api.json"),
+        ("comparison report (text)", f"{d}/{old}-to-{new}-preservation-check.txt"),
+        ("comparison report (JSON)", f"{d}/{old}-to-{new}-preservation-check.json"),
+    ]
+
+
+def missing_evidence(old, new):
+    """Return the evidence paths that are absent or empty on this host."""
+    missing = []
+    for _, path in evidence_paths(old, new):
+        full = os.path.expanduser(path)
+        if not os.path.isfile(full) or os.path.getsize(full) == 0:
+            missing.append(path)
+    return missing
+
+
 def followup_text(old, new, report=None, report_path=None, max_locations=60):
     pat = boundary_pattern(old)
     inv = f"~/tmp/{old}-home-markdown-references.txt"
-    also = f" and {report_path}" if report_path else ""
+    evidence = "\n".join(f"- {path} — {what}" for what, path in evidence_paths(old, new))
+    canonical = {os.path.expanduser(p) for _, p in evidence_paths(old, new)}
+    if report_path and os.path.expanduser(report_path) not in canonical:
+        evidence += f"\n- {report_path} — comparison report as passed to this helper"
     head = f"""Old issue ID: {old}
 New issue ID: {new}
 
@@ -726,10 +756,8 @@ New issue ID: {new}
 Cross-issue scan coverage: {SCAN_CLAIM}. Issues in projects that identity cannot see were not scanned.
 The old key {old}, and every URL {PUBLIC_URL}/issue/{old}, still resolve to the same issue.
 
-Move evidence (kept, never rewritten by this work):
-- {EVIDENCE_DIR}/{old}-before-project-move.md and {EVIDENCE_DIR}/{new}-after-project-move.md (human-run yt-export)
-- {EVIDENCE_DIR}/{old}-before-project-move.api.json and {EVIDENCE_DIR}/{new}-after-project-move.api.json (API snapshots)
-- {EVIDENCE_DIR}/{old}-to-{new}-preservation-check.txt{also} (comparison)
+Move evidence, by full path (kept for audit, never rewritten or deleted by this work):
+{evidence}
 """
     part_a = f"""
 # Part A — home-directory Markdown references
@@ -956,11 +984,12 @@ def followup_repo_url():
     return url
 
 
-def followup_read_back_problems(check, repo_url):
+def followup_read_back_problems(check, repo_url, evidence=()):
     """Compare a read-back follow-up issue with what create_followup() set.
 
     Returns (wrong, expect): wrong maps each mismatching prototype (or
-    "Repository comment") to the value read back; empty means it matches.
+    "Repository comment", or "Evidence paths") to the value read back; empty
+    means it matches. evidence is the full paths the description must carry.
     """
     got = {}
     for f in check["customFields"]:
@@ -978,11 +1007,20 @@ def followup_read_back_problems(check, repo_url):
         wrong[PROTO_DATE_ENTERED] = got.get(PROTO_DATE_ENTERED)
     if not any(c.get("text") == f"Repository: {FOLLOWUP_REPO}" for c in check.get("comments") or []):
         wrong["Repository comment"] = None
+    absent = [p for p in evidence if p not in (check.get("description") or "")]
+    if absent:
+        wrong["Evidence paths"] = absent
     return wrong, expect
 
 
 def create_followup(old, new, report=None, report_path=None):
     repo_url = followup_repo_url()
+    # The ticket names every evidence file by full path; refuse, before any API
+    # call, to point it at evidence that is not actually there.
+    missing = missing_evidence(old, new)
+    if missing:
+        raise Fail("evidence missing or empty, so the follow-up was not filed: "
+                   + ", ".join(missing))
     project = resolve_project(FOLLOWUP_PROJECT)
     sample = api("GET", "/api/issues", {
         "query": f"project: {FOLLOWUP_PROJECT}", "$top": 1,
@@ -1014,15 +1052,17 @@ def create_followup(old, new, report=None, report_path=None):
 
     # Read back: a write that reported success is only proven by the read.
     check = api("GET", f"/api/issues/{created['id']}", {"fields":
-                "idReadable,customFields(name,projectCustomField(field(id)),value(name,login)),"
+                "idReadable,description,customFields(name,projectCustomField(field(id)),value(name,login)),"
                 "comments(text)"})
-    wrong, expect = followup_read_back_problems(check, repo_url)
+    evidence = [p for _, p in evidence_paths(old, new)]
+    wrong, expect = followup_read_back_problems(check, repo_url, evidence)
     if wrong:
         raise Fail(f"{check['idReadable']} was created but reads back wrong: {wrong}")
     return {"idReadable": check["idReadable"], "id": created["id"],
             "url": f"{PUBLIC_URL}/issue/{check['idReadable']}",
             "remediation_section": _remediation_needed(report),
-            "repo_url": repo_url, "verified": sorted(expect) + [PROTO_DATE_ENTERED]}
+            "repo_url": repo_url, "verified": sorted(expect) + [PROTO_DATE_ENTERED],
+            "evidence_paths": evidence}
 
 
 # ---------------------------------------------------------------------- CLI

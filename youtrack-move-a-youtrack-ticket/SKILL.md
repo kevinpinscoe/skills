@@ -84,7 +84,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
    yt-export OLD --out ~/archives/youtrack/ticket-moves/OLD-before-project-move.md
    ```
 
-   (With `OLD` substituted.) That line is always longer than 60 characters, so write it to `~/tmp/yt-export-OLD-before.sh`. Open the script with `#!/usr/bin/env bash` and `set -euo pipefail`, plus a comment saying why Kevin runs it rather than the AI. Put `mkdir -p ~/archives/youtrack/ticket-moves` before the export, because the directory may not exist yet on this host. Then give him `bash ~/tmp/yt-export-OLD-before.sh`. Tell him to run it in his own terminal. Wait for him to report the resulting path.
+   (With `OLD` substituted.) That line is always longer than 60 characters, so write it to `~/tmp/yt-export-OLD-before.sh`. Open the script with `#!/usr/bin/env bash` and `set -euo pipefail`, plus a comment saying why Kevin runs it rather than the AI. Put `mkdir -p ~/archives/youtrack/ticket-moves` before the export, because the directory may not exist yet on this host. Then give him `bash ~/tmp/yt-export-OLD-before.sh`. Tell him to run it in his own terminal. Wait for him to report the resulting path. It must be exactly `~/archives/youtrack/ticket-moves/OLD-before-project-move.md`. If he saved it anywhere else, ask him to move it there before you continue, because step 10 looks for the evidence only at its standard path.
 
 3. **Validate the pre-move export.** Run `python3 $H/yt_move.py check-export <reported path> OLD`. It checks that the file exists and is non-empty, that its heading is `# OLD — …`, that its URL names `OLD`, and that it has the custom-fields table. On any `FAIL`, stop and show the failures. Continue only on `OK`.
 
@@ -160,11 +160,12 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
     - sets `Status` `Not yet started`, `Priority` `Normal`, `Type` `Task`, `Assignee` `Claude_Code`, and `Date time entered` to now (epoch milliseconds);
     - records the repository metadata (`when-creating-a-youtrack-ticket.md` §3). Any code change the follow-up makes is to Part A's shared rewrite utility, owned by `~/private-tools`. So `~/private-tools` owns the ticket: a `Repository: ~/private-tools` comment, and its forge URL in `Repo URL` (`157-17`). The URL is derived from that repo's `origin` at run time, and creation is refused, before any API call, if it cannot be derived;
     - omits what does not apply (§4): there is no Obsidian note line, and `Affected host` stays unset because the work is about files and issue text, not one host's state;
-    - records `Old issue ID: OLD` and `New issue ID: NEW`, plus the paths of every evidence file;
+    - first checks that all six evidence files exist and are non-empty at their full paths in `~/archives/youtrack/ticket-moves/`: both exports, both snapshots, and the `.txt` and `.json` comparison reports. If any is missing or empty it refuses before any API call, names the missing files, and files no ticket. Stop and report;
+    - records `Old issue ID: OLD` and `New issue ID: NEW`, plus every evidence file listed one per line by its full path, e.g. `~/archives/youtrack/ticket-moves/OLD-before-project-move.md`;
     - always includes **Part A**, the home-directory Markdown cleanup. That covers the human-run boundary-aware `rg` inventory and the ban on AI recursive search (A1, A2). It covers the state-based bootstrap/reuse protocol for the shared `~/private-tools/yt-rewrite-moved-issue-id.py` utility (A3). It gives that utility's 18-point contract (A4) and its required tests (A5). And it covers attaching the inventory, artifact review, mapping each approved inventory path to the same relative path in that repository's POE worktree (the inventory says _which_ file; the worktree copy is _where_ it changes, never the main checkout), with both lexical and resolved (symlink-safe) containment, an approved path that is outside Git, untracked or in another worktree reported to Kevin rather than edited in place or dropped, one utility run per worktree copy, and the explicit-file diff review (A6);
     - includes **Part B**, historical-text remediation, only when the comparison found artifact rewrites, unclassified issues or unverifiable cross-issue state. Part B lists the locations, names every issue and comment that could not be re-checked, points at the pre-move snapshot, and requires that only verified literal artifacts are restored, location by location, with Kevin's approval and never by mass replacement;
     - uses the summary `Update Markdown references after OLD moved to NEW`, or `Update Markdown references and restore historical text after OLD moved to NEW` when Part B is present;
-    - reads the issue back, and fails if any of those fields or the `Repository:` comment does not read back as written.
+    - reads the issue back, and fails if any of those fields, the `Repository:` comment, or any evidence file's full path in the description does not read back as written. Its output lists the verified paths under `evidence_paths`.
 
     Filing is not starting. The issue stays `Not yet started`, with no start comment and no tab rename (§7, §11).
 
@@ -180,6 +181,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
     Cross-issue scan: searched all issues visible to the Claude_Code identity to exhaustion
     Pre-move export: ~/archives/youtrack/ticket-moves/OLD-before-project-move.md
     Post-move export: ~/archives/youtrack/ticket-moves/NEW-after-project-move.md
+    Evidence paths recorded on the POE ticket and verified on read-back: 6 of 6
     Filesystem-reference follow-up: POE-<n> https://youtrack.kevininscoe.com/issue/POE-<n>
     Historical-text remediation: POE-<n> (Part B of the same ticket)
     ```
@@ -190,7 +192,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 
 - The issue's entity ID is unchanged, it is in the destination project, and it has a new readable ID.
 - Two validated human-run exports, two API snapshots and the comparison files exist in `~/archives/youtrack/ticket-moves/`. `compare` exited `0` or `3`, with `Structural preservation: PASS` and `Unexplained changes: 0`.
-- A POE issue exists with `Assignee` `Claude_Code`, `Status` `Not yet started`, `Date time entered`, `Repo URL` and the `Repository:` comment, both IDs, Part A, and Part B whenever remediation or review is needed. It was read back, and its full URL was reported.
+- A POE issue exists with `Assignee` `Claude_Code`, `Status` `Not yet started`, `Date time entered`, `Repo URL` and the `Repository:` comment, both IDs, every evidence file listed by its full path, Part A, and Part B whenever remediation or review is needed. It was read back, including all six evidence paths, before the skill ended, and its full URL was reported.
 - Nothing in the out-of-scope list below was done.
 
 ## Notes
