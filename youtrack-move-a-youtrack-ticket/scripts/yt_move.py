@@ -32,12 +32,17 @@ API subcommands (run through ./yt-move, which wraps them in
 
 Why the textual half exists: on a move YouTrack rewrites the bare old readable
 ID to the new one inside issue text -- this issue's comments and description,
-and other issues' text too. It leaves `/issue/OLD` URLs, inline code and custom
-string fields alone. Observed on KSA-81 -> GLASS-2 (2026-10-04): 234 mentions
-rewritten across 67 comments, including literal branch names, `ai-wt/` paths
-and commit subjects whose real names never changed. So comment text is not
-expected to be identical after a move; it is expected to differ only by
-OLD -> NEW substitutions, and each one is classified.
+and other issues' text too. It leaves a code span holding exactly the key, and
+custom string fields, alone. Observed on KSA-81 -> GLASS-2 (2026-10-04): 234
+mentions rewritten across 67 comments, including literal branch names, `ai-wt/`
+paths and commit subjects whose real names never changed.
+
+`/issue/OLD` URLs go either way. On KSA-101 -> GLASS-25 (2026-10-09) both URLs
+in another issue's comments were rewritten, confirmed by snapshot. KSA-81's
+session reported such URLs left as written, but that cannot now be rechecked.
+No rule is inferred, so URLs are predicted as uncertain and either outcome is
+accepted. So comment text is not expected to be identical after a move; it is
+expected to differ only by OLD -> NEW substitutions, and each one is classified.
 
 The token never passes through this script: API calls shell out to curl with
 -K "$YOUTRACK_CURL_CONFIG", the RAM-backed config parzival renders for its
@@ -428,6 +433,55 @@ _GIT_AFTER_RE = re.compile(
     r"at\s+[0-9a-f]{7})\b)")
 
 
+_FENCE_RE = re.compile(r"[ \t]*(`{3,}|~{3,})(.*)$")
+_TICKS_RE = re.compile(r"`+")
+
+
+def code_context(text, i):
+    """'code block', 'inline code' or None for the character at offset i.
+
+    Markdown code, close to CommonMark: a fence is a run of 3+ backticks or 3+
+    tildes, closed only by the same character, at least as long, with nothing
+    after it; an unclosed fence runs to the end of the text, and its opening
+    line (the info string) counts as code. An inline span opens on a backtick
+    run and closes on the next run of exactly the same length; a run with no
+    match is literal. Fence indentation is not limited, so fences in list
+    items count, and inline spans are taken within one line.
+    """
+    ls = text.rfind("\n", 0, i) + 1
+    fence = None  # (char, length) of the open fence
+    for line in text[:ls].splitlines():
+        m = _FENCE_RE.match(line)
+        if fence is None:
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                fence = (m.group(1)[0], len(m.group(1)))
+        elif m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] \
+                and not m.group(2).strip():
+            fence = None
+    le = text.find("\n", i)
+    line = text[ls:len(text) if le == -1 else le]
+    if fence is not None:
+        return "code block"
+    m = _FENCE_RE.match(line)
+    if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+        return "code block"  # the opening fence line itself
+    col = i - ls
+    pos = 0
+    while True:
+        opener = _TICKS_RE.search(line, pos)
+        if opener is None or opener.start() > col:
+            return None
+        n = len(opener.group())
+        closer = next((r for r in _TICKS_RE.finditer(line, opener.end())
+                       if len(r.group()) == n), None)
+        if closer is None:
+            pos = opener.end()  # unmatched run: literal backticks
+            continue
+        if opener.end() <= col < closer.start():
+            return "inline code"
+        pos = closer.end()
+
+
 def classify(text, i, old):
     """Classify one occurrence: ('reference'|'artifact', reason).
 
@@ -437,13 +491,14 @@ def classify(text, i, old):
     le = text.find("\n", i)
     le = len(text) if le == -1 else le
     pre, post = text[ls:i], text[i + len(old):le]
-    fenced = sum(1 for ln in text[:ls].splitlines() if ln.lstrip().startswith("```")) % 2
-    if re.search(r"/issue/$", pre) or re.search(r"https?://\S*$", pre):
+    # Code is tested before URLs (Kevin, AI-80, 2026-10-09): an issue URL quoted
+    # in a command, example or log is literal text, so a rewritten one goes to
+    # Part B's per-location review. A URL in prose is a reference.
+    code = code_context(text, i)
+    if code:
+        return "artifact", code
+    if _is_url(pre):
         return "reference", "url"
-    if fenced:
-        return "artifact", "code block"
-    if pre.count("`") % 2:
-        return "artifact", "inline code"
     if pre.endswith("/") or re.search(r"\.\.$", pre):
         return "artifact", "path or ref range"
     if re.match(r"[-_/][A-Za-z0-9]", post) or re.match(r"\.(md|txt|json|sh|py|log|ya?ml|go)\b", post):
@@ -457,13 +512,26 @@ def classify(text, i, old):
     return "reference", "issue reference"
 
 
+def _is_url(pre):
+    """True when the occurrence is part of an issue URL or any http(s) URL."""
+    return bool(re.search(r"/issue/$", pre) or re.search(r"https?://\S*$", pre))
+
+
 def likely_rewritten(text, i, old):
-    """Predict whether YouTrack will rewrite this occurrence (KSA-81 behaviour)."""
+    """Predict whether YouTrack will rewrite this occurrence.
+
+    True or False, or None for a URL: either outcome has been reported, so it is
+    uncertain. KSA-81 (2026-10-04) reported URLs in other issues left as written,
+    but that is contemporaneous prose that cannot now be rechecked. On KSA-101
+    (2026-10-09) the snapshots confirm both URLs in KSA-100's comments were
+    rewritten. Neither URL form, location, timing nor server version explains
+    the difference, so no rule is encoded.
+    """
     ls = text.rfind("\n", 0, i) + 1
     pre = text[ls:i]
     nxt = text[i + len(old):i + len(old) + 1]
-    if re.search(r"/issue/$", pre) or re.search(r"https?://\S*$", pre):
-        return False
+    if _is_url(pre):
+        return None
     # Observed on KSA-81: a code span holding exactly the key was left alone, but
     # code spans with more in them (`git log main..KSA-81`, `KSA-81-uat`) were not.
     if pre.endswith("`") and text[i + len(old):i + len(old) + 1] == "`":
@@ -1325,6 +1393,9 @@ def print_risk(before):
     rows = risk(before, before["idReadable"])
     likely = [r for r in rows if r["likely_rewritten"]]
     arts = [r for r in likely if r["kind"] == "artifact"]
+    urls = [r for r in rows if r["likely_rewritten"] is None]
+    url_arts = [r for r in urls if r["kind"] == "artifact"]
+    left = len(rows) - len(likely) - len(urls)
     others = {r["issue"] for r in rows} - {before["idReadable"]}
     for r in arts[:25]:
         print(f"likely artifact: {r['issue']} {r['where']} ({r['reason']}): …{r['text']}…")
@@ -1335,8 +1406,10 @@ def print_risk(before):
           f"(this issue and {len(others)} other issue(s))")
     print(f"Likely rewritten by YouTrack: {len(likely)} "
           f"({len(likely) - len(arts)} references, {len(arts)} literal historical artifacts)")
-    print(f"Likely left as written (URLs, inline code, suffixed tokens, fields): "
-          f"{len(rows) - len(likely)}")
+    print(f"Likely left as written (exact-key code spans, suffixed tokens, fields): {left}")
+    print(f"URLs (YouTrack may or may not rewrite): {len(urls)} "
+          f"({len(urls) - len(url_arts)} in prose, references if rewritten; "
+          f"{len(url_arts)} in code, Part B review if rewritten)")
     print("Cross-issue scan: " + (f"{SCAN_CLAIM} ({scan['hits']} search hits); issues in "
           "projects Claude_Code cannot see were not scanned" if scan else "not run"))
     print(f"WARNING: {WARNING}")
