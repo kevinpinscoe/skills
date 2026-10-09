@@ -29,9 +29,16 @@ This was observed on the KSA-81 -> GLASS-2 move (2026-10-04), which is this skil
 - in this issue's description and comments: 234 mentions across 67 comments;
 - in other issues' text, too (APP-43, PARZIVAL-77, KSA-117 and others).
 
-| Rewritten | Left as written |
-| --- | --- |
-| Bare `KSA-81`, `ai-wt/KSA-81`, `KSA-81-frodo-hostkey`, `docs: KSA-81 design`, `` `git log main..KSA-81` `` | `https://youtrack.kevininscoe.com/issue/KSA-81`, `` `KSA-81` `` (code span holding exactly the key), `KSA-81s`, custom string fields (`Working branch`, `Ghostty tab name`) |
+| Rewritten | Left as written | Either (see below) |
+| --- | --- | --- |
+| Bare `KSA-81`, `ai-wt/KSA-81`, `KSA-81-frodo-hostkey`, `docs: KSA-81 design`, `` `git log main..KSA-81` `` | `` `KSA-81` `` (code span holding exactly the key), `KSA-81s`, custom string fields (`Working branch`, `Ghostty tab name`) | `https://youtrack.kevininscoe.com/issue/KSA-81` |
+
+**Issue URLs have gone both ways, and no rule is known.**
+
+- **KSA-101 -> GLASS-25 (2026-10-09), snapshot-confirmed.** Both URLs in another issue's comments were rewritten, together with the bare keys beside them: `tracked in KSA-101 (https://youtrack.kevininscoe.com/issue/KSA-101).` became `tracked in GLASS-25 (https://youtrack.kevininscoe.com/issue/GLASS-25).` (KSA-100, comments 7-4981 and 7-4989). The evidence is in `~/archives/youtrack/ticket-moves/` (`KSA-101-before-project-move.api.json`, `GLASS-25-after-project-move.api.json` and the preservation check).
+- **KSA-81 -> GLASS-2 (2026-10-04), a report that cannot be rechecked.** The moving session wrote at the time that YouTrack "does not rewrite bare URLs", and edited the remaining `/issue/KSA-81` links in other issues' comments by hand (GLASS-2 comment 7-6298). That snapshot predates the cross-issue capture, KSA-81's own text held no such URL, and the edited comments no longer show their original text. So that observation cannot now be checked.
+
+URL form, location, timing and server version (2026.2, build 17765 for both moves) were compared. None of them is established as the cause, and no rule is inferred from them. So `risk` puts every URL occurrence in its own uncertain bucket, and `compare` accepts either outcome. A URL still saying `OLD` is left as written; a URL now saying `NEW` is classified like any other rewrite. Neither is ever kind C. Anything else that changed is still reported.
 
 References should change. **Literal names of real objects should not.** Branches, worktree paths, commit subjects, commands, filenames and quoted logs still exist under the old key. So after a move:
 
@@ -40,8 +47,8 @@ References should change. **Literal names of real objects should not.** Branches
 
 | Kind | Meaning | Effect |
 | --- | --- | --- |
-| A. Expected reference rewrite | The occurrence names the moved issue | Fine |
-| B. Historical-artifact rewrite | The occurrence was part of a literal name | Recorded; remediated by the POE ticket, never by this skill |
+| A. Expected reference rewrite | The occurrence names the moved issue, including an issue URL in prose | Fine |
+| B. Historical-artifact rewrite | The occurrence was part of a literal name, including an issue URL inside a fenced code block or inline code | Recorded; remediated by the POE ticket, never by this skill |
 | C. Unexplained change | Anything beyond an old-to-new substitution | Stop for Kevin |
 
 The old key and its URLs keep resolving to the moved issue. YouTrack's rewrite never reaches the filesystem: Git repositories, Markdown files, RUNBOOKs and `CHECKPOINT.md` files still say the old key. That is what the POE ticket's Part A is for.
@@ -97,11 +104,13 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 5. **Pre-move textual-risk report.** Run `python3 $H/yt_move.py risk ~/archives/youtrack/ticket-moves/OLD-before-project-move.api.json`. Show Kevin:
    - how many occurrences of `OLD` the issue text holds, in this issue and in other issues, with the coverage line ("searched all issues visible to the Claude_Code identity to exhaustion");
    - how many YouTrack will likely rewrite, split into likely references and likely literal historical artifacts, with examples;
+   - how many it will likely leave as written;
+   - how many are URLs, which YouTrack may or may not rewrite (`URLs (YouTrack may or may not rewrite): N`), split into prose (references if rewritten) and code (Part B review if rewritten). The three buckets add up to the total;
    - this warning, verbatim:
 
      > YouTrack may rewrite the old readable issue ID inside descriptions/comments when the issue moves. References should change, but literal branch names, worktree paths, commit subjects, commands, filenames or quoted logs may become historically inaccurate.
 
-   Nothing has to be fixed before the move. On the KSA-81 regression data the prediction matched the real outcome exactly: 233 rewritten, 3 left.
+   Nothing has to be fixed before the move. On the KSA-81 regression data the earlier prediction matched the reported outcome exactly: 233 rewritten, 3 left. On KSA-101 it did not: it predicted 5 rewritten and 2 left, and all 7 were rewritten, because both URLs were. URLs are now reported as uncertain, so on that data the prediction is 5 rewritten, 0 left and 2 URLs uncertain.
 
 6. **Ask for the destination and resolve it.** Prompt Kevin for `DESTINATION`. Run `bash $H/yt-move resolve-project <DESTINATION> --for-issue EID` to get its database ID (`0-NN`, called `PID`) and apply the refusals. Never guess or hardcode `PID`. The helper **refuses**, and the skill stops with nothing changed, if:
    - no project matches;
@@ -205,7 +214,7 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
   - working the POE ticket.
 
   Bypassing the human-only `rg` wrapper or the Parzival boundary is out of scope for everyone.
-- **The artifact classifier is deliberately conservative. Do not tune it to match a hand count.** It looks at paths, `-suffix` names, branch, worktree and command words, commit-subject prefixes and code spans. On the real KSA-81 data it put 150 of 233 rewrites in kind B, where an earlier hand estimate was about 111. A false positive costs one human check in Part B. A false negative would leave a real branch, path or commit identifier silently wrong. Part B's per-location approval is the safety mechanism.
+- **The artifact classifier is deliberately conservative. Do not tune it to match a hand count.** It looks at paths, `-suffix` names, branch, worktree and command words, commit-subject prefixes and code spans. On the real KSA-81 data it put 150 of 233 rewrites in kind B, where an earlier hand estimate was about 111. A false positive costs one human check in Part B. A false negative would leave a real branch, path or commit identifier silently wrong. Part B's per-location approval is the safety mechanism. **Code wins over URLs** (Kevin, 2026-10-09, AI-80): a rewritten issue URL inside a fenced code block or inline code is kind B, while an issue URL in prose stays kind A. Kind B means per-location review, not automatic restoration. Part B keeps genuine issue references as `NEW` and restores `OLD` only where Kevin approves preserving a literal command, example or historical record. A code URL left as `OLD` is not a rewrite and needs no review.
 - **Who creates the rewrite utility is decided by repository state, never by ticket.** Part A's A3 has three cases.
   - **Case 1:** the utility is tracked on `private-tools` main. The ticket validates it, runs its tests and reuses it.
   - **Case 2:** a concrete implementation is in progress: an open PR, a pushed branch, or a recorded worktree with committed work. The ticket records the dependency and stops.
