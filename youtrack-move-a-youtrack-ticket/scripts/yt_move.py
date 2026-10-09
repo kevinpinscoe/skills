@@ -82,6 +82,10 @@ FOLLOWUP_REPO = "~/private-tools"
 UTILITY_NAME = "yt-rewrite-moved-issue-id.py"
 UTILITY_PATH = f"{FOLLOWUP_REPO}/{UTILITY_NAME}"
 
+# Where the move evidence (exports, snapshots, comparison) is kept for a later
+# audit. Not ~/tmp, which is a scratchpad and gets cleared.
+EVIDENCE_DIR = "~/archives/youtrack/ticket-moves"
+
 # String custom fields whose values name real objects (branches, tabs, URLs).
 # YouTrack did not rewrite these on KSA-81 -> GLASS-2; if one ever changes by an
 # OLD -> NEW substitution it is a historical-artifact rewrite, not a reference.
@@ -723,9 +727,9 @@ Cross-issue scan coverage: {SCAN_CLAIM}. Issues in projects that identity cannot
 The old key {old}, and every URL {PUBLIC_URL}/issue/{old}, still resolve to the same issue.
 
 Move evidence (kept, never rewritten by this work):
-- ~/tmp/{old}-before-project-move.md and ~/tmp/{new}-after-project-move.md (human-run yt-export)
-- ~/tmp/{old}-before-project-move.api.json and ~/tmp/{new}-after-project-move.api.json (API snapshots)
-- ~/tmp/{old}-to-{new}-preservation-check.txt{also} (comparison)
+- {EVIDENCE_DIR}/{old}-before-project-move.md and {EVIDENCE_DIR}/{new}-after-project-move.md (human-run yt-export)
+- {EVIDENCE_DIR}/{old}-before-project-move.api.json and {EVIDENCE_DIR}/{new}-after-project-move.api.json (API snapshots)
+- {EVIDENCE_DIR}/{old}-to-{new}-preservation-check.txt{also} (comparison)
 """
     part_a = f"""
 # Part A — home-directory Markdown references
@@ -908,7 +912,7 @@ Only once A3 has established a tested utility on `private-tools` main:
         if unver:
             uncl_block += (f"\nCould not be re-checked after the move (captured in the pre-move "
                            f"evidence, unreadable afterwards). Check these by hand against "
-                           f"`~/tmp/{old}-before-project-move.api.json`:\n{unver}\n")
+                           f"`{EVIDENCE_DIR}/{old}-before-project-move.api.json`:\n{unver}\n")
         part_b = f"""
 # Part B — historical text YouTrack rewrote
 
@@ -919,7 +923,7 @@ Locations (issue, place, reason, pre-move text):
 {uncl_block}
 ## B1 — what the agent working this ticket does
 
-1. Attach the comparison report and the pre-move snapshot (`~/tmp/{old}-before-project-move.api.json`) to this issue as retained evidence.
+1. Attach the comparison report and the pre-move snapshot (`{EVIDENCE_DIR}/{old}-before-project-move.api.json`) to this issue as retained evidence.
 2. For each location, read the pre-move text from the snapshot and the current text from the API. Restore {old} **only** where the occurrence is a verified literal historical artifact. Keep genuine issue references as {new}.
 3. **Never mass-replace {new} back to {old}**, in a comment or anywhere else. That would revert legitimate references.
 4. Show Kevin the proposed restorations, location by location, and get his approval before writing anything.
