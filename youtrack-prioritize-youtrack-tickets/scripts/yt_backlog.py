@@ -550,7 +550,7 @@ def section_state(description):
     if len(begins) != 1 or len(ends) != 1 or begins[0] > ends[0]:
         raise Fail(f"the epic description holds {len(begins)} begin and {len(ends)} end "
                    "generated-section markers. Exactly one ordered pair is required: fix the "
-                   "description by hand, nothing was written")
+                   "description by hand. The description was not written")
     return "one"
 
 
@@ -1117,8 +1117,9 @@ def read_description(epic_id):
 def write_description(journal, epic_id, target, section):
     """Replace the generated section without discarding a concurrent edit.
 
-    YouTrack offers no conditional update here (no ETag, and conditional
-    headers are ignored), so this is a compare-then-write: the description is
+    No supported server-enforced conditional-write guard was identified, and
+    write preconditions remain untested, so this is a compare-then-write: the
+    description is
     read again immediately before the POST and compared, complete and exact,
     with the text the replacement was built from. If it changed, the
     replacement is rebuilt from the new text; an old payload is never resent.
@@ -1126,13 +1127,25 @@ def write_description(journal, epic_id, target, section):
     window is small, it is not zero, and the read-back cannot see it.
     """
     for attempt in range(1, DESCRIPTION_ATTEMPTS + 1):
-        source = read_description(epic_id)
-        wanted = prepare_description(source, section)
+        # By now fields and links may already have been written, so a failure
+        # here is recorded and returned, never raised: the caller still owes
+        # an accurate report of everything that did land.
+        try:
+            source = read_description(epic_id)
+            wanted = prepare_description(source, section)
+        except Fail as exc:
+            return journal.record("write-description", target, "blocked", attempt=attempt,
+                                  error=str(exc))
         if _normalise(source) == wanted:
             return journal.record("write-description", target, "already-in-place")
         if journal.dry_run:
             return journal.record("write-description", target, "would-apply")
-        if read_description(epic_id) != source:
+        try:
+            latest = read_description(epic_id)
+        except Fail as exc:
+            return journal.record("write-description", target, "blocked", attempt=attempt,
+                                  error=str(exc))
+        if latest != source:
             journal.record("write-description", target, "conflict-recomputed", attempt=attempt,
                            reason="the description changed after the replacement was prepared")
             continue
@@ -1390,6 +1403,8 @@ def apply(snap, plan, journal_path, dry_run=False):
             section = render_section(snap, plan, now_live, result)
             description_state = write_description(journal, epic_id, snap["epic_summary"],
                                                   section)
+            if description_state == "blocked":
+                description_state = f"blocked: {journal.entries[-1]['error']}"
     elif dry_run:
         description_state = journal.record("write-description", snap["epic_summary"], "would-apply")
 

@@ -9,6 +9,8 @@ rules are exercised.
 Run: python3 test_yt_backlog.py
 """
 
+import contextlib
+import io
 import json
 import os
 import re
@@ -1059,6 +1061,81 @@ class Description(Base):
         self.assertFalse(report["complete"])
         self.assertEqual(self.epic["description"], "Original notes.")
         self.assertEqual(self.yt.writes.count(("POST", f"/api/issues/{self.epic['id']}")), 1)
+
+    BROKEN = (f"Notes.\n{yb.BEGIN_PREFIX} one\n{yb.BEGIN_PREFIX} two\n{yb.END_MARK}")
+
+    def assert_description_blocked_after_other_writes(self, report):
+        epic_path = f"/api/issues/{self.epic['id']}"
+        self.assertEqual(self.epic["description"], self.BROKEN)          # left as found
+        self.assertNotIn(("POST", epic_path), self.yt.writes)            # no description POST
+        self.assertFalse(report["complete"])
+        self.assertTrue(report["description"].startswith("blocked: the epic description holds "
+                                                         "2 begin and 1 end"), report)
+        self.assertIn("The description was not written", report["description"])
+        self.assertNotIn("nothing was written", report["description"])
+        # what landed before the description step is still reported, and is true
+        self.assertEqual(report["field_changes"], ["GLASS-1 Priority -> Major"])
+        self.assertEqual(report["children_added"], ["GLASS-1"])
+        self.assertEqual(self.yt.get("GLASS-1")["fields"]["Priority"], "Major")
+        self.assertEqual(self.yt.get("GLASS-1")["parent"], self.epic["id"])
+        self.assertEqual(report["epic"], "GLASS-2")
+        last = self.journal_ops()[-1]
+        self.assertEqual((last["op"], last["outcome"]), ("write-description", "blocked"))
+        applied = [e["op"] for e in self.journal_ops() if e["outcome"] == "applied-verified"]
+        self.assertEqual(applied, ["set-field", "add-child"])
+
+    def test_markers_broken_during_a_child_link_write_block_only_the_description(self):
+        snap, plan = self.apply_with("Notes.", approve_field=True)
+
+        def hook(method, path):
+            if path.endswith("/links/L-3s/issues"):
+                self.epic["description"] = self.BROKEN
+        self.yt.before_write = hook
+        report = self.run_apply(snap, plan)
+        self.assert_description_blocked_after_other_writes(report)
+
+    def test_markers_broken_during_recomputation_block_only_the_description(self):
+        snap, plan = self.apply_with("Notes.", approve_field=True)
+        real, fired = yb.prepare_description, []
+
+        def prepare(source, section):
+            wanted = real(source, section)
+            if section != yb.PREFLIGHT_SECTION and not fired:
+                fired.append(1)                      # a first replacement is ready, then
+                self.epic["description"] = self.BROKEN   # someone pastes a second section
+            return wanted
+        yb.prepare_description = prepare
+        self.addCleanup(setattr, yb, "prepare_description", real)
+        report = self.run_apply(snap, plan)
+        self.assert_description_blocked_after_other_writes(report)
+        outcomes = [e["outcome"] for e in self.journal_ops() if e["op"] == "write-description"]
+        self.assertEqual(outcomes, ["conflict-recomputed", "blocked"])
+
+    def test_the_cli_exits_3_with_a_report_when_the_description_is_blocked_mid_run(self):
+        snap, plan = self.apply_with("Notes.", approve_field=True)
+        files = {}
+        for name, data in (("snap", snap), ("plan", plan)):
+            files[name] = os.path.join(self.tmp.name, f"{name}.json")
+            with open(files[name], "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
+
+        def hook(method, path):
+            if path.endswith("/links/L-3s/issues"):
+                self.epic["description"] = self.BROKEN
+        self.yt.before_write = hook
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = yb.main(["apply", files["snap"], files["plan"], "--journal", self.journal])
+        self.assertEqual(code, 3)
+        report = json.loads(out.getvalue())
+        self.assert_description_blocked_after_other_writes(report)
+
+    def test_markers_broken_before_apply_still_refuse_the_whole_run(self):
+        snap, plan = self.apply_with("Notes.", approve_field=True)
+        self.epic["description"] = self.BROKEN
+        with self.assertRaisesRegex(yb.Fail, "The description was not written"):
+            self.run_apply(snap, plan)
+        self.assertEqual(self.yt.writes, [])
 
     def test_preservation_check_tells_separators_from_edits(self):
         section = f"{yb.BEGIN_LINE}\nbody\n{yb.END_MARK}"
