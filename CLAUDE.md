@@ -16,19 +16,29 @@ Kevin's personal collection of AI task automation skills, plus the `skills` Go C
 ├── install.sh                    # recreates the vanco-skills symlinks below
 ├── sync-skill-overrides.sh       # per-host skillOverrides for skills lacking the frontmatter flag
 ├── template.md                   # Template for new skill files
+├── mise.toml                     # pins Python for the skill helper scripts
+├── LICENSE
 ├── app-install-desktop-app/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── run.sh
 ├── command-line-install-command-line-command/
 │   ├── SKILL.md
-│   └── .claude/settings.local.json   # per-skill permission allowlist
-├── daily-put-email-offers-on-my-calendar/
-│   └── SKILL.md
+│   ├── run.sh
+│   └── .claude/settings.local.json   # per-skill permission allowlist (gitignored)
+├── daily-today/
+│   ├── SKILL.md
+│   └── run.sh
 ├── docker-check-for-or-upgrade-docker-containers-on-this-system/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── run.sh
 ├── task-management-human-todos/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── run.sh
+├── ...                           # the rest of the owned skills — full tree in README.md
 ├── jira-create-a-jira-ticket/    # relative symlink → ../../Projects/private/vanco-skills/skills/…
 ├── youtrack-reconcile/           # relative symlink (same, AI-53)
+├── synced/                       # claude.ai skills synced in by Claude Code — tracked, not ours
+├── ai-wt/                        # project worktrees, one per YouTrack issue — gitignored
 ├── gsd-*/                        # ~65 dirs — third-party get-shit-done plugin content,
 └── ...                           # gitignored, never tracked by this repo
 ```
@@ -40,6 +50,10 @@ only as a naming-convention prefix on the directory name
 field in its `SKILL.md` frontmatter. The `skills` CLI lists directories that contain a `run.sh`
 or a `SKILL.md` **and** are not excluded by `~/.claude/skills/.gitignore` — which is what keeps
 the `gsd-*` plugin content (and anything else not owned by this repo) out of the chooser.
+
+`synced/` is tracked but is not a skill directory and is not ours to edit: Claude Code writes the
+claude.ai account's skills into it, and each sync is committed as `chore: sync claude.ai …`. It
+holds no `SKILL.md` or `run.sh` at its own level, so the chooser does not list it.
 
 ## The `skills` CLI
 
@@ -92,7 +106,7 @@ A skill directory may contain a `.claude/settings.local.json` to grant skill-spe
 
 ## Naming conventions
 
-- Skill directories: lowercase, hyphenated, `<old-category>-<descriptive-verb-noun>` (e.g. `daily-put-email-offers-on-my-calendar`)
+- Skill directories: lowercase, hyphenated, `<old-category>-<descriptive-verb-noun>` (e.g. `prescription-check-for-refills`)
 - Skill file inside each directory is always named `SKILL.md`
 - `category:` frontmatter values: lowercase, hyphenated, matching the directory-name prefix (e.g. `daily`, `raspberry-pi-5`)
 

@@ -2,7 +2,7 @@
 
 There are repetitive prompts which have graduated into skills.
 
-Many of these skills are run from command line however they will become over time agentic.
+Many of these skills are run from the command line; over time they will become agentic.
 
 ## Skills TUI
 
@@ -34,9 +34,6 @@ prefix back out of the name would be ambiguous).
 │   ├── SKILL.md
 │   └── run.sh
 ├── command-line-install-command-line-command/
-│   ├── SKILL.md
-│   └── run.sh
-├── daily-put-email-offers-on-my-calendar/
 │   ├── SKILL.md
 │   └── run.sh
 ├── daily-run-through-my-os-todos/
@@ -106,7 +103,8 @@ prefix back out of the name would be ambiguous).
 ├── youtrack-create-alert-ticket/
 │   ├── SKILL.md
 │   ├── create_alert_ticket.py
-│   └── run.sh
+│   ├── run.sh
+│   └── run_inner.sh          # the work itself; run.sh wraps it in the credential broker
 ├── youtrack-create-a-security-triage-investigation/
 │   ├── SKILL.md
 │   └── run.sh
@@ -130,9 +128,13 @@ prefix back out of the name would be ambiguous).
 ├── youtrack-report-a-problem/                          # symlink → vanco-skills
 ├── youtrack-sync-jira-ticket-status-with-youtrack/     # symlink → vanco-skills
 ├── daily-run-through-my-os-todo/      # symlink → vanco-skills
+├── synced/            # claude.ai skills synced in by Claude Code — tracked, see below
 ├── install.sh
 ├── sync-skill-overrides.sh   # per-host: keeps untracked skills out of model context
 ├── template.md
+├── mise.toml          # pins Python for the skill helper scripts
+├── LICENSE
+├── ai-wt/             # project worktrees, one per YouTrack issue — gitignored
 ├── gsd-*/             # ~65 dirs — third-party, gitignored, not owned by this repo
 └── ...                # this repo's own README.md, RUNBOOK.md, CLAUDE.md, etc.
 ```
@@ -141,6 +143,18 @@ The `skills` command reads `~/.claude/skills` by default (overridable via `SKILL
 directories that contain a `run.sh` or a `SKILL.md`, and excludes anything matched by
 `~/.claude/skills/.gitignore` — which is how the `gsd-*` plugin content stays out of the
 chooser without the tool needing to know anything about `get-shit-done` specifically.
+
+### Skills synced in from claude.ai
+
+`synced/` is not a skill directory. Claude Code writes the claude.ai account's skills into it
+(`docx`, `pdf`, `pptx`, `xlsx`, `deep-research` and others), one level further down, under an
+ID-named directory. Each sync is committed here as a `chore: sync claude.ai …` commit, so a
+change to one of those skills shows up as a diff. `manifest.json` is tracked; the
+per-machine `.last-complete-round` marker is gitignored.
+
+Nothing in `synced/` is written or maintained in this repo, so do not edit it by hand. The
+chooser does not list it, because `synced/` itself holds neither a `SKILL.md` nor a `run.sh`.
+`sync-skill-overrides.sh` does not look inside it either.
 
 ### Skills bridged in from `vanco-skills`
 
@@ -174,7 +188,7 @@ layout (`FSM-3`), which solves the same underlying problem (distinguishing "mine
 ### Why every skill is user-invocable only
 
 Claude Code puts the name and description of every skill it may invoke on its own into the
-model's context at the start of **every** session. With ~35 skills here plus ~65 `gsd-*`
+model's context at the start of **every** session. With ~40 skills here plus ~65 `gsd-*`
 plugin skills, that costs tokens in every session for skills that are only ever run on purpose,
 by typing `/<skill-name>` or through `skills`/`run.sh`. So none of them are model-invocable
 (AI-52):

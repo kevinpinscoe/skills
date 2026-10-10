@@ -14,7 +14,7 @@ source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 | Field | Value |
 | --- | --- |
 | **Owner** | Kevin Inscoe |
-| **Last Updated** | 2026-09-27 |
+| **Last Updated** | 2026-10-10 |
 | **Last Tested** | 2026-08-21 |
 | **Expected Duration** | Varies by skill |
 | **Risk Level** | Low — this repo holds prompts and wrappers, not services |
@@ -27,13 +27,16 @@ source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 > The entry point for every runbook in the `skills` repo. Covers how skills are launched, and
 > points at the per-skill runbooks for those that need one.
 
-This repo is a collection of AI task automation skills plus the `skills` Go TUI used to browse and
-run them. It is not a service, so most skills need no runbook — the ones that run unattended on a
-timer, or that carry operational detail worth writing down, have their own, listed below.
+This repo is a collection of AI task automation skills, browsed and run with the `skills` Go TUI
+(a separate project, `skills-tui`). It is not a service, so most skills need no runbook — the ones
+that carry operational detail worth writing down have their own, listed below. No skill in this
+repo runs on a timer today.
 
 Its working tree is `~/.claude/skills` — Claude Code's own officially-recognized skill path,
 shared with the ~65 `gsd-*` directories installed by the separate `get-shit-done` plugin. This
-repo's `.gitignore` excludes `gsd-*`; see `README.md` → "Structure" for the full model.
+repo's `.gitignore` excludes `gsd-*`; see `README.md` → "Structure" for the full model. It also
+holds `synced/`, the claude.ai skills Claude Code syncs in, which is tracked but not maintained
+here.
 
 ---
 
@@ -50,7 +53,9 @@ repo's `.gitignore` excludes `gsd-*`; see `README.md` → "Structure" for the fu
 
 - [ ] Claude Code CLI at `~/.local/bin/claude`
 - [ ] `mise.toml` is present at the repo root: run `mise install && mise doctor` before committing
-- [ ] The `skills` TUI binary at `~/.local/bin/skills` (source: `github.com/kevinpinscoe/skills-tui`)
+- [ ] The `skills` TUI binary at `/usr/bin/skills`, from the `skills-tui` RPM (`dnf install skills-tui`;
+      source: `github.com/kevinpinscoe/skills-tui`). `~/private-tools/skills` is a wrapper ahead of it on
+      `PATH`; on this host it only hands off to that binary
 
 ---
 
@@ -81,7 +86,7 @@ skills
 
 ### Step 2 — Run a skill directly
 
-**Why:** bypasses the chooser for a skill you can name, and is how a timer invokes one.
+**Why:** bypasses the chooser for a skill you can name, and is how a timer would invoke one.
 
 ```bash
 bash ~/.claude/skills/<skill-name>/run.sh
@@ -116,15 +121,17 @@ but never deletes them. Restart open Claude Code sessions afterwards.
 ## Verification
 
 ```bash
-find ~/.claude/skills -mindepth 1 -maxdepth 1 -type d -name 'gsd-*' -prune -o \
-  -mindepth 1 -maxdepth 1 -type d -print | \
+find ~/.claude/skills -mindepth 1 -maxdepth 1 \( -type d -o -type l \) \
+  ! -name 'gsd-*' ! -name '.*' ! -name ai-wt ! -name synced -print | \
   xargs -I{} sh -c 'test -e "{}/SKILL.md" -o -e "{}/run.sh" || echo "{}"'
 ```
 
 **Expected output:** nothing.
 
-**Success criteria:** every non-`gsd-*` directory contains a `SKILL.md` or a `run.sh`. Any path
-printed is a directory the TUI will not list.
+**Success criteria:** every skill directory contains a `SKILL.md` or a `run.sh`. Any path printed
+is a directory the TUI will not list, or a `vanco-skills` symlink whose target is missing. The
+command leaves out `gsd-*`, the dot-directories, `ai-wt/` and `synced/`, none of which is a skill
+directory.
 
 ```bash
 bash ~/.claude/skills/sync-skill-overrides.sh --check
@@ -155,14 +162,14 @@ one.
 
 ## Subdirectory Runbooks
 
-- [`daily-put-email-offers-on-my-calendar/RUNBOOK.md`](daily-put-email-offers-on-my-calendar/RUNBOOK.md) — reads Gmail offer emails and creates Google Calendar events; user timer
 - [`project-review-all-checkpoints/RUNBOOK.md`](project-review-all-checkpoints/RUNBOOK.md) — reviews every `CHECKPOINT.md` on this host; on demand, not scheduled
 
-**Not listed here:** `jira-*`, `youtrack-*`, and `daily-run-through-my-os-todo` are symlinks into
-`~/Projects/private/vanco-skills/skills/`. Their skills and runbooks belong to that repository and
-are maintained there — per `when-creating-a-runbook.md` step 4, a runbook for a tool in another
-repo is updated in that tool's own repo. They appear in the chooser because the TUI follows the
-symlinks; they are not files this repo owns.
+**Not listed here:** the `jira-*` skills, `daily-run-through-my-os-todo`, and nine of the
+`youtrack-*` skills are symlinks into `~/Projects/private/vanco-skills/skills/` (`install.sh` has
+the full list). Their skills and runbooks belong to that repository and are maintained there — per
+`when-creating-a-runbook.md` step 4, a runbook for a tool in another repo is updated in that tool's
+own repo. They appear in the chooser because the TUI follows the symlinks; they are not files this
+repo owns. The other five `youtrack-*` skills are owned here and have no runbook of their own.
 
 ---
 
@@ -172,8 +179,7 @@ symlinks; they are not files this repo owns.
 | --- | --- | --- |
 | A skill is not listed in the chooser | No `run.sh`/`SKILL.md`, or excluded by `.gitignore` | Add one, check `.gitignore`, or launch its `run.sh` directly |
 | `claude: command not found` in a `run.sh` | Non-interactive shell without `~/.local/bin` on `PATH` | The wrappers call `$HOME/.local/bin/claude` by absolute path; update the path if the CLI moved |
-| A timer-driven skill did not run | User timer not enabled after a reinstall | `systemctl --user list-timers`, then enable per that skill's runbook |
-| A `jira-*`/`youtrack-*` symlink is broken or missing | `vanco-skills` was moved, the link was clobbered, or it is an old absolute link | Run `bash ~/.claude/skills/install.sh`; it recreates the relative link (`../../Projects/private/vanco-skills/skills/<name>`) and reports `ok` for correct ones |
+| A `vanco-skills` symlink (`jira-*`, some `youtrack-*`) is broken or missing | `vanco-skills` was moved, the link was clobbered, or it is an old absolute link | Run `bash ~/.claude/skills/install.sh`; it recreates the relative link (`../../Projects/private/vanco-skills/skills/<name>`) and reports `ok` for correct ones |
 | `install.sh` prints `skip: … is not ~/.claude/skills` | The clone is elsewhere (the work Mac's `~/Projects/public/skills`, or an `ai-wt/` worktree), where the committed relative links cannot resolve | Expected — nothing was changed. On the Mac, `~/.claude/skills` is wired by `~/Projects/private/vanco-skills/wire-claude-skills.sh`. Set `VANCO_ROOT` only for a deliberate local rewrite |
 | `git status` shows the `vanco-skills` symlinks modified after a pull | A pre-AI-53 absolute link was rewritten locally, or `VANCO_ROOT` was used | `git checkout -- <link>` to restore the committed relative text, then `bash ~/.claude/skills/install.sh` should report `ok` without changing it |
 | Claude starts a skill on its own, or skill descriptions are back in every session's context | A new skill without the frontmatter flag, or new `gsd-*` skills from a plugin update | `bash ~/.claude/skills/sync-skill-overrides.sh`, and add `disable-model-invocation: true` to any skill this repo owns |
@@ -183,7 +189,8 @@ symlinks; they are not files this repo owns.
 
 ## Logs
 
-Skills run in the foreground and report to the terminal. Timer-driven skills log to the journal:
+Skills run in the foreground and report to the terminal. Nothing in this repo logs anywhere else
+today. A skill that is later put on a user timer would log to the journal:
 
 ```bash
 journalctl --user -u <skill-name>.service -n 100
@@ -193,8 +200,8 @@ journalctl --user -u <skill-name>.service -n 100
 
 ## Monitoring
 
-> Monitoring belongs to the individual timer-driven skills, not to the repository. See each
-> skill's own runbook `## Monitoring` section.
+> Monitoring belongs to an individual timer-driven skill, not to the repository, and is recorded in
+> that skill's own runbook `## Monitoring` section. No skill here runs on a timer today.
 
 | Field | Value |
 | --- | --- |
@@ -219,6 +226,5 @@ journalctl --user -u <skill-name>.service -n 100
   - The two dead legacy directories that used to sit under `skills/daily/` and
     `skills/task-management/` (an empty, no-`SKILL.md` directory and a misspelled empty one) were
     dropped entirely during the FSM-3 flattening rather than migrated — nothing to track here now.
-  - This file's own `vault_link` symlink in the PKM vault (`runbooks/home-kinscoe-skills.md`)
-    still points at the pre-FSM-3 path and needs repointing once this repo's working tree is
-    physically re-homed from `~/skills` to `~/.claude/skills`.
+  - `synced/` changes whenever Claude Code syncs the claude.ai skills, which leaves the working
+    tree modified until the change is committed as a `chore: sync claude.ai …` commit.
