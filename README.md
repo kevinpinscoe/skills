@@ -165,6 +165,10 @@ prefix back out of the name would be ambiguous).
 │   ├── SKILL.md
 │   ├── run.sh
 │   └── scripts/              # yt_move.py, yt-move (parzival wrapper), tests, fixtures
+├── youtrack-prioritize-youtrack-tickets/
+│   ├── SKILL.md
+│   ├── run.sh
+│   └── scripts/              # yt_backlog.py, yt-backlog (parzival wrapper), tests
 ├── youtrack-read-updates-from-tasks-and-generate-stand-up/    # symlink → vanco-skills
 ├── youtrack-reconcile/                                 # symlink → vanco-skills
 ├── youtrack-report-a-fldw-swap-issue-and-investigate/
