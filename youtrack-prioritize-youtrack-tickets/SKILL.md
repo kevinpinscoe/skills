@@ -123,7 +123,7 @@ Take `PROJECT` from the invocation when one was given (`/youtrack-prioritize-you
          "parent": {"decision": "keep"}
        }
      ],
-     "membership_removals": [{"issue": "OTHER-5", "decision": "pending"}],
+     "membership_removals": [{"issue": "OTHER-5", "decision": "pending", "approval": ""}],
      "next_actionable": ["GLASS-12"],
      "cross_project_prerequisites": ["GLASS-14 waits on https://youtrack.kevininscoe.com/issue/KHC-9 (In Progress)"],
      "cycles": [],
@@ -140,16 +140,16 @@ Take `PROJECT` from the invocation when one was given (`/youtrack-prioritize-you
    | `approved_value` | Set when Kevin amends your proposal. It is what gets written |
    | `approval` | Required on every `approved` decision: who approved, when, and which batch |
    | `parent` | Required only for a ticket in `analysis.parent_conflicts`: `keep` or `replace` |
-   | `membership_removals` | One entry per child of the epic that belongs to another project |
+   | `membership_removals` | Exactly one entry per child of the epic that belongs to another project, and no other issue. `decision` is `approved`, `rejected`, or `pending`. `approved` needs an `approval` record, like any other write |
    | `epic` | `create` when no epic exists, otherwise `{"action": "update", "idReadable": "<ID>"}` |
 
-   Then run `python3 $H/yt_backlog.py validate-plan A/<run>.snapshot.json A/<run>.plan.json` and fix every `FAIL`. It checks that every eligible ticket has exactly one rank, that prerequisites rank first, that every proposed value is a live allowed value, and that every write has an approval record.
+   Then run `python3 $H/yt_backlog.py validate-plan A/<run>.snapshot.json A/<run>.plan.json` and fix every `FAIL`. It checks that every eligible ticket has exactly one rank, that prerequisites rank first, that every proposed value is a live allowed value, and that every write has an approval record. That includes each approved field change, parent replacement, cross-project removal, and the creation or correction of the epic.
 
 7. **Present the review and get decisions.** Run `python3 $H/yt_backlog.py review-table A/<run>.snapshot.json A/<run>.plan.json` and show its output. It is a numbered table of every evaluated ticket, in batches, with full issue URLs, including the tickets where you propose no change. Below it show the existing-parent conflicts, the epic state, the gaps, and your questions.
 
    Ask Kevin to approve, reject, or amend each proposed `Priority` and `Affected host` change. He may answer for a clearly identified batch ("approve batch 1 except rank 4"). One prompt per ticket is not required. **Silence is not approval**, and neither is approval of something else. Also get an explicit decision for:
    - each existing-parent conflict: `replace` the parent, or `keep` it. Where replacing would create a hierarchy cycle, propose a cross-reference instead;
-   - each child of the epic that belongs to another project, or was moved out: remove its membership, or leave it;
+   - each child of the epic that belongs to another project, or was moved out: remove its membership, or leave it. Record his answer as `approved` with the `approval` text, or as `rejected` or `pending`. Only an approved removal with a record is carried out;
    - the epic, as step 8 describes.
 
    Record every decision in the plan file, with its `approval` text, and run `validate-plan` again. Leave rejected and undecided fields `rejected` or `pending`. They are not written.
@@ -168,17 +168,20 @@ Take `PROJECT` from the invocation when one was given (`/youtrack-prioritize-you
 
 10. **Apply.** Run the same command without `--dry-run`. In order, it:
     - **rechecks first.** It re-reads the whole project and compares it with the snapshot. A ticket whose `Status`, `Priority`, `Affected host` or parent changed since the review is left alone: none of its operations run. Any such change, a new eligible ticket, or a change to the epic candidates also stops the description being rewritten, because the ranked list no longer describes what is there;
+    - **checks the existing epic's description before it writes anything.** Malformed or duplicated section markers refuse the whole run at this point, so a description problem never leaves fields or links half changed;
     - writes only the `approved` field changes, and skips a value that is already in place;
-    - creates the epic only when a fresh read shows none, or applies the approved corrections to the existing one;
-    - removes the parent link of each child whose `Status` is now `Done` or the do-not-do value, and of each cross-project child whose removal was approved. The tickets and their other links are untouched;
+    - creates the epic only when a fresh read shows none, or applies the approved corrections to the existing one. **A newly created epic is verified before anything depends on it:** its project, exact summary, `Type`, the approved `Status`, the requested `Assignee`, and that `Date time entered` is set. A workflow can rewrite fields on create. If any of them differs, the epic is reported with the mismatches, no child is attached, no description is written, and nothing is corrected. Fixing it is step 8's `one` row on the next run, with Kevin's approval;
+    - removes the parent link of each child whose `Status` is now `Done` or the do-not-do value, and of each cross-project child whose removal was approved with a record. The tickets and their other links are untouched;
     - adds each eligible ticket as a child, using the parent/subtask link type and direction it read from the instance. It skips a ticket that is already a child, a ticket whose existing parent was kept, and any link that would create a hierarchy cycle;
-    - replaces only the generated section of the epic description, between its two marker lines, and appends one when the epic has none. Human text outside it is preserved, and malformed or duplicated markers stop the write;
-    - **reads every write back.** A write counts only when the read-back shows it. After an error or a timeout it reads live state before deciding anything, so a write that landed is not repeated and a `200` that changed nothing is reported as a failure.
+    - **reconciles before it publishes.** After its own writes it reads the project again and compares the eligible tickets, their reviewed values, and the epic with the plan, allowing only for the changes this run itself made and verified. If a ticket was filed, reopened, closed or moved meanwhile, or a reviewed value or parent changed outside the run, or a second epic appeared, the description is **not** written, the differences are listed under `final_differences`, and the run exits `3`. An out-of-date plan is never published as the current backlog;
+    - replaces only the generated section of the epic description, between its two marker lines. An epic with no section gets one appended after its existing text, which is kept exactly as it is, trailing whitespace included. Only the blank-line separator is added;
+    - **guards the description against concurrent edits, as far as the API allows.** Immediately before posting, it reads the description again and compares the whole text with the text the replacement was built from. If someone edited it in between, the replacement is rebuilt from the new text, up to three times, and an old payload is never resent. If it keeps changing, the description is not written and the outcome is `conflict`. See the note on the remaining race below;
+    - **reads every write back.** A write counts only when the read-back shows it. After an error or a timeout it reads live state before deciding anything, so a write that landed is not repeated and a `200` that changed nothing is reported as a failure. Read-back proves the write landed. It does not prove nothing else was overwritten.
 
     | `apply` exit | Meaning | Next |
     | --- | --- | --- |
     | `0` | Everything in the plan is applied and verified | Step 11 |
-    | `3` | Partly applied: drift, a kept parent, a blocked epic, or a failed write | Read the report. For drift, go back to step 2 for a fresh snapshot, replan the affected tickets, and get fresh approval where a reviewed value changed. An approval carries over only for a ticket whose reviewed values are unchanged |
+    | `3` | Partly applied: drift before or during the run, a kept parent, a blocked or mismatched epic, a description conflict, or a failed write | Read the report. For drift, go back to step 2 for a fresh snapshot, replan the affected tickets, and get fresh approval where a reviewed value changed. An approval carries over only for a ticket whose reviewed values are unchanged |
     | `2` | Refused before any write, or an API error | Report the message. Do not work around it |
 
     **Never retry a write by hand, and never trust the journal alone.** The journal records what was attempted. Only a fresh `collect` says what is true. Running the skill again is always safe: it reuses the same epic, repeats no field write, and adds no duplicate link.
@@ -206,17 +209,18 @@ Take `PROJECT` from the invocation when one was given (`/youtrack-prioritize-you
 - No `Priority` or `Affected host` value changed without an `approval` record in the plan, and no rejected or pending change was written.
 - Exactly one issue named `<SHORT>-backlog-refinement` is the epic in use, it has `Type = Epic`, and its description holds one generated section with the numbered ranked backlog. Text outside that section is unchanged.
 - Every eligible ticket is a verified child of the epic, or is listed with the conflict that prevents it. Children that are now `Done` or do-not-do are unlinked from the epic and still exist.
-- `apply` exited `0`, or it exited `3` and every skipped, blocked and failed operation was reported to Kevin.
+- `apply` exited `0`, or it exited `3` and every skipped, blocked, conflicting and failed operation, and every entry in `final_differences`, was reported to Kevin.
 - The snapshot, plan and journal are in `~/archives/youtrack/backlog-refinement/`, and the epic's full URL was reported.
 
 ## Notes
 
 - **The generated section** starts at the line beginning `[backlog-refinement:begin]` and ends at the line `[backlog-refinement:end]`. Kevin can write anything above or below it. Deleting one marker, or pasting a second section, makes the next run stop and ask rather than guess.
+- **The description update is not atomic, and one race remains.** YouTrack 2026.2 gives this API no conditional update: issue responses carry no `ETag` or `Last-Modified`, `If-Match` and `If-None-Match` are ignored on reads, and the `X-Version` header is the same for every resource, so it is not a per-issue version. Whether a write would honour a precondition was not tested, because that needs a live write. So the helper compares and then writes, as two separate calls. An edit that lands in the moment between its last read and its POST is overwritten, and the read-back cannot detect that. The window is one request wide. Avoid editing the epic description while `apply` is running, and if a note goes missing, the issue's history in the YouTrack UI still holds it.
 - **The ranked table in the description is the authoritative order.** YouTrack's parent link carries no ordering this skill can set and verify, so the order in which children appear under the epic means nothing. Do not claim it does.
 - **Cross-project blockers stay where they are.** They are listed and linked in the description. They are never made children of this epic and never moved.
 - **Field IDs are read from a live issue on every run.** The helper finds `Status`, `Priority`, `Type` and `Affected host` by name and confirms each against its prototype ID, then writes with the project-scoped ID and `$type` the issue itself reports. If a name and its prototype disagree, it stops: the schema changed, and a human must say which field is meant. It never reads `api/admin/projects/<id>/customFields`, which returns an empty list to the `Claude_Code` token.
 - **What was and was not exercised when this skill was written (AI-82, 2026-10-10).** The helper's logic is covered by offline tests against an in-memory model of the API. Against the live instance, only read calls were probed. The link add and remove calls, the epic creation, and the field writes had not been run live. The read-back rule is the safeguard: a write this instance ignores shows up as a failed operation, not as success. Treat the first real run as the proving run, and prefer a small project for it.
 - **`Claude_Code` cannot see everything.** A ticket in a project that identity is not on the team of reads as `404`. Report it as inaccessible. Never infer that it does not exist.
 - **Filing versus working.** This skill creates and maintains an epic and edits two classification fields. It works no ticket, so the one-ticket-at-a-time policy, start and stop comments, and `Spent time` do not apply to the reviewed tickets.
-- Test the helper with `python3 $H/test_yt_backlog.py`. It is offline, needs no credentials, and never writes to YouTrack. It covers pagination, `Done` and `Wont do` filtering against contradictory resolution flags, cross-project blockers, dependency cycles, existing-parent conflicts, duplicate epics, partial field approval, drift between review and apply, ambiguous write responses, and an unchanged rerun.
+- Test the helper with `python3 $H/test_yt_backlog.py`. It is offline, needs no credentials, and never writes to YouTrack. It covers pagination, `Done` and `Wont do` filtering against contradictory resolution flags, cross-project blockers, dependency cycles, existing-parent conflicts, duplicate epics, partial field approval, removal approvals, drift between review and apply, changes made while `apply` is writing, first-time insertion beside human notes, concurrent description edits, a workflow rewriting a newly created epic, ambiguous write responses, and an unchanged rerun.
 - Related skills: `youtrack-check-for-duplicate-tickets-and-tag` for duplicate detection, and `youtrack-move-a-youtrack-ticket` when the review finds a ticket in the wrong project.

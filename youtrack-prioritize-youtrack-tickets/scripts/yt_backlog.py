@@ -72,6 +72,7 @@ DO_NOT_DO = ("wontdo", "dontdo", "donotdo", "willnotdo")
 
 READINESS = ("ready", "blocked", "needs-clarification")
 FIELD_DECISIONS = ("approved", "rejected", "pending", "unchanged")
+REMOVAL_DECISIONS = ("approved", "rejected", "pending")
 
 BEGIN_PREFIX = "[backlog-refinement:begin]"
 END_MARK = "[backlog-refinement:end]"
@@ -553,20 +554,66 @@ def section_state(description):
     return "one"
 
 
+def _normalise(description):
+    return (description or "").replace("\r\n", "\n")
+
+
+def insertion_separator(text):
+    """The newlines a first insertion needs between existing text and the section."""
+    if not text or text.endswith("\n\n"):
+        return ""
+    return "\n" if text.endswith("\n") else "\n\n"
+
+
 def splice_section(description, section):
-    """Replace the generated section, or append one. Text outside it is untouched."""
+    """Replace the generated section, or append one after the existing text.
+
+    Existing text is never altered. A first insertion keeps the whole
+    description as it is and adds only the blank-line separator it needs.
+    """
     lines, begins, ends = _marker_lines(description)
     if section_state(description) == "none":
-        body = "\n".join(lines).rstrip("\n")
-        return (body + "\n\n" if body.strip() else "") + section
+        text = "\n".join(lines)
+        return text + insertion_separator(text) + section
     return "\n".join(lines[:begins[0]] + section.split("\n") + lines[ends[0] + 1:])
 
 
-def outside_section(description):
+def human_text(description):
+    """(before, after): the text outside the generated section."""
     lines, begins, ends = _marker_lines(description)
     if section_state(description) == "none":
-        return "\n".join(lines)
-    return "\n".join(lines[:begins[0]] + lines[ends[0] + 1:])
+        return "\n".join(lines), ""
+    return "\n".join(lines[:begins[0]]), "\n".join(lines[ends[0] + 1:])
+
+
+def section_text(description):
+    lines, begins, ends = _marker_lines(description)
+    if section_state(description) == "none":
+        return None
+    return "\n".join(lines[begins[0]:ends[0] + 1])
+
+
+def preserves_human_text(source, wanted):
+    """True when `wanted` differs from `source` only by the generated section
+    and, on a first insertion, by the separator newlines placed in front of it."""
+    if section_state(wanted) != "one":
+        return False
+    if section_state(source) == "none":
+        text = _normalise(source)
+        if not wanted.startswith(text):
+            return False
+        gap = wanted[len(text):].split(BEGIN_PREFIX, 1)[0]
+        return gap.strip("\n") == "" and human_text(wanted)[1] == ""
+    return human_text(source) == human_text(wanted)
+
+
+def prepare_description(source, section):
+    """The full description to write. Raises Fail on malformed markers, or if
+    anything outside the generated section would change."""
+    wanted = splice_section(source, section)
+    if not preserves_human_text(source, wanted):
+        raise Fail("refusing to write: text outside the generated section would change")
+    return wanted
 
 
 ROW_RE = re.compile(r"^\|\s*(\d+)\s*\|\s*\[([A-Za-z][A-Za-z0-9_]*-\d+)\]")
@@ -797,6 +844,7 @@ def validate_plan(snap, plan):
                             "needs-clarification rather than an invented order")
 
     problems += _validate_epic(snap, plan)
+    problems += _validate_removals(snap, plan)
     return problems
 
 
@@ -838,11 +886,43 @@ def _validate_epic(snap, plan):
                 or not str(fix.get("approval") or "").strip():
             problems.append(f"{chosen['idReadable']} has Status {chosen['status']!r}; reopening "
                             "it needs an approved, open Status value")
-    removals = {r.get("issue"): r for r in plan.get("membership_removals") or []}
-    for child in chosen["children"] or []:
-        if child["project"] != snap["project"]["shortName"] and child["idReadable"] not in removals:
-            problems.append(f"{child['idReadable']} is a child of the epic but belongs to "
-                            f"{child['project']}; record a membership_removals decision")
+    return problems
+
+
+def _validate_removals(snap, plan):
+    """membership_removals: one well-formed, approved-or-not decision per
+    cross-project child of the chosen epic, and nothing else."""
+    problems = []
+    entries = plan.get("membership_removals")
+    if entries is None:
+        entries = []
+    if not isinstance(entries, list):
+        return ["membership_removals must be a list"]
+    chosen = chosen_epic(snap, plan)
+    foreign = {c["idReadable"]: c for c in ((chosen or {}).get("children") or [])
+               if c["project"] != snap["project"]["shortName"]}
+    seen = []
+    for n, entry in enumerate(entries, 1):
+        if not isinstance(entry, dict) or not isinstance(entry.get("issue"), str):
+            problems.append(f"membership_removals entry {n} is malformed: it needs an issue "
+                            "and a decision")
+            continue
+        rid, decision = entry["issue"], entry.get("decision")
+        if rid in seen:
+            problems.append(f"{rid}: listed more than once in membership_removals")
+        seen.append(rid)
+        if rid not in foreign:
+            problems.append(f"{rid}: membership_removals may only name a child of the epic "
+                            "that belongs to another project, as read in this snapshot")
+        if decision not in REMOVAL_DECISIONS:
+            problems.append(f"{rid}: removal decision {decision!r} is not one of "
+                            f"{REMOVAL_DECISIONS}")
+        elif decision == "approved" and not str(entry.get("approval") or "").strip():
+            problems.append(f"{rid}: removing it from the epic is approved with no approval "
+                            "record")
+    for rid in sorted(set(foreign) - set(seen), key=issue_number):
+        problems.append(f"{rid} is a child of the epic but belongs to "
+                        f"{foreign[rid]['project']}; record a membership_removals decision")
     return problems
 
 
@@ -943,23 +1023,49 @@ def compute_drift(snap, live_snap, plan):
     return {"issues": per_issue, "epic": general}
 
 
+def assignee_login(issue):
+    value = (field_map(issue).get("assignee") or {}).get("value")
+    return value.get("login") if isinstance(value, dict) else None
+
+
+def created_epic_mismatches(snap, plan, raw):
+    """Every way a newly created epic differs from what was approved. A
+    workflow may rewrite fields on create, so a matching summary proves nothing."""
+    epic = plan["epic"]
+    checks = [("project", (raw.get("project") or {}).get("shortName"), snap["project"]["shortName"]),
+              ("summary", raw.get("summary"), snap["epic_summary"]),
+              ("Type", field_value(raw, "type"), EPIC_TYPE),
+              ("Status", field_value(raw, "status"), epic["status"])]
+    if epic.get("assignee"):
+        checks.append(("Assignee", assignee_login(raw), epic["assignee"]))
+    out = [f"{label} is {got!r}, expected {want!r}" for label, got, want in checks if got != want]
+    if field_value(raw, "date_entered") in (None, ""):
+        out.append("Date time entered is not set")
+    return out
+
+
 def find_epics(short):
     raw, _ = read_project_issues(short)
     return [r for r in raw if (r.get("summary") or "") == f"{short}{EPIC_SUFFIX}"]
 
 
 def create_epic(snap, plan, journal):
-    """Create the epic only when live state shows none. Returns its entity id or None."""
+    """Create the epic only when live state shows none.
+
+    Returns (entity id or None, mismatches). A non-empty mismatch list means an
+    issue was created but is not what was approved: the caller must not attach
+    children or write its description, and nothing here corrects it.
+    """
     short = snap["project"]["shortName"]
     summary = snap["epic_summary"]
     existing = find_epics(short)
     if existing:  # someone, or an earlier attempt, created it since the review
         journal.record("create-epic", summary, "blocked",
                        error=f"{len(existing)} issue(s) with this summary now exist; replan")
-        return None
+        return None, []
     if journal.dry_run:
         journal.record("create-epic", summary, "would-apply")
-        return None
+        return None, []
     sample = read_issue_fields(next(i["id"] for i in snap["issues"]))
     fmap = field_map(sample)
     epic = plan["epic"]
@@ -985,13 +1091,115 @@ def create_epic(snap, plan, journal):
         time.sleep(2)
         found = find_epics(short)
     if len(found) == 1:
-        journal.record("create-epic", found[0]["idReadable"],
-                       "applied-verified" if not error else "applied-verified-after-error",
-                       error=error)
-        return found[0]["id"]
+        created = read_issue_fields(found[0]["id"])
+        mismatches = created_epic_mismatches(snap, plan, created)
+        if mismatches:
+            journal.record("create-epic", created["idReadable"], "created-with-mismatch",
+                           error=error, mismatches=mismatches)
+        else:
+            journal.record("create-epic", created["idReadable"],
+                           "applied-verified" if not error else "applied-verified-after-error",
+                           error=error)
+        return created["id"], mismatches
     journal.record("create-epic", summary, "failed",
                    error=error or f"{len(found)} issues with this summary after the create")
-    return None
+    return None, []
+
+
+DESCRIPTION_ATTEMPTS = 3
+PREFLIGHT_SECTION = f"{BEGIN_LINE}\n{END_MARK}"
+
+
+def read_description(epic_id):
+    return api("GET", f"/api/issues/{epic_id}", {"fields": "description"}).get("description") or ""
+
+
+def write_description(journal, epic_id, target, section):
+    """Replace the generated section without discarding a concurrent edit.
+
+    YouTrack offers no conditional update here (no ETag, and conditional
+    headers are ignored), so this is a compare-then-write: the description is
+    read again immediately before the POST and compared, complete and exact,
+    with the text the replacement was built from. If it changed, the
+    replacement is rebuilt from the new text; an old payload is never resent.
+    An edit landing between that last read and the POST is still lost. That
+    window is small, it is not zero, and the read-back cannot see it.
+    """
+    for attempt in range(1, DESCRIPTION_ATTEMPTS + 1):
+        source = read_description(epic_id)
+        wanted = prepare_description(source, section)
+        if _normalise(source) == wanted:
+            return journal.record("write-description", target, "already-in-place")
+        if journal.dry_run:
+            return journal.record("write-description", target, "would-apply")
+        if read_description(epic_id) != source:
+            journal.record("write-description", target, "conflict-recomputed", attempt=attempt,
+                           reason="the description changed after the replacement was prepared")
+            continue
+        error = None
+        try:
+            api("POST", f"/api/issues/{epic_id}", {"fields": "id"}, {"description": wanted})
+        except Fail as exc:
+            error = str(exc)
+        try:
+            after = _normalise(read_description(epic_id))
+        except Fail as exc:
+            return journal.record("write-description", target, "unverified", error=error,
+                                  read_error=str(exc))
+        if after == wanted:
+            return journal.record("write-description", target, "applied-verified" if not error
+                                  else "applied-verified-after-error", error=error)
+        try:
+            landed = section_text(after) == section
+        except Fail:
+            landed = False
+        if landed:  # ours is there, and someone has already edited around it: leave theirs
+            return journal.record("write-description", target, "applied-verified", error=error,
+                                  note="the description was edited again after the write; "
+                                       "that edit was left as it is")
+        return journal.record("write-description", target, "failed",
+                              error=error or "read-back shows neither the new section nor a "
+                                             "known state; nothing was retried")
+    return journal.record("write-description", target, "conflict",
+                          error=f"the description changed during each of {DESCRIPTION_ATTEMPTS} "
+                                "attempts; it was not written")
+
+
+def final_differences(snap, fresh, plan, epic_id, intended):
+    """How the project differs, after this run's writes, from the reviewed plan.
+
+    `intended` maps (issue, key) to the values this run's own verified writes
+    account for. Anything else that moved is an external change, and a ranked
+    backlog built from the old plan would no longer be current.
+    """
+    out = []
+    before = {i["idReadable"]: i for i in snap["issues"]}
+    after = {i["idReadable"]: i for i in fresh["issues"]}
+    ranked = {it["issue"] for it in plan["items"]}
+    eligible = {i["idReadable"] for i in fresh["issues"] if i["eligible"]}
+    for rid in sorted(eligible - ranked, key=issue_number):
+        out.append(f"{rid}: became eligible during apply and is not in the reviewed plan")
+    for rid in sorted(ranked - eligible, key=issue_number):
+        a = after.get(rid)
+        out.append(f"{rid}: no longer in the project" if not a
+                   else f"{rid}: no longer eligible (Status {a['status']!r})")
+    for rid in sorted(ranked & eligible, key=issue_number):
+        b, a = before[rid], after[rid]
+        if a["status"] != b["status"]:
+            out.append(f"{rid}: Status changed {b['status']!r} -> {a['status']!r}")
+        for key, label in (("priority", "Priority"), ("affected_host", "Affected host")):
+            if a[key] not in intended.get((rid, key), {b[key]}):
+                out.append(f"{rid}: {label} is {a[key]!r}, which this run did not write")
+        parent = (a["parent"] or {}).get("id")
+        if parent not in intended.get((rid, "parent"), {(b["parent"] or {}).get("id")}):
+            out.append(f"{rid}: parent changed outside this run")
+    cands = fresh["epic_candidates"]
+    if [c["id"] for c in cands] != [epic_id]:
+        out.append(f"the project now has {len(cands)} issue(s) named {snap['epic_summary']}, "
+                   "not exactly the epic this run used")
+    elif cands[0]["type"] != EPIC_TYPE or cands[0]["status_class"] != "open":
+        out.append(f"the epic is now Type {cands[0]['type']!r}, Status {cands[0]['status']!r}")
+    return out
 
 
 def ancestors(issue_id, limit=50):
@@ -1026,6 +1234,14 @@ def apply(snap, plan, journal_path, dry_run=False):
     epic_blocked = list(drift["epic"])
     result = {"field_changes": [], "added": [], "removed": [], "membership_incomplete": {},
               "skipped": [], "reviewed_at": now_stamp()}
+    intended = {}      # (issue, key) -> values this run's own writes account for
+    differences = []
+    epic_plan = plan["epic"]
+
+    # Preflight: a description that cannot be updated safely is a predictable
+    # refusal, so find it before any field or link is touched.
+    if epic_plan["action"] == "update" and not epic_blocked:
+        prepare_description(read_description(chosen_epic(snap, plan)["id"]), PREFLIGHT_SECTION)
 
     # 1. Field changes: approved ones only, and only where nothing moved.
     for it in _items(plan):
@@ -1046,16 +1262,22 @@ def apply(snap, plan, journal_path, dry_run=False):
                 lambda e=entity, k=key, t=target: field_value(read_issue_fields(e), k) == t,
                 lambda e=entity, k=key, t=target: set_field(e, k, t),
                 field=label, value=target, approval=d.get("approval"))
+            intended[(rid, key)] = ({target} if outcome in OK_OUTCOMES
+                                    else {live[rid][key], target})
             if outcome in ("applied-verified", "applied-verified-after-error", "would-apply"):
                 result["field_changes"].append(f"{rid} {label} -> {target}")
 
     # 2. The epic itself.
     epic_id = None
-    epic_plan = plan["epic"]
     if not epic_blocked:
         if epic_plan["action"] == "create":
-            epic_id = create_epic(snap, plan, journal)
-            if not epic_id and not dry_run:
+            epic_id, mismatches = create_epic(snap, plan, journal)
+            if mismatches:
+                # It exists but is not what was approved. Nothing is hung on it,
+                # and nothing here "fixes" it: that needs its own approval.
+                epic_blocked.append("the created epic is not what was approved: "
+                                    + "; ".join(mismatches))
+            elif not epic_id and not dry_run:
                 epic_blocked.append("the epic could not be created or confirmed")
         else:
             chosen = chosen_epic(snap, plan)
@@ -1124,6 +1346,8 @@ def apply(snap, plan, journal_path, dry_run=False):
                 lambda c=cur["id"]: live_parent_id(c) == epic_id,
                 lambda c=cur["id"]: api("POST", f"/api/issues/{epic_id}/links/{link_id}/issues",
                                         {"fields": "id"}, {"id": c}))
+            intended[(rid, "parent")] = ({epic_id} if outcome in OK_OUTCOMES
+                                         else {(parent or {}).get("id"), epic_id})
             if outcome in ("applied-verified", "applied-verified-after-error", "would-apply"):
                 result["added"].append(rid)
             elif outcome != "already-in-place":
@@ -1151,24 +1375,26 @@ def apply(snap, plan, journal_path, dry_run=False):
         journal.record("write-description", snap["epic_summary"], "blocked", reason=why)
         description_state = f"blocked: {why}"
     elif epic_id:
+        # Reconcile before publishing: the writes above took time, and a ticket
+        # filed, closed or moved meanwhile makes the reviewed plan out of date.
         fresh = collect(project, deep=False)
-        now_live = {i["idReadable"]: i for i in fresh["issues"]}
-        section = render_section(snap, plan, now_live, result)
-        current = read_issue_fields(epic_id).get("description") or ""
-        wanted = splice_section(current, section)  # raises on malformed markers
-        if outside_section(wanted) != outside_section(current):
-            raise Fail("refusing to write: text outside the generated section would change")
-        outcome = guarded_write(
-            journal, "write-description", snap["epic_summary"],
-            lambda: (read_issue_fields(epic_id).get("description") or "").replace("\r\n", "\n")
-            == wanted,
-            lambda: api("POST", f"/api/issues/{epic_id}", {"fields": "id"},
-                        {"description": wanted}))
-        description_state = outcome
+        if not dry_run:
+            differences = final_differences(snap, fresh, plan, epic_id, intended)
+        if differences:
+            journal.record("write-description", snap["epic_summary"], "blocked",
+                           reason="the project changed during apply", differences=differences)
+            description_state = ("blocked: the project changed during apply, so the reviewed "
+                                 "plan is no longer the current backlog")
+        else:
+            now_live = {i["idReadable"]: i for i in fresh["issues"]}
+            section = render_section(snap, plan, now_live, result)
+            description_state = write_description(journal, epic_id, snap["epic_summary"],
+                                                  section)
     elif dry_run:
         description_state = journal.record("write-description", snap["epic_summary"], "would-apply")
 
-    failures = [e for e in journal.entries if e["outcome"] in ("failed", "unverified")]
+    failures = [e for e in journal.entries
+                if e["outcome"] in ("failed", "unverified", "conflict", "created-with-mismatch")]
     epic_readable = None
     if epic_id:
         epic_readable = read_issue_fields(epic_id).get("idReadable")
@@ -1180,7 +1406,8 @@ def apply(snap, plan, journal_path, dry_run=False):
         "children_removed": result["removed"],
         "membership_incomplete": result["membership_incomplete"],
         "description": description_state,
-        "drift": drift, "epic_blocked": epic_blocked, "skipped": result["skipped"],
+        "drift": drift, "final_differences": differences,
+        "epic_blocked": epic_blocked, "skipped": result["skipped"],
         "failures": failures, "journal": journal_path,
         "pending_decisions": [f"{it['issue']} {label}"
                               for it in _items(plan)
@@ -1188,8 +1415,9 @@ def apply(snap, plan, journal_path, dry_run=False):
                                                  ("affected_host", "Affected host"))
                               if (it.get(key) or {}).get("decision") == "pending"],
     }
-    report["complete"] = not (failures or stale or epic_blocked
-                              or result["membership_incomplete"])
+    report["complete"] = (not (failures or stale or epic_blocked or differences
+                               or result["membership_incomplete"])
+                          and description_state in OK_OUTCOMES)
     return report
 
 

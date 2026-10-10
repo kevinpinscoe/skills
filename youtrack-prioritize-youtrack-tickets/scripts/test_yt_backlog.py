@@ -56,6 +56,8 @@ class FakeYouTrack:
         self.faults = []      # {"method", "match", "mode"}: error-before | error-after | noop
         self.writes = []
         self.stall = False
+        self.on_create = None      # callable(issue): a workflow rewriting a new issue
+        self.before_write = None   # callable(method, path): the world moving mid-apply
         self.status_proto = "157-2"
 
     # -- building ------------------------------------------------------------
@@ -174,6 +176,8 @@ class FakeYouTrack:
         fault = None
         if method != "GET":
             self.writes.append((method, path))
+            if self.before_write:
+                self.before_write(method, path)
             for f in self.faults:
                 if f["method"] == method and re.search(f["match"], path):
                     fault = f
@@ -204,6 +208,8 @@ class FakeYouTrack:
                               for i in self.issues.values() if i["project"] == short] or [0])
             eid = self.add(f"{short}-{number}", body["summary"], status=None, type_=None)
             self._update(self.issues[eid], body)
+            if self.on_create:
+                self.on_create(self.issues[eid])
             return {"id": eid, "idReadable": f"{short}-{number}"}
         m = re.fullmatch(r"/api/issues/([^/]+)/links/([^/]+)/issues(?:/([^/]+))?", path)
         if m:
@@ -482,7 +488,8 @@ class Section(unittest.TestCase):
         before = f"Above.\n\n{yb.BEGIN_PREFIX} old\nold body\n{yb.END_MARK}\n\nBelow."
         out = yb.splice_section(before, self.SECTION)
         self.assertEqual(out, f"Above.\n\n{self.SECTION}\n\nBelow.")
-        self.assertEqual(yb.outside_section(out), yb.outside_section(before))
+        self.assertEqual(yb.human_text(out), yb.human_text(before))
+        self.assertTrue(yb.preserves_human_text(before, out))
         self.assertEqual(out.count(yb.BEGIN_PREFIX), 1)
 
     def test_malformed_or_duplicate_markers_are_rejected(self):
@@ -606,23 +613,13 @@ class Apply(Base):
         self.assertIn("GLASS-2", [i["idReadable"] for i in self.yt.issues.values()])
         self.assertNotIn("[GLASS-2]", self.yt.get(first["epic"])["description"])
 
-    def test_cross_project_child_is_removed_only_with_approval(self):
+    def test_cross_project_child_needs_a_recorded_decision(self):
         snap = self.collect()
         first = self.run_apply(snap, self.plan(snap))
         self.yt.add("OTHER-5", parent=first["epic"])
         snap2 = self.collect()
-        plan = self.plan(snap2)
         self.assertTrue(any("OTHER-5 is a child of the epic" in p
-                            for p in yb.validate_plan(snap2, plan)))
-        plan["membership_removals"] = [{"issue": "OTHER-5", "decision": "pending"}]
-        report = self.run_apply(snap2, plan)
-        self.assertIn("OTHER-5", self.yt.children(first["epic"]))
-        self.assertTrue(any("OTHER-5" in s for s in report["skipped"]))
-        snap3 = self.collect()
-        plan = self.plan(snap3, membership_removals=[{"issue": "OTHER-5", "decision": "approved",
-                                                     "approval": "Kevin"}])
-        self.run_apply(snap3, plan)
-        self.assertNotIn("OTHER-5", self.yt.children(first["epic"]))
+                            for p in yb.validate_plan(snap2, self.plan(snap2))))
 
 
 class ParentConflicts(Base):
@@ -836,6 +833,403 @@ class Retries(Base):
         self.assertEqual(second["field_changes"], [])          # already in place, not rewritten
         self.assertEqual(second["children_added"], ["GLASS-1"])
         self.assertEqual(self.field_writes(), [("POST", f"/api/issues/{self.yt.eid('GLASS-2')}")])
+
+
+class Removals(Base):
+    """Finding 3: a cross-project removal needs the same approval record as any write."""
+
+    def setUp(self):
+        super().setUp()
+        self.yt.add("GLASS-1")
+        self.yt.add("GLASS-2", summary="GLASS-backlog-refinement", type_="Epic")
+        self.yt.get("GLASS-1")["parent"] = self.yt.eid("GLASS-2")
+        self.yt.add("OTHER-5", parent="GLASS-2")
+        self.yt.add("OTHER-6", parent="GLASS-2")
+        self.yt.add("OTHER-9")
+        self.yt.depend("OTHER-5", "OTHER-9")
+        self.snap = self.collect()
+
+    def removals(self, *entries):
+        return self.plan(self.snap, membership_removals=list(entries))
+
+    def test_approved_without_a_record_is_refused_before_any_write(self):
+        plan = self.removals({"issue": "OTHER-5", "decision": "approved"},
+                             {"issue": "OTHER-6", "decision": "pending"})
+        with self.assertRaisesRegex(yb.Fail, "OTHER-5: removing it from the epic is approved "
+                                             "with no approval record"):
+            self.run_apply(self.snap, plan)
+        plan["membership_removals"][0]["approval"] = "   "
+        with self.assertRaisesRegex(yb.Fail, "no approval record"):
+            self.run_apply(self.snap, plan)
+        self.assertEqual(self.yt.writes, [])
+        self.assertEqual(self.yt.children("GLASS-2"), ["GLASS-1", "OTHER-5", "OTHER-6"])
+
+    def test_pending_or_rejected_keeps_the_membership(self):
+        plan = self.removals({"issue": "OTHER-5", "decision": "pending"},
+                             {"issue": "OTHER-6", "decision": "rejected"})
+        report = self.run_apply(self.snap, plan)
+        self.assertEqual(self.yt.children("GLASS-2"), ["GLASS-1", "OTHER-5", "OTHER-6"])
+        self.assertEqual(report["children_removed"], [])
+        self.assertEqual(len(report["skipped"]), 2)
+        self.assertFalse(any(w[0] == "DELETE" for w in self.yt.writes))
+
+    def test_approved_with_a_record_removes_only_that_relationship(self):
+        plan = self.removals({"issue": "OTHER-5", "decision": "approved",
+                              "approval": "Kevin, 2026-10-10, review batch 1"},
+                             {"issue": "OTHER-6", "decision": "pending"})
+        report = self.run_apply(self.snap, plan)
+        self.assertEqual(report["children_removed"], ["OTHER-5"])
+        self.assertEqual(self.yt.children("GLASS-2"), ["GLASS-1", "OTHER-6"])
+        self.assertEqual([w for w in self.yt.writes if w[0] == "DELETE"],
+                         [("DELETE", f"/api/issues/{self.yt.eid('GLASS-2')}/links/L-3s/issues/"
+                                     f"{self.yt.eid('OTHER-5')}")])
+        other = self.yt.get("OTHER-5")                      # the ticket and its other links stay
+        self.assertEqual(other["depends_on"], [self.yt.eid("OTHER-9")])
+        self.assertEqual(other["fields"]["Status"], "Backlog")
+
+    def test_malformed_duplicate_and_unsupported_entries_are_rejected(self):
+        both = [{"issue": "OTHER-5", "decision": "pending"},
+                {"issue": "OTHER-6", "decision": "pending"}]
+        cases = {
+            "entry 3 is malformed": both + ["OTHER-5"],
+            "entry 3 is malformed:": both + [{"decision": "approved", "approval": "Kevin"}],
+            "OTHER-5: listed more than once": both + [dict(both[0])],
+            "removal decision 'yes' is not one of": [{"issue": "OTHER-5", "decision": "yes"},
+                                                    both[1]],
+            "removal decision None is not one of": [{"issue": "OTHER-5"}, both[1]],
+            "GLASS-1: membership_removals may only name a child": both + [
+                {"issue": "GLASS-1", "decision": "approved", "approval": "Kevin"}],
+            "OTHER-9: membership_removals may only name a child": both + [
+                {"issue": "OTHER-9", "decision": "approved", "approval": "Kevin"}],
+            "OTHER-6 is a child of the epic but belongs to OTHER": both[:1],
+        }
+        for expected, entries in cases.items():
+            with self.subTest(expected):
+                problems = yb.validate_plan(self.snap, self.removals(*entries))
+                self.assertTrue(any(expected in p for p in problems), problems)
+        self.assertEqual(yb.validate_plan(self.snap, self.plan(
+            self.snap, membership_removals="OTHER-5"))[-1], "membership_removals must be a list")
+        self.assertEqual(self.yt.writes, [])
+
+    def test_a_removal_cannot_be_named_when_the_epic_is_being_created(self):
+        self.yt.issues.pop(self.yt.eid("GLASS-2"))
+        self.yt.get("GLASS-1")["parent"] = None
+        snap = self.collect()
+        plan = self.plan(snap, membership_removals=[
+            {"issue": "OTHER-5", "decision": "approved", "approval": "Kevin"}])
+        self.assertTrue(any("OTHER-5: membership_removals may only name a child" in p
+                            for p in yb.validate_plan(snap, plan)))
+
+
+class Description(Base):
+    """Findings 1 and 2: first insertion, and edits made while the run is writing."""
+
+    def setUp(self):
+        super().setUp()
+        self.yt.add("GLASS-1")
+        self.yt.add("GLASS-2", summary="GLASS-backlog-refinement", type_="Epic")
+        self.epic = self.yt.get("GLASS-2")
+
+    def apply_with(self, description, approve_field=False):
+        self.epic["description"] = description
+        snap = self.collect()
+        plan = self.plan(snap)
+        if approve_field:
+            self.item(plan, "GLASS-1")["priority"] = {"proposed": "Major", "decision": "approved",
+                                                     "approval": "Kevin"}
+        return snap, plan
+
+    def test_human_notes_and_no_markers_get_the_section_appended(self):
+        notes = "Kevin's standing notes.\n\n- keep an eye on GLASS-1"
+        report = self.run_apply(*self.apply_with(notes))
+        self.assertTrue(report["complete"], report)
+        self.assertEqual(report["description"], "applied-verified")
+        self.assertTrue(self.epic["description"].startswith(notes + "\n\n" + yb.BEGIN_PREFIX))
+        self.assertEqual(self.epic["description"].count(yb.BEGIN_PREFIX), 1)
+
+    def test_empty_description_gets_the_section_alone(self):
+        report = self.run_apply(*self.apply_with(""))
+        self.assertTrue(report["complete"], report)
+        self.assertTrue(self.epic["description"].startswith(yb.BEGIN_PREFIX))
+
+    def test_every_trailing_newline_pattern_is_kept_exactly(self):
+        for tail in ("", "\n", "\n\n", "\n\n\n", "  ", " \n", "\r\n"):
+            with self.subTest(repr(tail)):
+                self.yt.writes.clear()
+                notes = "Notes line 1\nNotes line 2" + tail
+                report = self.run_apply(*self.apply_with(notes))
+                self.assertTrue(report["complete"], report)
+                written = self.epic["description"]
+                kept = notes.replace("\r\n", "\n")
+                self.assertTrue(written.startswith(kept), repr(written[:60]))
+                gap = written[len(kept):written.index(yb.BEGIN_PREFIX)]
+                self.assertEqual(gap.strip("\n"), "")           # only separator newlines added
+                self.assertTrue((kept + gap).endswith("\n\n") or not kept.strip("\n"))
+                self.journal = os.path.join(self.tmp.name, f"j{len(tail)}{ord(tail[-1:] or 'x')}")
+
+    def test_one_valid_section_is_replaced_in_place(self):
+        old = f"Above.\n\n{yb.BEGIN_PREFIX} stale\n| 9 | [GLASS-1](x) |\n{yb.END_MARK}\n\nBelow.\n"
+        report = self.run_apply(*self.apply_with(old))
+        self.assertTrue(report["complete"], report)
+        written = self.epic["description"]
+        self.assertTrue(written.startswith("Above.\n\n" + yb.BEGIN_LINE))
+        self.assertTrue(written.endswith(yb.END_MARK + "\n\nBelow.\n"))
+        self.assertNotIn("stale", written)
+        self.assertEqual(written.count(yb.BEGIN_PREFIX), 1)
+
+    def test_malformed_markers_refuse_before_any_side_effect(self):
+        one = f"{yb.BEGIN_PREFIX} a\nbody\n{yb.END_MARK}"
+        for bad in (one + "\n\n" + one, f"notes\n{yb.BEGIN_PREFIX} never closed",
+                    f"notes\n{yb.END_MARK}", f"{yb.END_MARK}\n{yb.BEGIN_PREFIX} wrong order"):
+            with self.subTest(bad[:40]):
+                snap, plan = self.apply_with("clean at review time", approve_field=True)
+                self.epic["description"] = bad        # broken after the review, before apply
+                self.yt.writes.clear()
+                with self.assertRaisesRegex(yb.Fail, "generated-section markers"):
+                    self.run_apply(snap, plan)
+                self.assertEqual(self.yt.writes, [])
+                self.assertEqual(self.yt.get("GLASS-1")["fields"]["Priority"], "Normal")
+                self.assertIsNone(self.yt.get("GLASS-1")["parent"])
+                self.assertEqual(self.epic["description"], bad)
+
+    def _edit_after_prepare(self, times):
+        """A human adds a note each time a real replacement has just been prepared."""
+        real, count = yb.prepare_description, [0]
+
+        def prepare(source, section):
+            wanted = real(source, section)
+            if section != yb.PREFLIGHT_SECTION and count[0] < times:
+                count[0] += 1
+                self.epic["description"] += f"\n\nHuman note {count[0]}, added mid-run."
+            return wanted
+        yb.prepare_description = prepare
+        self.addCleanup(setattr, yb, "prepare_description", real)
+
+    def test_a_note_added_after_the_replacement_was_prepared_is_preserved(self):
+        snap, plan = self.apply_with("Original notes.")
+        self._edit_after_prepare(times=1)
+        report = self.run_apply(snap, plan)
+        written = self.epic["description"]
+        self.assertIn("Human note 1, added mid-run.", written)
+        self.assertTrue(written.startswith("Original notes.\n\nHuman note 1, added mid-run.\n\n"
+                                           + yb.BEGIN_PREFIX))
+        self.assertEqual(written.count(yb.BEGIN_PREFIX), 1)
+        self.assertEqual(report["description"], "applied-verified")
+        self.assertTrue(report["complete"], report)
+        outcomes = [e["outcome"] for e in self.journal_ops() if e["op"] == "write-description"]
+        self.assertEqual(outcomes, ["conflict-recomputed", "applied-verified"])
+        # one description write, built from the text that included the note
+        epic_path = f"/api/issues/{self.epic['id']}"
+        self.assertEqual(self.yt.writes.count(("POST", epic_path)), 1)
+
+    def test_a_description_that_keeps_changing_is_not_overwritten(self):
+        snap, plan = self.apply_with("Original notes.")
+        self._edit_after_prepare(times=99)
+        report = self.run_apply(snap, plan)
+        self.assertEqual(report["description"], "conflict")
+        self.assertFalse(report["complete"])
+        self.assertEqual(report["failures"][-1]["outcome"], "conflict")
+        self.assertNotIn(yb.BEGIN_PREFIX, self.epic["description"])
+        for n in range(1, yb.DESCRIPTION_ATTEMPTS + 1):
+            self.assertIn(f"Human note {n}, added mid-run.", self.epic["description"])
+        self.assertNotIn(("POST", f"/api/issues/{self.epic['id']}"), self.yt.writes)
+
+    def test_an_edit_made_just_after_the_write_is_left_alone(self):
+        snap, plan = self.apply_with("Original notes.")
+        real = self.yt.api
+
+        def api(method, path, params=None, body=None):
+            out = real(method, path, params, body)
+            if method == "POST" and body and "description" in body:
+                self.epic["description"] += "\n\nLate note."
+            return out
+        yb.api = api
+        report = self.run_apply(snap, plan)
+        self.assertTrue(self.epic["description"].endswith("\n\nLate note."))
+        self.assertEqual(report["description"], "applied-verified")
+        self.assertEqual(self.yt.writes.count(("POST", f"/api/issues/{self.epic['id']}")), 1)
+        self.assertIn("edited again after the write", self.journal_ops()[-1]["note"])
+
+    def test_a_description_write_that_did_not_land_is_a_failure_and_not_resent(self):
+        snap, plan = self.apply_with("Original notes.")
+        self.yt.faults.append({"method": "POST", "match": f"^/api/issues/{self.epic['id']}$",
+                               "mode": "noop"})
+        report = self.run_apply(snap, plan)
+        self.assertEqual(report["description"], "failed")
+        self.assertFalse(report["complete"])
+        self.assertEqual(self.epic["description"], "Original notes.")
+        self.assertEqual(self.yt.writes.count(("POST", f"/api/issues/{self.epic['id']}")), 1)
+
+    def test_preservation_check_tells_separators_from_edits(self):
+        section = f"{yb.BEGIN_LINE}\nbody\n{yb.END_MARK}"
+        self.assertTrue(yb.preserves_human_text("notes", "notes\n\n" + section))
+        self.assertTrue(yb.preserves_human_text("", section))
+        self.assertFalse(yb.preserves_human_text("notes", "note\n\n" + section))
+        self.assertFalse(yb.preserves_human_text("notes", "notes extra\n\n" + section))
+        self.assertFalse(yb.preserves_human_text("notes", "notes\n\n" + section + "\ntrailer"))
+        self.assertFalse(yb.preserves_human_text(f"a\n{section}\nb", f"a\n{section}\nB"))
+
+
+class FinalReconciliation(Base):
+    """Finding 4: what changed while apply was writing is not published as current."""
+
+    def setUp(self):
+        super().setUp()
+        for n in (1, 2, 3):
+            self.yt.add(f"GLASS-{n}")
+        self.yt.add("GLASS-4", summary="GLASS-backlog-refinement", type_="Epic",
+                    description="Kevin's notes.")
+        self.snap = self.collect()
+        self.plan_ = self.plan(self.snap)
+        self.item(self.plan_, "GLASS-1")["priority"] = {
+            "proposed": "Major", "decision": "approved", "approval": "Kevin"}
+
+    def during_first_link_write(self, action):
+        fired = []
+
+        def hook(method, path):
+            if not fired and path.endswith("/links/L-3s/issues"):
+                fired.append(1)
+                action()
+        self.yt.before_write = hook
+
+    def assert_not_published(self, report, fragment):
+        self.assertFalse(report["complete"])
+        self.assertTrue(any(fragment in d for d in report["final_differences"]),
+                        report["final_differences"])
+        self.assertTrue(report["description"].startswith("blocked: the project changed"))
+        self.assertEqual(self.yt.get("GLASS-4")["description"], "Kevin's notes.")
+        blocked = [e for e in self.journal_ops() if e["op"] == "write-description"]
+        self.assertEqual(blocked[-1]["outcome"], "blocked")
+
+    def test_a_ticket_filed_during_a_link_write_is_not_silently_omitted(self):
+        self.during_first_link_write(lambda: self.yt.add("GLASS-9", status="To do"))
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_not_published(report, "GLASS-9: became eligible during apply")
+        # this run's own verified writes stand, and are reported
+        self.assertEqual(report["field_changes"], ["GLASS-1 Priority -> Major"])
+        self.assertEqual(report["children_added"], ["GLASS-1", "GLASS-2", "GLASS-3"])
+
+    def test_a_reviewed_ticket_closed_during_apply(self):
+        def close():
+            self.yt.get("GLASS-3")["fields"]["Status"] = "Done"
+        self.during_first_link_write(close)
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_not_published(report, "GLASS-3: no longer eligible (Status 'Done')")
+
+    def test_a_reviewed_ticket_moved_out_during_apply(self):
+        def move():
+            issue = self.yt.get("GLASS-3")
+            issue["project"], issue["idReadable"] = "OTHER", "OTHER-77"
+        self.during_first_link_write(move)
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_not_published(report, "GLASS-3: no longer in the project")
+
+    def test_an_outside_field_or_status_change_during_apply(self):
+        def touch():
+            self.yt.get("GLASS-2")["fields"]["Priority"] = "Critical"
+            self.yt.get("GLASS-3")["fields"]["Status"] = "BLOCKED"
+        self.during_first_link_write(touch)
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_not_published(report, "GLASS-2: Priority is 'Critical', which this run did "
+                                          "not write")
+        self.assertTrue(any("GLASS-3: Status changed 'Backlog' -> 'BLOCKED'" in d
+                            for d in report["final_differences"]))
+
+    def test_a_second_epic_appearing_during_apply(self):
+        self.during_first_link_write(
+            lambda: self.yt.add("GLASS-8", summary="GLASS-backlog-refinement", type_="Epic"))
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_not_published(report, "2 issue(s) named GLASS-backlog-refinement")
+
+    def test_this_runs_own_changes_are_not_mistaken_for_outside_ones(self):
+        report = self.run_apply(self.snap, self.plan_)
+        self.assertEqual(report["final_differences"], [])
+        self.assertTrue(report["complete"], report)
+        self.assertIn("| 1 | [GLASS-1]", self.yt.get("GLASS-4")["description"])
+
+
+class CreateVerification(Base):
+    """Finding 5: a created epic is checked field by field before anything hangs on it."""
+
+    def setUp(self):
+        super().setUp()
+        self.yt.add("GLASS-1")
+        self.snap = self.collect()
+        self.plan_ = self.plan(self.snap)
+        self.plan_["epic"]["assignee"] = "Claude_Code"
+
+    def assert_blocked(self, report, fragment, field, value):
+        epics = [i for i in self.yt.issues.values() if i["summary"] == "GLASS-backlog-refinement"]
+        self.assertEqual(len(epics), 1)
+        self.assertEqual(report["epic"], epics[0]["idReadable"])   # reported, so Kevin can look
+        self.assertFalse(report["complete"])
+        self.assertTrue(any(fragment in b for b in report["epic_blocked"]), report["epic_blocked"])
+        self.assertEqual(report["failures"][0]["outcome"], "created-with-mismatch")
+        self.assertEqual(self.yt.children(epics[0]["idReadable"]), [])
+        self.assertEqual(report["children_added"], [])
+        self.assertEqual(epics[0]["description"], "")
+        self.assertTrue(report["description"].startswith("blocked"))
+        self.assertEqual(epics[0]["fields"][field], value)          # not silently corrected
+        self.assertEqual(len([w for w in self.yt.writes if w == ("POST", "/api/issues")]), 1)
+        self.assertEqual(len(self.yt.writes), 1)
+
+    def test_workflow_changed_type(self):
+        self.yt.on_create = lambda issue: issue["fields"].update({"Type": "Task"})
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_blocked(report, "Type is 'Task', expected 'Epic'", "Type", "Task")
+
+    def test_workflow_changed_status(self):
+        self.yt.on_create = lambda issue: issue["fields"].update({"Status": "Done"})
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_blocked(report, "Status is 'Done', expected 'Backlog'", "Status", "Done")
+
+    def test_workflow_changed_assignee(self):
+        self.yt.on_create = lambda issue: issue["fields"].update({"Assignee": "admin"})
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_blocked(report, "Assignee is 'admin', expected 'Claude_Code'",
+                            "Assignee", "admin")
+
+    def test_workflow_cleared_assignee_and_date(self):
+        self.yt.on_create = lambda issue: issue["fields"].update(
+            {"Assignee": None, "Date time entered": None})
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_blocked(report, "Assignee is None, expected 'Claude_Code'", "Assignee", None)
+        self.assertTrue(any("Date time entered is not set" in b for b in report["epic_blocked"]))
+
+    def test_ambiguous_response_after_a_create_that_landed_wrong(self):
+        self.yt.on_create = lambda issue: issue["fields"].update({"Type": "Task"})
+        self.yt.faults.append({"method": "POST", "match": r"^/api/issues$", "mode": "error-after"})
+        report = self.run_apply(self.snap, self.plan_)
+        self.assert_blocked(report, "Type is 'Task', expected 'Epic'", "Type", "Task")
+        self.assertIn("timed out", report["failures"][0]["error"])
+
+    def test_ambiguous_response_after_a_create_that_landed_right(self):
+        self.yt.faults.append({"method": "POST", "match": r"^/api/issues$", "mode": "error-after"})
+        report = self.run_apply(self.snap, self.plan_)
+        self.assertTrue(report["complete"], report)
+        self.assertEqual(self.yt.get(report["epic"])["fields"]["Assignee"], "Claude_Code")
+        self.assertEqual(len([w for w in self.yt.writes if w == ("POST", "/api/issues")]), 1)
+
+    def test_an_assignee_that_was_not_requested_is_not_checked(self):
+        del self.plan_["epic"]["assignee"]
+        report = self.run_apply(self.snap, self.plan_)
+        self.assertTrue(report["complete"], report)
+
+    def test_a_mismatched_epic_is_corrected_on_the_next_run_only_with_approval(self):
+        self.yt.on_create = lambda issue: issue["fields"].update({"Type": "Task"})
+        self.run_apply(self.snap, self.plan_)
+        self.yt.on_create = None
+        snap = self.collect()
+        plan = self.plan(snap)
+        self.assertTrue(any("not Epic; the correction needs an approval record" in p
+                            for p in yb.validate_plan(snap, plan)))
+        plan["epic"]["corrections"] = {"type": {"approval": "Kevin"}}
+        report = self.run_apply(snap, plan)
+        self.assertTrue(report["complete"], report)
+        self.assertEqual(self.yt.get(report["epic"])["fields"]["Type"], "Epic")
+        self.assertEqual(len([i for i in self.yt.issues.values()
+                              if i["summary"] == "GLASS-backlog-refinement"]), 1)
 
 
 class Tables(Base):
