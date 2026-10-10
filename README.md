@@ -8,6 +8,51 @@ Many of these skills are run from the command line; over time they will become a
 
 The [`skills` TUI](https://github.com/kevinpinscoe/skills-tui) lets you browse and launch skills interactively from the terminal.
 
+## How skills work
+
+A skill is a directory holding two files. `SKILL.md` is the instructions, written for an AI
+agent to carry out. `run.sh` is a wrapper that starts Claude Code with those instructions as its
+task. This section is for anyone working in this repo: a person, an LLM, or a coding agent. The
+same rules apply to all three.
+
+### Creating a skill
+
+1. Make a directory at the top level of this repo named `<category>-<verb-noun>`, lowercase and
+   hyphenated, for example `prescription-check-for-refills`. Never start the name with `gsd-`;
+   that prefix belongs to the `get-shit-done` plugin and is gitignored.
+2. Copy `template.md` to `<directory>/SKILL.md` and fill it in. In the frontmatter, `name:` must
+   equal the directory name exactly, `category:` is the lowercase slug the chooser groups by, and
+   `disable-model-invocation: true` stays as it is.
+3. Copy the standard `run.sh` from an existing skill into the directory. It needs no editing.
+4. Add the new directory to the tree under "Structure" below.
+5. Run the checks, then open a pull request against `main`.
+
+The exact commands, the checks, and the special cases are in `RUNBOOK.md`, Step 4.
+
+### Running a skill
+
+| How | Command | When to use it |
+| --- | --- | --- |
+| The chooser | `skills` | Browsing, or when you do not remember the name |
+| Directly | `bash ~/.claude/skills/<skill-name>/run.sh` | You know the name, or a script or timer is calling it |
+| Inside Claude Code | type `/<skill-name>` | You are already in a session |
+
+The first two start a new Claude Code session with the `SKILL.md` content as its task. The
+third loads the skill into the session you are in. An agent that is not Claude Code cannot use
+`run.sh`; it reads the skill's `SKILL.md` and follows its Instructions section directly.
+
+### When Claude Code loads a skill
+
+**Nothing from these skills is in Claude Code's context when a session starts.** A skill's
+`SKILL.md` is read only when the skill is invoked in one of the three ways above.
+
+By default Claude Code does more than that: it puts the name and description of every skill into
+every session, so that it can decide on its own to start one. This repo turns that off. Each
+skill here sets `disable-model-invocation: true`, which removes it from that startup list and
+means Claude never starts it unprompted. Skills this repo cannot edit get the same result from a
+per-host setting. "Why skills outside `synced/` are user-invocable only" below has the detail,
+including the one exception.
+
 ## Structure
 
 This repo's working tree lives at **`~/.claude/skills`** — Claude Code's own

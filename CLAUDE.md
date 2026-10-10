@@ -145,6 +145,7 @@ The `## Structure` tree in `README.md` must exactly reflect the directories that
 ## Claude's role
 
 - Human-authored skills are the norm; Claude may create skills when explicitly asked
+- The step-by-step procedure for adding a skill, for people and agents alike, is `RUNBOOK.md` Step 4; `README.md` "How skills work" is the overview. Keep those two current when the rules below change.
 - **When creating a new skill: read `template.md` first, then follow it exactly.** Place the new file at `~/.claude/skills/<category>-<skill-name>/SKILL.md`. YAML frontmatter (`name:`, `category:`, `description:`) is required. Use existing `SKILL.md` files as additional style reference, but `template.md` is the authoritative source of truth for structure.
 - **Never create a directory starting with `gsd-`** — that prefix is reserved for the third-party `get-shit-done` plugin's own content, which this repo's `.gitignore` deliberately excludes.
 - **When creating or modifying any skill: update `README.md` to reflect the current directory layout before committing.**

@@ -24,8 +24,8 @@ source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 
 ## Purpose
 
-> The entry point for every runbook in the `skills` repo. Covers how skills are launched, and
-> points at the per-skill runbooks for those that need one.
+> The entry point for every runbook in the `skills` repo. Covers how skills are launched and how a
+> new one is added, and points at the per-skill runbooks for those that need one.
 
 This repo is a collection of AI task automation skills, browsed and run with the `skills` Go TUI
 (a separate project, `skills-tui`). It is not a service, so most skills need no runbook — the ones
@@ -42,8 +42,8 @@ here.
 
 ## When to Use This Runbook
 
-- **Use when:** you need to find the runbook for a particular skill, or you need the general
-  launch procedure.
+- **Use when:** you need to find the runbook for a particular skill, you need the general launch
+  procedure, or you are adding a skill.
 - **Do NOT use when:** you are operating one specific skill — go straight to its own runbook in
   the list below.
 
@@ -95,6 +95,9 @@ bash ~/.claude/skills/<skill-name>/run.sh
 Skills without a `run.sh` are launched through the chooser, or by handing `SKILL.md` to Claude
 Code yourself.
 
+Inside a Claude Code session that is already open, type `/<skill-name>` instead. That loads the
+skill into the current session and does not start a new one.
+
 ### Step 3 — Keep skills out of model context (once per host, AI-52)
 
 **Why:** every model-invocable skill's description is loaded into every Claude Code session. This
@@ -115,6 +118,68 @@ bash ~/.claude/skills/sync-skill-overrides.sh           # add the missing overri
 The script only **adds** entries, backs up `settings.json` to `settings.json.bak-<timestamp>`
 first, and keeps the file's mode (`0600`). It reports stale entries (skills no longer on disk)
 but never deletes them. Restart open Claude Code sessions afterwards.
+
+### Step 4 — Add a new skill
+
+**Why:** every skill has the same shape, and three things break quietly when it does not: the
+chooser groups by `category:`, Claude Code matches `name:` to the directory, and a missing
+`disable-model-invocation` line puts the skill back into every session's context. These steps
+apply to whoever adds the skill: a person, an LLM, or a coding agent.
+
+**1. Create the directory and its two files.** The name is `<category>-<verb-noun>`, lowercase
+and hyphenated. Never use the `gsd-` prefix; it is gitignored.
+
+```bash
+cd ~/.claude/skills
+NAME=docker-prune-unused-images        # your skill's directory name
+mkdir "$NAME"
+cp template.md "$NAME/SKILL.md"
+cp food-make-me-a-bagel/run.sh "$NAME/run.sh"
+```
+
+That `run.sh` is the standard interactive wrapper, shared unchanged by most skills here. It
+finds the `claude` CLI, then starts a normal session with the `SKILL.md` content framed as the
+active task. It needs no editing. Write a different one only when the skill must run unattended
+or needs a credential broker around it; `youtrack-create-alert-ticket/run.sh` is an example.
+
+**2. Fill in `SKILL.md`.** Edit the frontmatter first:
+
+| Field | Rule |
+| --- | --- |
+| `name:` | Exactly the directory name |
+| `category:` | Lowercase, hyphenated slug matching the directory prefix, e.g. `docker`, `raspberry-pi-5` |
+| `description:` | One sentence |
+| `disable-model-invocation: true` | Leave it. Remove it only when Kevin has asked for a skill Claude may start on its own, and say why in the skill's `## Notes` |
+
+Then write the sections the template lists: the H1 title, the one-sentence blockquote,
+Prerequisites, Parameters (optional), Instructions as explicit numbered steps, Success Criteria,
+and Notes (optional). Helper scripts go in the same directory. Never put a secret, token, or
+password in any of these files; this repo is published on GitHub.
+
+**3. Update the documentation.** Add the directory to the tree under "Structure" in `README.md`.
+If the skill gets its own `RUNBOOK.md`, add it under "Subdirectory Runbooks" below.
+
+**4. Check it.**
+
+```bash
+head -6 "$NAME/SKILL.md"                          # name: must equal the directory name
+test -x "$NAME/run.sh" && echo "run.sh is executable"
+bash sync-skill-overrides.sh --check              # must end: ok: nothing to add
+skills                                            # the skill appears under its category
+```
+
+Also run the first command under "Verification" below; it must print nothing.
+
+**5. Commit on a branch and open a pull request against `main`.** Stage only the new directory and
+the documentation you changed. In Kevin's own workflow the branch is named for the YouTrack
+issue, and he merges the pull request himself.
+
+**A skill that belongs to `vanco-skills`** is created in that repository, not here. This repo
+then gets a relative symlink to it: add one entry to `LINKS` in `install.sh`, run
+`bash install.sh`, and commit the symlink.
+
+**If this fails:** a skill missing from the chooser has no `SKILL.md` or `run.sh`, or is matched
+by `.gitignore`. A `--check` that reports the new skill is missing the frontmatter flag.
 
 ---
 
