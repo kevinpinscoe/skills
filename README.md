@@ -190,7 +190,7 @@ layout (`FSM-3`), which solves the same underlying problem (distinguishing "mine
 Claude Code puts the name and description of every skill it may invoke on its own into the
 model's context at the start of **every** session. With ~40 skills here plus ~65 `gsd-*`
 plugin skills, that costs tokens in every session for skills that are only ever run on purpose,
-by typing `/<skill-name>` or through `skills`/`run.sh`. So none of them are model-invocable
+by typing `/<skill-name>` or through `skills`/`run.sh`. So none of those are model-invocable
 (AI-52):
 
 - **Skills this repo owns** set `disable-model-invocation: true` in their `SKILL.md`
@@ -202,6 +202,11 @@ by typing `/<skill-name>` or through `skills`/`run.sh`. So none of them are mode
   host's `~/.claude/settings.json`. That file is per-machine and never reaches git, so the
   script is **run once on each host** after pulling, and again after a `get-shit-done` update.
   See `RUNBOOK.md`.
+
+**The claude.ai skills under `synced/` are outside this rule.** They stay model-invocable, so
+Claude can start one on its own and their descriptions are loaded into each session. Neither
+mechanism above reaches them: this repo does not write their frontmatter, and
+`sync-skill-overrides.sh` does not look inside `synced/`.
 
 Neither change affects `/<skill-name>`, `skills`, or `run.sh`, which pass the `SKILL.md`
 content to `claude` directly. What changes is that Claude no longer starts a skill on its own.
