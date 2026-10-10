@@ -326,7 +326,7 @@ action, right after the create:
 
    ```bash
    parzival exec --as ai youtrack-claude-code -- \
-     yt-elapsed start --issue <KSI-n> --session <session UUID from this session's scratchpad path>
+     yt-elapsed start --recorder claude-code --issue <KSI-n> --session <session UUID from this session's scratchpad path>
    ```
 
    Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. **If it exits 2,
@@ -534,7 +534,7 @@ Every time work on the ticket stops, finished or not
 
    ```bash
    parzival exec --as ai youtrack-claude-code -- \
-     yt-elapsed stop --issue <KSI-n> --session <session UUID> \
+     yt-elapsed stop --recorder claude-code --issue <KSI-n> --session <session UUID> \
        --reason "triage complete, disposition: <disposition>" \
        --left-at "<where the investigation stands>"
    ```
