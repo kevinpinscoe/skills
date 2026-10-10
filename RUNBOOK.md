@@ -101,7 +101,7 @@ Code yourself.
 repo's own skills opt out in their frontmatter (`disable-model-invocation: true`, tracked). The
 untracked ones (`gsd-*`, `vanco-skills` symlinks) are opted out per host in
 `~/.claude/settings.json` → `skillOverrides`, which git never carries. See `README.md`, "Why
-every skill is user-invocable only".
+skills outside `synced/` are user-invocable only".
 
 Run after the first clone on a host, after pulling a change that adds a skill, and after a
 `get-shit-done` plugin update:

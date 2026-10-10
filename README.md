@@ -185,7 +185,7 @@ no-`run.sh` skill directory — it's now `Wont do`, superseded by this flat + `.
 layout (`FSM-3`), which solves the same underlying problem (distinguishing "mine" from
 "bundled") without needing `run.sh` presence as the signal.
 
-### Why every skill is user-invocable only
+### Why skills outside `synced/` are user-invocable only
 
 Claude Code puts the name and description of every skill it may invoke on its own into the
 model's context at the start of **every** session. With ~40 skills here plus ~65 `gsd-*`
