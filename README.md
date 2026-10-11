@@ -145,6 +145,9 @@ prefix back out of the name would be ambiguous).
 ├── task-management-os-todo/
 │   ├── SKILL.md
 │   └── run.sh
+├── task-management-reformat-finish-tasks-ticket-lists/
+│   ├── SKILL.md
+│   └── run.sh
 ├── youtrack-create-alert-ticket/
 │   ├── SKILL.md
 │   ├── create_alert_ticket.py
