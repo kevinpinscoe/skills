@@ -16,11 +16,13 @@ gitignored, and not one of the non-skill directories below. Each one must have:
 Additional sections are allowed anywhere. Headings inside fenced code blocks
 do not count.
 
-Symlinked skills (the vanco-skills bridges) are owned by another repository.
-They are reported in their own section and never fail the run; the check does
-not read through them. A link that does not resolve is reported as
-host-specific: the committed relative links resolve only when this repo is
-checked out at ~/.claude/skills.
+Symlinked skills (the vanco-skills bridges) are owned by another repository and
+are excluded from the owned-skill compliance checks: they are reported in their
+own section and never fail the run. Where a link resolves, the report still
+reads through it, to say which of SKILL.md and run.sh are present and whether
+the SKILL.md frontmatter sets disable-model-invocation; that is informational
+only. A link that does not resolve is reported as host-specific: the committed
+relative links resolve only when this repo is checked out at ~/.claude/skills.
 
 The script only reads. It runs no skill, changes no setting and writes no file.
 
