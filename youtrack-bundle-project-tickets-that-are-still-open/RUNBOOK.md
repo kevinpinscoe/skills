@@ -1,3 +1,12 @@
+---
+title: RUNBOOK.md — youtrack-bundle-project-tickets-that-are-still-open
+tags: [runbook, operations]
+vault_link: runbooks/home-kinscoe-.claude-skills-youtrack-bundle-project-tickets-that-are-still-open.md
+source_path: /home/kinscoe/.claude/skills/youtrack-bundle-project-tickets-that-are-still-open/RUNBOOK.md
+---
+
+> 📓 Indexed in the PKM knowledge vault at `runbooks/home-kinscoe-.claude-skills-youtrack-bundle-project-tickets-that-are-still-open.md` (symlink → this file).
+
 # RUNBOOK.md — youtrack-bundle-project-tickets-that-are-still-open
 
 ## Metadata
