@@ -14,7 +14,7 @@ source_path: /home/kinscoe/.claude/skills/RUNBOOK.md
 | Field | Value |
 | --- | --- |
 | **Owner** | Kevin Inscoe |
-| **Last Updated** | 2026-10-10 |
+| **Last Updated** | 2026-10-17 |
 | **Last Tested** | 2026-08-21 |
 | **Expected Duration** | Varies by skill |
 | **Risk Level** | Low — this repo holds prompts and wrappers, not services |
@@ -153,7 +153,8 @@ or needs a credential broker around it; `youtrack-create-alert-ticket/run.sh` is
 
 Then write the sections the template lists: the H1 title, the one-sentence blockquote,
 Prerequisites, Parameters (optional), Instructions as explicit numbered steps, Success Criteria,
-and Notes (optional). Helper scripts go in the same directory. Never put a secret, token, or
+and Notes (optional). A skill may add its own `##` sections — the template's note says where
+they go — but the listed ones stay in order. Helper scripts go in the same directory. Never put a secret, token, or
 password in any of these files; this repo is published on GitHub.
 
 **3. Update the documentation.** Add the directory to the tree under "Structure" in `README.md`.
