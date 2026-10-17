@@ -16,6 +16,9 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+# Importing the validator would otherwise write __pycache__/ into the repo root,
+# which the RUNBOOK's discovery check then reports as a non-skill directory.
+sys.dont_write_bytecode = True
 import validate_skills as vs  # noqa: E402
 
 GOOD = """---
