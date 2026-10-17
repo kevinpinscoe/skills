@@ -81,6 +81,18 @@ On the FLDW and `core`, `yt-export` gets its token through `parzival get --as yo
 
 Kevin runs every export himself. **He runs it in his own terminal, not with the `!` prefix in this session.** A `!` command runs inside the agent's shell, and `parzival get` refuses there.
 
+### Out of scope for this skill
+
+Each of these belongs to the POE ticket, so the agent running this skill **does not**:
+
+- run any recursive `rg`/`ripgrep`/`ugrep` search;
+- edit Markdown references;
+- write the rewrite utility;
+- restore rewritten historical text;
+- work the POE ticket.
+
+Bypassing the human-only `rg` wrapper or the Parzival boundary is out of scope for everyone.
+
 ### Steps
 
 1. **Ask for the source issue.** Prompt Kevin for `SOURCE_ID`. Validate and normalise it with `python3 $H/yt_move.py check-id <SOURCE_ID>`. That step is a format check only and makes no API call. Refer to the result as `OLD`.
@@ -206,14 +218,6 @@ Kevin runs every export himself. **He runs it in his own terminal, not with the 
 
 ## Notes
 
-- **Out of scope for this skill. Each of these belongs to the POE ticket:**
-  - running any recursive `rg`/`ripgrep`/`ugrep` search;
-  - editing Markdown references;
-  - writing the rewrite utility;
-  - restoring rewritten historical text;
-  - working the POE ticket.
-
-  Bypassing the human-only `rg` wrapper or the Parzival boundary is out of scope for everyone.
 - **The artifact classifier is deliberately conservative. Do not tune it to match a hand count.** It looks at paths, `-suffix` names, branch, worktree and command words, commit-subject prefixes and code spans. On the real KSA-81 data it put 150 of 233 rewrites in kind B, where an earlier hand estimate was about 111. A false positive costs one human check in Part B. A false negative would leave a real branch, path or commit identifier silently wrong. Part B's per-location approval is the safety mechanism. **Code wins over URLs** (Kevin, 2026-10-09, AI-80): a rewritten issue URL inside a fenced code block or inline code is kind B, while an issue URL in prose stays kind A. Code means Markdown code as CommonMark defines it, closely: backtick (```` ``` ````) or tilde (`~~~`) fences, closed only by the same character at least as long, and inline spans opened and closed by equal-length backtick runs (`` `x` ``, ``` ``x`` ```). Prose after a closing delimiter is prose again. Kind B means per-location review, not automatic restoration. Part B keeps genuine issue references as `NEW` and restores `OLD` only where Kevin approves preserving a literal command, example or historical record. A code URL left as `OLD` is not a rewrite and needs no review.
 - **Who creates the rewrite utility is decided by repository state, never by ticket.** Part A's A3 has three cases.
   - **Case 1:** the utility is tracked on `private-tools` main. The ticket validates it, runs its tests and reuses it.

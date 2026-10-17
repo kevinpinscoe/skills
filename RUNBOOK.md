@@ -153,9 +153,13 @@ or needs a credential broker around it; `youtrack-create-alert-ticket/run.sh` is
 
 Then write the sections the template lists: the H1 title, the one-sentence blockquote,
 Prerequisites, Parameters (optional), Instructions as explicit numbered steps, Success Criteria,
-and Notes (optional). A skill may add its own `##` sections — the template's note says where
-they go — but the listed ones stay in order. Helper scripts go in the same directory. Never put a secret, token, or
-password in any of these files; this repo is published on GitHub.
+and Notes (optional). Those keep that relative order. Additional `##` sections may go wherever
+they help a reader understand or carry out the skill, but anything that governs a step —
+a prerequisite, a restriction, or the conditions for an unattended invocation — goes before
+the step it governs, so an agent reads it before acting. Delete the template's guidance note
+from the finished skill. Helper scripts, tests and a skill's own `RUNBOOK.md` go in the same
+directory. Never put a secret, token, or password in any of these files; this repo is
+published on GitHub.
 
 **3. Update the documentation.** Add the directory to the tree under "Structure" in `README.md`.
 If the skill gets its own `RUNBOOK.md`, add it under "Subdirectory Runbooks" below.
@@ -163,13 +167,13 @@ If the skill gets its own `RUNBOOK.md`, add it under "Subdirectory Runbooks" bel
 **4. Check it.**
 
 ```bash
-head -6 "$NAME/SKILL.md"                          # name: must equal the directory name
-test -x "$NAME/run.sh" && echo "run.sh is executable"
-bash sync-skill-overrides.sh --check              # must end: ok: nothing to add
-skills                                            # the skill appears under its category
+python3 validate_skills.py                        # compliance: must end "N of N owned skills comply"
+bash sync-skill-overrides.sh --check              # this host: must end "ok: nothing to add"
+skills                                            # this host: the skill appears under its category
 ```
 
-Also run the first command under "Verification" below; it must print nothing.
+`validate_skills.py` is the compliance check and works in any clone. The other two are checks
+of this host's `~/.claude/skills`; "Verification" below explains the split.
 
 **5. Commit on a branch and open a pull request against `main`.** Stage only the new directory and
 the documentation you changed. In Kevin's own workflow the branch is named for the YouTrack
@@ -179,12 +183,52 @@ issue, and he merges the pull request himself.
 then gets a relative symlink to it: add one entry to `LINKS` in `install.sh`, run
 `bash install.sh`, and commit the symlink.
 
-**If this fails:** a skill missing from the chooser has no `SKILL.md` or `run.sh`, or is matched
-by `.gitignore`. A `--check` that reports the new skill is missing the frontmatter flag.
+**If this fails:** each `FAIL` line from `validate_skills.py` names the problem to fix. A skill
+missing from the chooser has no `SKILL.md` or `run.sh`, or is matched by `.gitignore`. A
+`--check` that reports the new skill means it is missing the frontmatter flag.
 
 ---
 
 ## Verification
+
+The checks fall into two groups. **Portable repository checks** look only at the files in a
+clone, so they give the same answer in any checkout on any host: `~/.claude/skills`, the work
+Mac's `~/Projects/public/skills`, or an `ai-wt/` worktree. **Host-specific checks** look at
+this host's `~/.claude/skills` and at state git never carries: what the chooser lists, whether
+the `vanco-skills` links resolve, and `~/.claude/settings.json`.
+
+Discovery and compliance are different questions. The chooser lists any directory holding a
+`SKILL.md` **or** a `run.sh`, so being listed proves only that a skill can be found. Compliance
+is stricter: an owned skill needs **both** files, an executable `run.sh`, and the frontmatter and
+sections in `template.md`.
+
+### Portable repository checks
+
+```bash
+python3 validate_skills.py          # from the repository root
+python3 test_validate_skills.py     # the validator's own tests
+```
+
+**Expected output:** the validator ends `N of N owned skills comply` and exits 0; the tests end
+`OK`.
+
+**Success criteria:** every owned skill — a real top-level directory that is not a symlink, not
+gitignored, and not `synced/`, `ai-wt/`, a `gsd-*` directory or a dot-directory — has
+`SKILL.md` and an executable `run.sh`, frontmatter with `name:` equal to the directory name, a
+`category:` slug that prefixes it, `description:` and `disable-model-invocation: true`, an H1,
+a `>` blockquote, and Prerequisites, Instructions and Success Criteria in order (Parameters and
+Notes optional). Additional sections are allowed. A `FAIL` line names each problem, and the run
+exits 1.
+
+The validator only reads. It runs no skill, changes no setting, and writes no file. It does not
+follow the `vanco-skills` symlinks to identify skills: it lists them separately as linked
+skills, which never fail the run. A link it reports as `does not resolve here` is **expected**
+anywhere except `~/.claude/skills` on the FLDW layout, because the committed relative links
+assume that location (see `README.md`, "Skills bridged in from `vanco-skills`").
+
+### Host-specific checks
+
+Discovery — what the chooser will list on this host:
 
 ```bash
 find ~/.claude/skills -mindepth 1 -maxdepth 1 \( -type d -o -type l \) \
@@ -192,21 +236,28 @@ find ~/.claude/skills -mindepth 1 -maxdepth 1 \( -type d -o -type l \) \
   xargs -I{} sh -c 'test -e "{}/SKILL.md" -o -e "{}/run.sh" || echo "{}"'
 ```
 
-**Expected output:** nothing.
+**Expected output:** nothing. **Success criteria:** every directory and link the chooser would
+consider holds a `SKILL.md` or a `run.sh`. Any path printed is a directory the TUI will not
+list, or a `vanco-skills` link whose target is missing on this host. This says nothing about
+compliance; that is the validator's job.
 
-**Success criteria:** every skill directory contains a `SKILL.md` or a `run.sh`. Any path printed
-is a directory the TUI will not list, or a `vanco-skills` symlink whose target is missing. The
-command leaves out `gsd-*`, the dot-directories, `ai-wt/` and `synced/`, none of which is a skill
-directory.
+Model invocation — this host's `skillOverrides`:
 
 ```bash
 bash ~/.claude/skills/sync-skill-overrides.sh --check
 ```
 
-**Expected output:** ends `ok: nothing to add`, exit 0. **Success criteria:** no skill on this
-host is model-invocable. In a new Claude Code session, the skill list the model is shown
-contains none of this repo's skills and no `gsd-*` skill, while `/<skill-name>` still runs each
-one.
+**Expected output:** ends `ok: nothing to add`, exit 0. **Success criteria:** every top-level
+skill directory under `~/.claude/skills` that has a `SKILL.md` on this host is user-invocable
+only: this repo's owned skills through their frontmatter flag, and the `gsd-*` plugin skills and
+the resolving `vanco-skills` links through a `skillOverrides` entry. The check skips a link
+whose target is missing here, and it covers nothing outside `~/.claude/skills`'s top level.
+
+**The `synced/` exception still holds.** The claude.ai skills under `synced/` are deliberately
+model-invocable, and neither this check nor the validator looks inside `synced/` (`README.md`,
+"Why skills outside `synced/` are user-invocable only"). In a new Claude Code session, the skill
+list the model is shown contains none of this repo's skills and no `gsd-*` skill, while
+`/<skill-name>` still runs each one. The `synced/` skills may still appear in that list.
 
 ---
 
@@ -244,6 +295,8 @@ repo owns. The other five `youtrack-*` skills are owned here and have no runbook
 | Symptom | Likely Cause | Resolution |
 | --- | --- | --- |
 | A skill is not listed in the chooser | No `run.sh`/`SKILL.md`, or excluded by `.gitignore` | Add one, check `.gitignore`, or launch its `run.sh` directly |
+| `validate_skills.py` reports `FAIL` for a skill the chooser lists | Listing needs only one of `SKILL.md`/`run.sh`; compliance needs both and the template's structure | Fix each problem the `FAIL` lines name; the chooser listing it is not evidence it complies |
+| `validate_skills.py` fails a new top-level directory that is not a skill | The directory is not in the validator's `NON_SKILL_DIRS` and is not gitignored | Gitignore it if it is local junk, or add it to `NON_SKILL_DIRS` if it is tracked infrastructure |
 | `claude: command not found` in a `run.sh` | Non-interactive shell without `~/.local/bin` on `PATH` | The wrappers call `$HOME/.local/bin/claude` by absolute path; update the path if the CLI moved |
 | A `vanco-skills` symlink (`jira-*`, some `youtrack-*`) is broken or missing | `vanco-skills` was moved, the link was clobbered, or it is an old absolute link | Run `bash ~/.claude/skills/install.sh`; it recreates the relative link (`../../Projects/private/vanco-skills/skills/<name>`) and reports `ok` for correct ones |
 | `install.sh` prints `skip: … is not ~/.claude/skills` | The clone is elsewhere (the work Mac's `~/Projects/public/skills`, or an `ai-wt/` worktree), where the committed relative links cannot resolve | Expected — nothing was changed. On the Mac, `~/.claude/skills` is wired by `~/Projects/private/vanco-skills/wire-claude-skills.sh`. Set `VANCO_ROOT` only for a deliberate local rewrite |
@@ -294,3 +347,6 @@ journalctl --user -u <skill-name>.service -n 100
     dropped entirely during the FSM-3 flattening rather than migrated — nothing to track here now.
   - `synced/` changes whenever Claude Code syncs the claude.ai skills, which leaves the working
     tree modified until the change is committed as a `chore: sync claude.ai …` commit.
+  - `validate_skills.py` encodes `template.md`'s required sections and order, and the list of
+    tracked non-skill directories (`NON_SKILL_DIRS`). A change to either has to be made in the
+    validator and its tests in the same pull request.

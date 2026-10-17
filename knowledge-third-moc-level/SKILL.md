@@ -151,6 +151,40 @@ mirrored by each parent's `## Child MOCs` section. There is **no separate map fi
   it on 2026-07-24 — and PKM has no such hook at all. A new MOC is therefore invisible in
   both maps until the scripts are run, which is what Step 13 exists to do.
 
+## Unattended parameterized invocation
+
+This skill is normally interactive. When it is invoked **headlessly by
+`scripts/moc-navigator.py`** in the PCM repo (via `claude -p`), it runs UNATTENDED with
+parameters supplied in the prompt. In that mode, follow these rules instead of the
+interactive prompts in the numbered Instructions:
+
+- **No questions.** Do not pause for human input. The root directive's confirmation
+  requirement is waived for this automated invocation — it declares itself unattended.
+- **Skip the terminal tab naming** (before Step 1 and in Step 15) — this runs headlessly
+  from a script, not in Kevin's own interactive terminal.
+- **Parameters** (read from the invoking prompt):
+  - `MOC_NAME` — the focus area. Use it as `FOCUS_AREA` (Step 5).
+  - `DISPLAY_TITLE` — the title/link text (Step 6). If absent, title-case `MOC_NAME`.
+  - `PARENT_SLUG` — the **second-level** parent MOC's filename slug.
+- **Skip Steps 1 and 3 (both choosers).** The second-level parent is `PARENT_SLUG`; read
+  its frontmatter per Step 4 (title, classification, classification_label).
+- **Slug** — lowercase-hyphenate `MOC_NAME` per Step 7.
+- **LCC classification (Step 8)** — search for a deeper class, then **auto-select the best
+  match without asking**, reusing the parent's classification if none clearly fits. Do not
+  block on ambiguity.
+- **Execute Steps 9–15 exactly as written** — create both vault files, update the
+  second-level parent MOC in both vaults, commit and push. Do **not** modify `home.md`.
+- **Step 13 (the MOC map rebuild) is not skipped — it is auto-accepted.** Do not ask;
+  run both `create-moc-map.sh` generators and include each vault's regenerated
+  `moc-map.md` in that vault's commit. An unattended run is exactly the case where a
+  stale map would otherwise go unnoticed.
+- **Skip Step 16** (the interactive offer to create a note).
+- **Final line** — after the completion report, print exactly `MOC-CREATED <slug>` on its
+  own line so the caller can confirm success.
+
+When invoked interactively (no parameters in the prompt), ignore this section and follow
+the numbered Instructions below as usual.
+
 ## Instructions
 
 Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name MOC`. If the command is not on `PATH`, skip this step silently.
@@ -366,40 +400,6 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
       - `deepest_lbl` = this MOC's `classification_label`
 
       Then continue from the note skill's "ask for the note title" step onward. The note will inherit this MOC's LCC classification and be linked back into its `## Notes` section in the chosen vault.
-
-## Unattended parameterized invocation
-
-This skill is normally interactive. When it is invoked **headlessly by
-`scripts/moc-navigator.py`** in the PCM repo (via `claude -p`), it runs UNATTENDED with
-parameters supplied in the prompt. In that mode, follow these rules instead of the
-interactive prompts in the numbered Instructions:
-
-- **No questions.** Do not pause for human input. The root directive's confirmation
-  requirement is waived for this automated invocation — it declares itself unattended.
-- **Skip the terminal tab naming** (before Step 1 and in Step 15) — this runs headlessly
-  from a script, not in Kevin's own interactive terminal.
-- **Parameters** (read from the invoking prompt):
-  - `MOC_NAME` — the focus area. Use it as `FOCUS_AREA` (Step 5).
-  - `DISPLAY_TITLE` — the title/link text (Step 6). If absent, title-case `MOC_NAME`.
-  - `PARENT_SLUG` — the **second-level** parent MOC's filename slug.
-- **Skip Steps 1 and 3 (both choosers).** The second-level parent is `PARENT_SLUG`; read
-  its frontmatter per Step 4 (title, classification, classification_label).
-- **Slug** — lowercase-hyphenate `MOC_NAME` per Step 7.
-- **LCC classification (Step 8)** — search for a deeper class, then **auto-select the best
-  match without asking**, reusing the parent's classification if none clearly fits. Do not
-  block on ambiguity.
-- **Execute Steps 9–15 exactly as written** — create both vault files, update the
-  second-level parent MOC in both vaults, commit and push. Do **not** modify `home.md`.
-- **Step 13 (the MOC map rebuild) is not skipped — it is auto-accepted.** Do not ask;
-  run both `create-moc-map.sh` generators and include each vault's regenerated
-  `moc-map.md` in that vault's commit. An unattended run is exactly the case where a
-  stale map would otherwise go unnoticed.
-- **Skip Step 16** (the interactive offer to create a note).
-- **Final line** — after the completion report, print exactly `MOC-CREATED <slug>` on its
-  own line so the caller can confirm success.
-
-When invoked interactively (no parameters in the prompt), ignore this section and follow
-the numbered Instructions above as usual.
 
 ## Success Criteria
 
