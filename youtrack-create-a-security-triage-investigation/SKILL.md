@@ -320,12 +320,20 @@ action, right after the create:
    tmux. Otherwise skip it silently.
 2. **`Ghostty tab name` field:** write `<KSI-n>`. If step 1 was skipped, leave the field empty.
    An empty field is the record that the host skipped the rule.
-3. **Start comment.** Read the clock in the same action as the post:
+3. **Start record.** The start is one command, and it works only on a host `yt-elapsed`
+   supports (the FLDW today; see `~/private-tools/yt-elapsed-hosts.json`). It runs the `doctor`
+   preflight, reads the clock, and posts the start comment with its ledger record:
 
-   ```text
-   Work started 2026-09-25 08:41
-   Session: <session UUID from this session's scratchpad path>
+   ```bash
+   parzival exec --as ai youtrack-claude-code -- \
+     yt-elapsed start --recorder claude-code --issue <KSI-n> --session <session UUID from this session's scratchpad path>
    ```
+
+   Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. **If it exits 2,
+   do not start the investigation** — whatever the reason: the host is not Supported (`core`
+   until made Supported), the Parzival profile is absent, the identity does not match, or the
+   maintenance flag is set. Tell Kevin what `doctor` reported and stop. There is no fallback:
+   no hand-written start comment, and no write to `Elapsed time` or `Spent time`.
 
 4. **Checkpoint.** An investigation usually runs long. It is not inside a git repository, so
    **do not create a `CHECKPOINT.md` yourself**. Ask Kevin whether he wants one, and where: the
@@ -522,23 +530,22 @@ If and only if the disposition is **Confirmed security or access-control failure
 Every time work on the ticket stops, finished or not
 (`when-creating-a-youtrack-ticket.md` §5 and §9):
 
-1. **Stop comment and `Spent time` in the same action.** Read the clock with
-   `date '+%Y-%m-%d %H:%M'`. Post the comment:
-
-   ```text
-   Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>
-   Spent time 84m — elapsed span, not yet reconciled to effort
-   ```
-
-   Then **add** the elapsed span to `Spent time`, in minutes (`<N>m`). Read the current value
-   first and add to it; never overwrite an earlier session's time:
+1. **Stop record:**
 
    ```bash
-   export F='{"customFields":[{"name":"Spent time","$type":"PeriodIssueCustomField","value":{"presentation":"<total>m"}}]}'
+   parzival exec --as ai youtrack-claude-code -- \
+     yt-elapsed stop --recorder claude-code --issue <KSI-n> --session <session UUID> \
+       --reason "triage complete, disposition: <disposition>" \
+       --left-at "<where the investigation stands>"
    ```
 
-   If the session is being shut down (for a storm, a power outage, or a reboot), write the stop
-   comment **first**, before anything else.
+   It posts `Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>` with
+   its ledger record, then writes and verifies `Elapsed time`. **Do not write `Spent time`.** It
+   is effort, and only Kevin writes it. If YouTrack is unreachable, the stop is spooled
+   (`SPOOLED`); tell Kevin.
+
+   If the session is being shut down (for a storm, a power outage, or a reboot), record the stop
+   **first**, before anything else.
 2. **Report to Kevin** (see "Report format" below).
 3. **Ask whether to close the ticket.** Never close it on your own judgement. Once he approves,
    set `Status` to `Done`. If the investigation is abandoned, set it to `Wont do` with the same
@@ -602,8 +609,9 @@ Also:
 - `Status` was `In Progress` from creation. `Date time entered`, `Priority` (Kevin's choice),
   `Issue domain`, and `Assignee` read back correctly.
 - The live value-list check in step 3 ran before the create, and passed.
-- Start and stop comments exist, with clock-read times. `Spent time` holds at least this
-  session's elapsed span.
+- The start and stop exist as `yt-elapsed` records with clock-read times, and
+  `yt-elapsed reconcile --issue <KSI-n> --check` exits 0, so `Elapsed time` matches the ledger
+  (invariant I1). `Spent time` was not written by this session.
 - No state-changing action was taken without Kevin's explicit authorization, and any that was
   taken is recorded on the ticket.
 - For a confirmed failure, an incident report exists under the incident directive, and it and the
