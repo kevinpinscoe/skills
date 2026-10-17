@@ -9,14 +9,10 @@ disable-model-invocation: true
 
 > One sentence describing what this skill does.
 
-_The `##` sections below are required (Parameters and Notes optional) and stay in this order.
-A skill may add its own `##` sections between them where it needs them:_
-
-- _**Before Prerequisites** — scope or orientation the reader must take in first (e.g. `Scope`)_
-- _**Before Instructions** — reference material the steps rely on (e.g. `Background`, naming rules)_
-- _**After Instructions, before Success Criteria** — rules that apply while executing (e.g. `Guardrails`)_
-
-_Delete this note and the list above from the finished skill._
+_Required sections must retain this relative order: Prerequisites → Parameters (if present) →
+Instructions → Success Criteria → Notes (if present). Additional sections may appear wherever
+they improve understanding or execution. Place prerequisites, restrictions, and invocation
+conditions before the steps they govern. Delete this guidance from the finished skill._
 
 ## Prerequisites
 
