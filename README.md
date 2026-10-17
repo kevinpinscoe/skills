@@ -151,6 +151,12 @@ prefix back out of the name would be ambiguous).
 ├── task-management-os-todo/
 │   ├── SKILL.md
 │   └── run.sh
+├── youtrack-bundle-project-tickets-that-are-still-open/
+│   ├── SKILL.md
+│   ├── RUNBOOK.md
+│   ├── bundle.py             # selection, yt-export per issue, overview; gather writes the bundle
+│   ├── run.sh
+│   └── test_bundle.py        # offline tests
 ├── youtrack-check-for-duplicate-tickets-and-tag/       # symlink → vanco-skills
 ├── youtrack-create-a-security-triage-investigation/
 │   ├── SKILL.md

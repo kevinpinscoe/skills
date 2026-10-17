@@ -280,13 +280,15 @@ list the model is shown contains none of this repo's skills and no `gsd-*` skill
 ## Subdirectory Runbooks
 
 - [`project-review-all-checkpoints/RUNBOOK.md`](project-review-all-checkpoints/RUNBOOK.md) — reviews every `CHECKPOINT.md` on this host; on demand, not scheduled
+- [`youtrack-bundle-project-tickets-that-are-still-open/RUNBOOK.md`](youtrack-bundle-project-tickets-that-are-still-open/RUNBOOK.md) — bundles one YouTrack project's open issues (complete `yt-export` output) into `~/tmp/gather-youtrack-project-<name>.md`; on demand, read-only, tests run with `python3 test_bundle.py`
 
 **Not listed here:** the `jira-*` skills, `daily-run-through-my-os-todo`, and nine of the
 `youtrack-*` skills are symlinks into `~/Projects/private/vanco-skills/skills/` (`install.sh` has
 the full list). Their skills and runbooks belong to that repository and are maintained there — per
 `when-creating-a-runbook.md` step 4, a runbook for a tool in another repo is updated in that tool's
 own repo. They appear in the chooser because the TUI follows the symlinks; they are not files this
-repo owns. The other five `youtrack-*` skills are owned here and have no runbook of their own.
+repo owns. The other six `youtrack-*` skills are owned here. Only
+`youtrack-bundle-project-tickets-that-are-still-open` has a runbook of its own, listed above.
 
 ---
 
