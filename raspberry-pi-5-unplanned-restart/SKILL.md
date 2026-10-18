@@ -15,7 +15,8 @@ disable-model-invocation: true
 - Run on the host itself (`hostname` = `core`), or with `journalctl` access to its logs.
 - `journalctl` (systemd-journald) with persistent logging enabled.
 - `vcgencmd` (Raspberry Pi firmware tools) for throttle/undervoltage flags.
-- Write access to `~/Projects/private/host-rpi5-core-config/` (the config repo).
+- Write access to `~/Projects/private/host-rpi5-core-config/` (the config repo), a
+  YouTrack issue for the work, and — to open the pull request — a working `tea`.
 
 ## Parameters
 
@@ -60,7 +61,7 @@ signals, then classify.
    journalctl -b 0 --no-pager | grep -iE "rpi_rtc|setting system clock|fake-hwclock|Initial clock synchronization|time.*advanced"
    ```
    - RTC **`setting system clock to 1970-01-01…`** (reset to epoch) → **real power loss.**
-     The Pi 5's RTC only zeroes when the input rail is removed; a watchdog reset or a
+     The Pi 5's RTC keeps its time across software restarts (seen on this host) and loses it when power is removed; a watchdog reset or a
      software hang would **not** wipe it. This is the strongest single signal that power
      was removed — but it says nothing about **why**. A hung host that someone then
      power-cycles resets the RTC the same way, so combine it with step 2's kernel-fault
@@ -117,9 +118,20 @@ signals, then classify.
    Where more than one row matches, the **earliest causal event** wins: an Oops hours
    before a power cycle is the cause, and the power cycle is how the host recovered.
 
-8. **Write the post-mortem.** Create a dated folder and `README.md` in the config repo:
+8. **Write the post-mortem on a feature branch, in a worktree — never on `main`.** The
+   work needs a YouTrack issue (ask Kevin for it if there is none). Follow
+   `~/ai/directives/when-working-in-a-git-tracked-repo.md`: first check the repo's
+   `CHECKPOINT.md`, then create the worktree and branch from the issue key, and record it
+   on the issue:
    ```bash
-   mkdir -p ~/Projects/private/host-rpi5-core-config/unplanned-restarts/<EVENT_TS>
+   cd ~/Projects/private/host-rpi5-core-config
+   git fetch origin
+   git worktree add ai-wt/<ISSUE-ID> -b <ISSUE-ID> origin/main
+   cd ai-wt/<ISSUE-ID>
+   ```
+   Then create a dated folder and `README.md` inside that worktree:
+   ```bash
+   mkdir -p unplanned-restarts/<EVENT_TS>
    # write <EVENT_TS>/README.md — mirror the structure of the newest existing entry:
    #   What this is · Timeline · Evidence (per class) · Conclusion · Follow-ups · Raw evidence
    ```
@@ -129,13 +141,22 @@ signals, then classify.
    `~/ai/directives/readme-template.md`.
    Then **add a row** to `unplanned-restarts/README.md` (the incident index table).
 
-9. **Commit and push** the config repo (Kevin prefers commit + immediate push):
+9. **Commit, push the branch, and open a pull request — Kevin reviews and merges it.**
+   Run `mdlint-fix` on the new README and the index first.
    ```bash
-   cd ~/Projects/private/host-rpi5-core-config
+   # inside ~/Projects/private/host-rpi5-core-config/ai-wt/<ISSUE-ID>
    git add unplanned-restarts/
-   git commit -m "docs: log unplanned restart <EVENT_TS> and analysis"
-   git push
+   git commit -m "docs: log unplanned restart <EVENT_TS> and analysis (<ISSUE-ID>)"
+   git push -u origin <ISSUE-ID>
+   tea pulls create --base main --head <ISSUE-ID> --title "<ISSUE-ID>: ..."
    ```
+   - **Never push to `main` and never merge the pull request yourself.** Kevin merges it.
+   - Record each commit and the pull request on the YouTrack issue.
+   - Hand back the pull request's **full URL** as bare text.
+   - If `tea` cannot authenticate (for example the `parzival` `tea` profile is missing on
+     the host), **stop and report it.** Do not create or copy a credential to get around it.
+     Push the branch and give Kevin the compare URL,
+     `https://git.kevininscoe.com/kinscoe/host-rpi5-core-config/compare/main...<ISSUE-ID>`.
 
 10. **Report** to the user: the verdict (one line), the bracketed outage window, which
     root-cause classes were ruled in/out, and the path to the new folder.
@@ -145,7 +166,8 @@ signals, then classify.
 - A verdict with a named root-cause class, backed by the RTC/shutdown/storage/voltage
   signals — not a guess.
 - `unplanned-restarts/<EVENT_TS>/README.md` exists and the index table has its row.
-- Config repo committed and pushed.
+- The post-mortem is committed on a feature branch and pushed, with a pull request open
+  (or the compare URL handed to Kevin). Nothing is pushed to `main` or merged by the agent.
 
 ## Notes
 
