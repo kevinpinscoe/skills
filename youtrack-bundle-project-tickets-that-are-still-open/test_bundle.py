@@ -169,7 +169,7 @@ class Selection(unittest.TestCase):
         self.assertEqual(foreign, ["AI-9"])
 
     def test_selection_does_not_use_resolution(self):
-        # A Done issue that YouTrack never resolved (Category set) is still excluded.
+        # A Done issue that YouTrack never resolved (the pre-POE-56 Category veto) is still excluded.
         done_unresolved = list_issue("POE-1", "Done")
         done_unresolved["resolved"] = None
         self.assertEqual(bundle.select_open([done_unresolved], "POE")[0], [])

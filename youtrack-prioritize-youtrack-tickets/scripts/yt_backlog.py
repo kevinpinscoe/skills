@@ -25,8 +25,9 @@ Nothing is written during resolve-project, collect or read-issue. apply is the
 only subcommand that writes, and --dry-run lists its operations without writing.
 
 Open backlog means Status is neither Done nor the do-not-do value. It is decided
-from the Status field itself, never from `resolved`: on this instance a set
-Category keeps a Done issue unresolved, and `Wont do` is not a resolved state
+from the Status field itself, never from `resolved`, so it does not depend on
+bundle configuration. Until 2026-10-19 (POE-56) a set Category kept Done issues
+unresolved and `Wont do` was not a resolved state
 (~/Projects/private/youtrack.kevininscoe.com/reference/custom-fields.md).
 
 The token never passes through this script: API calls shell out to curl with

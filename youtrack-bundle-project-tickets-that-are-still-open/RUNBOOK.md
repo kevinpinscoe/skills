@@ -167,9 +167,11 @@ Not applicable. This is an on-demand, human-started skill, not a scheduled job o
 
 ## Maintenance Notes
 
-- Selection is by exact `Status` names. Never `#Unresolved`: on 2026-10-17 `POE` gave 13 by
-  `Status` and 16 by `#Unresolved`, because `Done` issues with a `Category` set stay
-  unresolved.
+- Selection is by exact `Status` names, never `#Unresolved`, so it does not depend on bundle
+  configuration. Before POE-56 (2026-10-19) the two disagreed: on 2026-10-17 `POE` gave 13 by
+  `Status` and 16 by `#Unresolved`, because `Done` issues with a `Category` set stayed
+  unresolved. They should agree now, and the tests still cover a `Done` issue with no
+  `resolved` timestamp.
 - The dependency overview reads only the exports' `Dependency Metadata` JSON (schema
   `yt-export.dependency-metadata/1`). If the exporter's schema changes, update `parse_export`
   and `analyse` together, and rerun `python3 test_bundle.py`.

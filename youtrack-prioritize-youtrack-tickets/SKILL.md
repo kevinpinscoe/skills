@@ -67,7 +67,7 @@ Take `PROJECT` from the invocation when one was given (`/youtrack-prioritize-you
    - the tickets in `status_unknown`. They are not ranked and not dropped: list them for Kevin to fix;
    - the epic state: `none`, `one`, or `multiple`.
 
-   Open is decided from the `Status` field. The helper never uses `resolved`, `#Unresolved` or `#Resolved`, because on this instance a set `Category` keeps `Done` tickets unresolved and `Wont do` is not a resolved state. `analysis.resolved_flag_disagrees` lists the tickets where the flag would have given the wrong answer.
+   Open is decided from the `Status` field. The helper never uses `resolved`, `#Unresolved` or `#Resolved`, so the result never depends on how the bundles mark resolved states. Until 2026-10-19 (POE-56) the flag was wrong on this instance: a set `Category` kept `Done` tickets unresolved, and `Wont do` was not a resolved state. `analysis.resolved_flag_disagrees` lists any ticket where the flag and `Status` disagree. It should now be empty, and a non-empty list means the bundles have drifted.
 
 3. **Evaluate every eligible ticket.** For each entry in `analysis.eligible`, read its summary, description, comments, fields and links from the snapshot. Assess:
    - **The work:** what is required, the acceptance criteria, and whether the scope is unclear, duplicated, obsolete, or apparently already implemented.
