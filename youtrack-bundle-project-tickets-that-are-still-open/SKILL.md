@@ -28,9 +28,11 @@ from the Dependency Metadata those exports already carry.
 - **Read-only against YouTrack.** Never change an issue, status, priority, dependency,
   assignment or comment while running this skill — not even to fix something the bundle shows.
 - **Selection is by `Status` (`157-2`) only**: everything except exactly `Done` and `Wont do`
-  (no apostrophe). Never substitute `#Unresolved` or the `resolved` timestamp. A set `Category`
-  keeps `Done` issues unresolved, and `Wont do` is not a resolved state. On 2026-10-17 `POE`
-  had 13 issues by Status and 16 by `#Unresolved`.
+  (no apostrophe). Never substitute `#Unresolved` or the `resolved` timestamp: `Status` names
+  the exact states, and the selection must not depend on how the bundles are configured. Until
+  2026-10-19 (POE-56) the two disagreed, because a set `Category` kept `Done` issues unresolved
+  and `Wont do` was not a resolved state. On 2026-10-17, `POE` had 13 issues by Status and 16
+  by `#Unresolved`.
 - Never run `parzival get`, read the token, or reach for another credential. If the brokered
   call is refused, stop and report it.
 - Do not summarise, trim or rewrite any export. The bundle is evidence for a later session.

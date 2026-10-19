@@ -314,7 +314,7 @@ class Pagination(Base):
 
 class Eligibility(Base):
     def test_status_decides_and_the_resolved_flag_does_not(self):
-        self.yt.add("GLASS-1", status="Done", resolved=None)        # Category veto: unresolved
+        self.yt.add("GLASS-1", status="Done", resolved=None)        # pre-POE-56 Category veto
         self.yt.add("GLASS-2", status="Wont do", resolved=None)     # not a resolved state
         self.yt.add("GLASS-3", status="In Progress", resolved=123)  # flag says resolved
         self.yt.add("GLASS-4", status="BLOCKED")

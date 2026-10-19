@@ -379,9 +379,8 @@ def render_header(ctx: dict[str, Any]) -> str:
         f"- **Exported:** {ctx['timestamp']} on `{ctx['host']}`",
         "- **Selection:** every issue in this project whose `Status` (`157-2`) is neither "
         "`Done` nor `Wont do` (exact configured spellings, checked against the live Status "
-        "bundle). Selection is by `Status`, not `#Unresolved`: a set `Category` keeps `Done` "
-        "issues unresolved, and `Wont do` is not a resolved state, so `#Unresolved` would "
-        "select a different set.",
+        "bundle). Selection is by `Status`, not `#Unresolved`, so it does not depend on how "
+        "the bundles mark resolved states.",
         f"- **Configured Status values:** {', '.join(ctx['status_names'])}",
         f"- **Issues in project:** {ctx['scanned']} — by Status: "
         + ", ".join(f"{k} {v}" for k, v in sorted(ctx["counts"].items())),
