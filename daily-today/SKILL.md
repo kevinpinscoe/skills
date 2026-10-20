@@ -78,16 +78,31 @@ disable-model-invocation: true
    If `hostname` cannot be resolved, report the command output and stop.
 
 3. **Run check-git-repos** — discover repos that need attention:
-   - **On `work-macbook` (`$TODO_HOST=mac`) the binary cannot run, and must not be installed.**
+   - **On `work-macbook` (`$TODO_HOST=mac`, running locally on the Mac itself), use the locally
+     installed binary at the absolute path `/Users/kevini/.local/bin/check-git-repos` — never
+     the one `command -v check-git-repos` resolves on `PATH`.** Invoke it by that full path, not
+     by bare name, so a different `check-git-repos` earlier on `PATH` (e.g. a stale or
+     quarantined Homebrew cask symlink) can never be picked up:
+     ```
+     /Users/kevini/.local/bin/check-git-repos --ignore-prefix
+     ```
+     It scans the Mac's real `$HOME` natively, so `--ignore-prefix` matches the Mac's own
+     `~/.config/check-git-repos-source/ignore.txt` correctly (none of the `/mac-home` cross-mount
+     problems below apply), and its output paths are already Mac paths. Verified running on
+     2026-10-09. Still treat any `~/Projects/acst/` or `~/Projects/vancopayments/` path in the
+     output as out of scope (see Notes). Only if that file is missing or not executable, or the
+     run fails, fall back to the options below and say so in the final report.
+   - **Fallbacks on `work-macbook` — the Homebrew cask cannot run there, and must not be
+     installed.**
      CrowdStrike Falcon quarantines applications installed outside ACST's approved channels, and
      a Homebrew cask is not an approved channel: the binary is deleted within seconds of every
      install. Confirmed 2026-09-02 — it vanished twice, about 30 seconds apart, leaving a
      dangling symlink while `brew list --cask` still reported the cask installed. So on this host
      a `command -v` miss, or an exit 127 or 137, is **that** and not a missing install: do not
      run `brew install`/`brew reinstall` to "fix" it. Reinstalling cannot work, and each attempt
-     raises a detection in ACST's Falcon console. Use one of these instead, in order of
-     preference:
-       1. **`~/bin/check-git-repos-via-container`** — the default on this host. It runs the
+     raises a detection in ACST's Falcon console. If `/Users/kevini/.local/bin/check-git-repos`
+     is unavailable, use one of these instead, in order of preference:
+       1. **`~/bin/check-git-repos-via-container`** — the first fallback on this host. It runs the
           real tool on `mac-container` (option 2 below) over SSH, warns if the container's ignore
           file is missing, then does all the filtering option 2 leaves to you: it re-applies the
           Mac's ignore list against the `~/`-relative path (working around the `--ignore-prefix`
@@ -143,7 +158,8 @@ disable-model-invocation: true
           `BEHIND`/`AHEAD`/`STAGED`/`UNSTAGED`/`UNTRACKED` statuses. Run
           `check-git-repos-shell --ignore-prefix`. Slower, and it has no `--worktree`,
           `--remove-locks` or stash-staleness support.
-     Report which of the three was used in the final report, since their repo lists differ.
+     Report which one was used (the local `~/.local/bin` binary or one of these three) in the
+     final report, since their repo lists differ.
    - On every other host, locate the binary with `command -v check-git-repos`. If not found, report that `check-git-repos` is not installed and stop.
    - If `$HOST_CATEGORY=Work` (per step 2a — this includes `mac-container`, even though it
      runs Linux), run: `check-git-repos --ignore-prefix`
@@ -348,7 +364,9 @@ disable-model-invocation: true
   `linux` vs `mac` check would get this wrong.
 - **On `work-macbook`, `check-git-repos` is quarantined by CrowdStrike Falcon and cannot be
   installed** — Homebrew is not an approved channel, so the binary is deleted within seconds of
-  each install. Never try to reinstall it there. Prefer `~/bin/check-git-repos-via-container`,
+  each install. Never try to reinstall it there. **Use the locally installed
+  `/Users/kevini/.local/bin/check-git-repos` (by absolute path, never the `PATH` lookup) first.**
+  Only if that is unavailable, fall back to `~/bin/check-git-repos-via-container`,
   which runs the real tool on `mac-container` over SSH (outside Homebrew, reaching the Mac via
   `/mac-home`) and does the out-of-scope filtering itself; then the raw SSH command; then
   `~/bin/check-git-repos-shell`. The two hosts keep separate ignore files (reconciled 2026-09-02,

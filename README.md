@@ -2,11 +2,58 @@
 
 There are repetitive prompts which have graduated into skills.
 
-Many of these skills are run from command line however they will become over time agentic.
+Many of these skills are run from the command line; over time they will become agentic.
 
 ## Skills TUI
 
 The [`skills` TUI](https://github.com/kevinpinscoe/skills-tui) lets you browse and launch skills interactively from the terminal.
+
+## How skills work
+
+A skill is a directory holding at least two files. `SKILL.md` is the instructions, written for
+an AI agent to carry out. `run.sh` is a wrapper that starts Claude Code with those instructions
+as its task. A skill may also carry optional helper scripts, tests, and documentation of its own
+(a `RUNBOOK.md`, for example) beside those two. This section is for anyone working in this repo:
+a person, an LLM, or a coding agent. The same rules apply to all three.
+
+### Creating a skill
+
+1. Make a directory at the top level of this repo named `<category>-<verb-noun>`, lowercase and
+   hyphenated, for example `prescription-check-for-refills`. Never start the name with `gsd-`;
+   that prefix belongs to the `get-shit-done` plugin and is gitignored.
+2. Copy `template.md` to `<directory>/SKILL.md` and fill it in. In the frontmatter, `name:` must
+   equal the directory name exactly, `category:` is the lowercase slug the chooser groups by, and
+   `disable-model-invocation: true` stays as it is.
+3. Copy the standard `run.sh` from an existing skill into the directory. It needs no editing.
+4. Add the new directory to the tree under "Structure" below.
+5. Run the checks, including `python3 validate_skills.py`, then open a pull request against
+   `main`.
+
+The exact commands, the checks, and the special cases are in `RUNBOOK.md`, Step 4.
+
+### Running a skill
+
+| How | Command | When to use it |
+| --- | --- | --- |
+| The chooser | `skills` | Browsing, or when you do not remember the name |
+| Directly | `bash ~/.claude/skills/<skill-name>/run.sh` | You know the name, or a script or timer is calling it |
+| Inside Claude Code | type `/<skill-name>` | You are already in a session |
+
+The first two start a new Claude Code session with the `SKILL.md` content as its task. The
+third loads the skill into the session you are in. An agent that is not Claude Code cannot use
+`run.sh`; it reads the skill's `SKILL.md` and follows its Instructions section directly.
+
+### When Claude Code loads a skill
+
+**Nothing from these skills is in Claude Code's context when a session starts.** A skill's
+`SKILL.md` is read only when the skill is invoked in one of the three ways above.
+
+By default Claude Code does more than that: it puts the name and description of every skill into
+every session, so that it can decide on its own to start one. This repo turns that off. Each
+skill here sets `disable-model-invocation: true`, which removes it from that startup list and
+means Claude never starts it unprompted. Skills this repo cannot edit get the same result from a
+per-host setting. "Why skills outside `synced/` are user-invocable only" below has the detail,
+including the one exception.
 
 ## Structure
 
@@ -36,9 +83,7 @@ prefix back out of the name would be ambiguous).
 ├── command-line-install-command-line-command/
 │   ├── SKILL.md
 │   └── run.sh
-├── daily-put-email-offers-on-my-calendar/
-│   ├── SKILL.md
-│   └── run.sh
+├── daily-run-through-my-os-todo/      # symlink → vanco-skills
 ├── daily-run-through-my-os-todos/
 │   ├── SKILL.md
 │   └── run.sh
@@ -64,6 +109,9 @@ prefix back out of the name would be ambiguous).
 │   ├── SKILL.md
 │   ├── run.sh
 │   └── category-chooser.py   # runtime category chooser (reads profile.yml live)
+├── jira-create-a-jira-ticket/         # symlink → vanco-skills, see below
+├── jira-create-jira-tickets-bookmark/ # symlink → vanco-skills
+├── jira-update-menu-app-yaml-from-jira-html/  # symlink → vanco-skills
 ├── knowledge-create-a-pcm-note/
 │   ├── SKILL.md
 │   └── run.sh
@@ -103,18 +151,22 @@ prefix back out of the name would be ambiguous).
 ├── task-management-os-todo/
 │   ├── SKILL.md
 │   └── run.sh
-├── youtrack-create-alert-ticket/
+├── youtrack-bundle-project-tickets-that-are-still-open/
 │   ├── SKILL.md
-│   ├── create_alert_ticket.py
-│   └── run.sh
+│   ├── RUNBOOK.md
+│   ├── bundle.py             # selection, yt-export per issue, overview; gather writes the bundle
+│   ├── run.sh
+│   └── test_bundle.py        # offline tests
+├── youtrack-check-for-duplicate-tickets-and-tag/       # symlink → vanco-skills
 ├── youtrack-create-a-security-triage-investigation/
 │   ├── SKILL.md
 │   └── run.sh
-├── jira-create-a-jira-ticket/         # symlink → vanco-skills, see below
-├── jira-create-jira-tickets-bookmark/ # symlink → vanco-skills
-├── jira-update-menu-app-yaml-from-jira-html/  # symlink → vanco-skills
-├── youtrack-check-for-duplicate-tickets-and-tag/       # symlink → vanco-skills
 ├── youtrack-create-a-youtrack-project/                 # symlink → vanco-skills
+├── youtrack-create-alert-ticket/
+│   ├── SKILL.md
+│   ├── create_alert_ticket.py
+│   ├── run.sh
+│   └── run_inner.sh          # the work itself; run.sh wraps it in the credential broker
 ├── youtrack-create-ticket-in-youtrack/                 # symlink → vanco-skills
 ├── youtrack-get-my-assigned-tickets-from-jira-into-youtrack/  # symlink → vanco-skills
 ├── youtrack-insert-specific-jira-ticket-in-youtrack/   # symlink → vanco-skills
@@ -122,6 +174,10 @@ prefix back out of the name would be ambiguous).
 │   ├── SKILL.md
 │   ├── run.sh
 │   └── scripts/              # yt_move.py, yt-move (parzival wrapper), tests, fixtures
+├── youtrack-prioritize-youtrack-tickets/
+│   ├── SKILL.md
+│   ├── run.sh
+│   └── scripts/              # yt_backlog.py, yt-backlog (parzival wrapper), tests
 ├── youtrack-read-updates-from-tasks-and-generate-stand-up/    # symlink → vanco-skills
 ├── youtrack-reconcile/                                 # symlink → vanco-skills
 ├── youtrack-report-a-fldw-swap-issue-and-investigate/
@@ -129,10 +185,15 @@ prefix back out of the name would be ambiguous).
 │   └── run.sh
 ├── youtrack-report-a-problem/                          # symlink → vanco-skills
 ├── youtrack-sync-jira-ticket-status-with-youtrack/     # symlink → vanco-skills
-├── daily-run-through-my-os-todo/      # symlink → vanco-skills
+├── synced/            # claude.ai skills synced in by Claude Code — tracked, see below
 ├── install.sh
 ├── sync-skill-overrides.sh   # per-host: keeps untracked skills out of model context
+├── validate_skills.py    # read-only owned-skill compliance check (RUNBOOK.md Verification)
+├── test_validate_skills.py   # its offline tests, run against temporary fixtures
 ├── template.md
+├── mise.toml          # pins Python for the skill helper scripts
+├── LICENSE
+├── ai-wt/             # project worktrees, one per YouTrack issue — gitignored
 ├── gsd-*/             # ~65 dirs — third-party, gitignored, not owned by this repo
 └── ...                # this repo's own README.md, RUNBOOK.md, CLAUDE.md, etc.
 ```
@@ -141,6 +202,18 @@ The `skills` command reads `~/.claude/skills` by default (overridable via `SKILL
 directories that contain a `run.sh` or a `SKILL.md`, and excludes anything matched by
 `~/.claude/skills/.gitignore` — which is how the `gsd-*` plugin content stays out of the
 chooser without the tool needing to know anything about `get-shit-done` specifically.
+
+### Skills synced in from claude.ai
+
+`synced/` is not a skill directory. Claude Code writes the claude.ai account's skills into it
+(`docx`, `pdf`, `pptx`, `xlsx`, `deep-research` and others), one level further down, under an
+ID-named directory. Each sync is committed here as a `chore: sync claude.ai …` commit, so a
+change to one of those skills shows up as a diff. `manifest.json` is tracked; the
+per-machine `.last-complete-round` marker is gitignored.
+
+Nothing in `synced/` is written or maintained in this repo, so do not edit it by hand. The
+chooser does not list it, because `synced/` itself holds neither a `SKILL.md` nor a `run.sh`.
+`sync-skill-overrides.sh` does not look inside it either.
 
 ### Skills bridged in from `vanco-skills`
 
@@ -171,12 +244,12 @@ no-`run.sh` skill directory — it's now `Wont do`, superseded by this flat + `.
 layout (`FSM-3`), which solves the same underlying problem (distinguishing "mine" from
 "bundled") without needing `run.sh` presence as the signal.
 
-### Why every skill is user-invocable only
+### Why skills outside `synced/` are user-invocable only
 
 Claude Code puts the name and description of every skill it may invoke on its own into the
-model's context at the start of **every** session. With ~35 skills here plus ~65 `gsd-*`
+model's context at the start of **every** session. With ~40 skills here plus ~65 `gsd-*`
 plugin skills, that costs tokens in every session for skills that are only ever run on purpose,
-by typing `/<skill-name>` or through `skills`/`run.sh`. So none of them are model-invocable
+by typing `/<skill-name>` or through `skills`/`run.sh`. So none of those are model-invocable
 (AI-52):
 
 - **Skills this repo owns** set `disable-model-invocation: true` in their `SKILL.md`
@@ -188,6 +261,11 @@ by typing `/<skill-name>` or through `skills`/`run.sh`. So none of them are mode
   host's `~/.claude/settings.json`. That file is per-machine and never reaches git, so the
   script is **run once on each host** after pulling, and again after a `get-shit-done` update.
   See `RUNBOOK.md`.
+
+**The claude.ai skills under `synced/` are outside this rule.** They stay model-invocable, so
+Claude can start one on its own and their descriptions are loaded into each session. Neither
+mechanism above reaches them: this repo does not write their frontmatter, and
+`sync-skill-overrides.sh` does not look inside `synced/`.
 
 Neither change affects `/<skill-name>`, `skills`, or `run.sh`, which pass the `SKILL.md`
 content to `claude` directly. What changes is that Claude no longer starts a skill on its own.

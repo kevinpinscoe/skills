@@ -16,19 +16,29 @@ Kevin's personal collection of AI task automation skills, plus the `skills` Go C
 ├── install.sh                    # recreates the vanco-skills symlinks below
 ├── sync-skill-overrides.sh       # per-host skillOverrides for skills lacking the frontmatter flag
 ├── template.md                   # Template for new skill files
+├── mise.toml                     # pins Python for the skill helper scripts
+├── LICENSE
 ├── app-install-desktop-app/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── run.sh
 ├── command-line-install-command-line-command/
 │   ├── SKILL.md
-│   └── .claude/settings.local.json   # per-skill permission allowlist
-├── daily-put-email-offers-on-my-calendar/
-│   └── SKILL.md
+│   ├── run.sh
+│   └── .claude/settings.local.json   # per-skill permission allowlist (gitignored)
+├── daily-today/
+│   ├── SKILL.md
+│   └── run.sh
 ├── docker-check-for-or-upgrade-docker-containers-on-this-system/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── run.sh
 ├── task-management-human-todos/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── run.sh
+├── ...                           # the rest of the owned skills — full tree in README.md
 ├── jira-create-a-jira-ticket/    # relative symlink → ../../Projects/private/vanco-skills/skills/…
 ├── youtrack-reconcile/           # relative symlink (same, AI-53)
+├── synced/                       # claude.ai skills synced in by Claude Code — tracked, not ours
+├── ai-wt/                        # project worktrees, one per YouTrack issue — gitignored
 ├── gsd-*/                        # ~65 dirs — third-party get-shit-done plugin content,
 └── ...                           # gitignored, never tracked by this repo
 ```
@@ -40,6 +50,10 @@ only as a naming-convention prefix on the directory name
 field in its `SKILL.md` frontmatter. The `skills` CLI lists directories that contain a `run.sh`
 or a `SKILL.md` **and** are not excluded by `~/.claude/skills/.gitignore` — which is what keeps
 the `gsd-*` plugin content (and anything else not owned by this repo) out of the chooser.
+
+`synced/` is tracked but is not a skill directory and is not ours to edit: Claude Code writes the
+claude.ai account's skills into it, and each sync is committed as `chore: sync claude.ai …`. It
+holds no `SKILL.md` or `run.sh` at its own level, so the chooser does not list it.
 
 ## The `skills` CLI
 
@@ -92,7 +106,7 @@ A skill directory may contain a `.claude/settings.local.json` to grant skill-spe
 
 ## Naming conventions
 
-- Skill directories: lowercase, hyphenated, `<old-category>-<descriptive-verb-noun>` (e.g. `daily-put-email-offers-on-my-calendar`)
+- Skill directories: lowercase, hyphenated, `<old-category>-<descriptive-verb-noun>` (e.g. `prescription-check-for-refills`)
 - Skill file inside each directory is always named `SKILL.md`
 - `category:` frontmatter values: lowercase, hyphenated, matching the directory-name prefix (e.g. `daily`, `raspberry-pi-5`)
 
@@ -131,6 +145,7 @@ The `## Structure` tree in `README.md` must exactly reflect the directories that
 ## Claude's role
 
 - Human-authored skills are the norm; Claude may create skills when explicitly asked
+- The step-by-step procedure for adding a skill, for people and agents alike, is `RUNBOOK.md` Step 4; `README.md` "How skills work" is the overview. Keep those two current when the rules below change.
 - **When creating a new skill: read `template.md` first, then follow it exactly.** Place the new file at `~/.claude/skills/<category>-<skill-name>/SKILL.md`. YAML frontmatter (`name:`, `category:`, `description:`) is required. Use existing `SKILL.md` files as additional style reference, but `template.md` is the authoritative source of truth for structure.
 - **Never create a directory starting with `gsd-`** — that prefix is reserved for the third-party `get-shit-done` plugin's own content, which this repo's `.gitignore` deliberately excludes.
 - **When creating or modifying any skill: update `README.md` to reflect the current directory layout before committing.**

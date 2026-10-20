@@ -331,7 +331,8 @@ action, right after the create:
 
    Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. **If it exits 2,
    do not start the investigation** — whatever the reason: the host is not Supported (`core`
-   until made Supported), the Parzival profile is absent, the identity does not match, or the
+   until it is listed with its spool monitor, `work-macbook` until POE-42 activates it,
+   `mac-container` until POE-43), the Parzival profile is absent, the identity does not match, or the
    maintenance flag is set. Tell Kevin what `doctor` reported and stop. There is no fallback:
    no hand-written start comment, and no write to `Elapsed time` or `Spent time`.
 

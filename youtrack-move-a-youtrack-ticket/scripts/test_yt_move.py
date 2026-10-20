@@ -13,6 +13,7 @@ import copy
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -140,6 +141,143 @@ class RegressionKsa81(unittest.TestCase):
         self.assertEqual(len(rows) - len(likely), rep["left_as_written"])
 
 
+class UrlRewrites(unittest.TestCase):
+    """`/issue/OLD` URLs go either way on a move: KSA-81 reported them left as
+    written (not recheckable); KSA-101 -> GLASS-25 (2026-10-09) rewrote them,
+    confirmed by snapshot. Synthetic text, with the KSA-81 fixtures' IDs."""
+
+    URL = "https://youtrack.kevininscoe.com/issue/"
+    TEXTS = {
+        "prose": "see {u}{k} for the plan",
+        "fenced": "Log:\n```\ncurl {u}{k}\n```",
+        "inline": "run `open {u}{k}` now",
+        "tilde": "Log:\n~~~\ncurl {u}{k}\n~~~\nThat was the log.",
+        "double_tick": "run ``open `{u}{k}` `` now",
+    }
+    CODE_REASONS = {"fenced": "code block", "inline": "inline code",
+                    "tilde": "code block", "double_tick": "inline code"}
+
+    def setUp(self):
+        # A moved issue with no text of its own, as KSA-101 had, so only the
+        # referencing issue's comment decides the result.
+        self.before = fixture("ksa81-before.json")
+        self.after = fixture("glass2-after.json")
+        for snap in (self.before, self.after):
+            snap["comments"] = []
+            snap["description"] = ""
+        # What remains is the moved issue's artifact string fields, left as written.
+        self.base_left = self.pair("nothing here", "nothing here")["left_as_written"]
+
+    def ref_rows(self):
+        return [r for r in yt_move.risk(self.before, "KSA-81") if r["issue"] != "KSA-81"]
+
+    def pair(self, before_text, after_text):
+        self.before["referencing_issues"][0]["comments"][0]["text"] = before_text
+        self.after["referencing_issues"][0]["comments"][0]["text"] = after_text
+        return yt_move.compare(self.before, self.after)
+
+    def text(self, form, key):
+        return self.TEXTS[form].format(u=self.URL, k=key)
+
+    def test_baseline_has_no_mentions(self):
+        rep = self.pair("nothing here", "nothing here")
+        self.assertEqual(rep["reference_rewrites"], 0)
+        self.assertEqual(rep["artifact_rewrites"], [])
+        self.assertEqual(self.ref_rows(), [])
+        self.assertEqual(yt_move.verdicts(rep), ("PASS", "CLEAN", 0))
+
+    def test_ksa101_regression(self):
+        before = f"It is tracked in KSA-81 ({self.URL}KSA-81)."
+        after = f"It is tracked in GLASS-2 ({self.URL}GLASS-2)."
+        self.before["referencing_issues"][0]["comments"][0]["text"] = before
+        self.assertEqual([r["likely_rewritten"] for r in self.ref_rows()], [True, None])
+        rep = self.pair(before, after)
+        self.assertEqual(rep["reference_rewrites"], 2)
+        self.assertEqual(rep["artifact_rewrites"], [])
+        self.assertEqual(rep["unexplained"], [])
+        self.assertEqual(rep["left_as_written"], self.base_left)
+        self.assertEqual(yt_move.verdicts(rep), ("PASS", "CLEAN", 0))
+
+    def test_url_left_as_written_in_every_form(self):
+        for form in self.TEXTS:
+            with self.subTest(form=form):
+                t = self.text(form, "KSA-81")
+                rep = self.pair(t, t)
+                self.assertEqual(rep["left_as_written"], self.base_left + 1)
+                self.assertEqual(rep["reference_rewrites"], 0)
+                self.assertEqual(rep["artifact_rewrites"], [])  # no Part B review
+                self.assertEqual(rep["unexplained"], [])
+                self.assertEqual(yt_move.verdicts(rep), ("PASS", "CLEAN", 0))
+
+    def test_url_rewritten_in_prose_is_a_reference(self):
+        rep = self.pair(self.text("prose", "KSA-81"), self.text("prose", "GLASS-2"))
+        self.assertEqual(rep["reference_rewrites"], 1)
+        self.assertEqual(rep["artifact_rewrites"], [])
+        self.assertEqual(yt_move.verdicts(rep), ("PASS", "CLEAN", 0))
+
+    def test_url_rewritten_in_code_goes_to_part_b(self):
+        for form, reason in self.CODE_REASONS.items():
+            with self.subTest(form=form):
+                rep = self.pair(self.text(form, "KSA-81"), self.text(form, "GLASS-2"))
+                self.assertEqual(rep["reference_rewrites"], 0)
+                self.assertEqual([a["reason"] for a in rep["artifact_rewrites"]], [reason])
+                self.assertEqual(rep["unexplained"], [])
+                self.assertEqual(yt_move.verdicts(rep), ("PASS", "NEEDS REMEDIATION", 3))
+                part_b = yt_move.followup_text("KSA-81", "GLASS-2", rep)
+                self.assertIn("# Part B", part_b)
+                self.assertIn(f"({reason})", part_b)
+
+    def test_code_classification_does_not_leak_into_prose(self):
+        # Each code form, closed, then an issue URL in prose on a later line or
+        # after the closing delimiter: both rewritten, one kind B, one kind A.
+        tail = {"fenced": "\nSee {u}{k} too.", "tilde": "\nSee {u}{k} too.",
+                "inline": " and {u}{k} too.", "double_tick": " and {u}{k} too."}
+        for form, reason in self.CODE_REASONS.items():
+            with self.subTest(form=form):
+                t = self.TEXTS[form] + tail[form]
+                rep = self.pair(t.format(u=self.URL, k="KSA-81"), t.format(u=self.URL, k="GLASS-2"))
+                self.assertEqual(rep["reference_rewrites"], 1)
+                self.assertEqual([a["reason"] for a in rep["artifact_rewrites"]], [reason])
+                self.assertEqual(rep["unexplained"], [])
+                self.assertEqual(yt_move.verdicts(rep)[2], 3)
+
+    def test_unrelated_change_beside_a_code_url_is_unexplained(self):
+        t = self.TEXTS["tilde"]
+        rep = self.pair(t.format(u=self.URL, k="KSA-81"),
+                        t.format(u=self.URL, k="GLASS-2").replace("curl", "wget"))
+        self.assertEqual(len(rep["unexplained"]), 1)
+        self.assertEqual(yt_move.verdicts(rep)[2], 1)
+
+    def test_unrelated_change_beside_a_url_is_unexplained(self):
+        rep = self.pair(self.text("prose", "KSA-81"),
+                        self.text("prose", "GLASS-2").replace("the plan", "a plan"))
+        self.assertEqual(len(rep["unexplained"]), 1)
+        self.assertEqual(yt_move.verdicts(rep)[2], 1)
+
+    def test_risk_puts_every_url_form_in_the_uncertain_bucket(self):
+        for form in self.TEXTS:
+            with self.subTest(form=form):
+                t = self.text(form, "KSA-81")
+                self.assertIsNone(yt_move.likely_rewritten(t, t.index("KSA-81"), "KSA-81"))
+
+    def test_print_risk_buckets_add_up(self):
+        import contextlib, io
+        before = self.before
+        before["referencing_issues"][0]["comments"][0]["text"] = (
+            f"tracked in KSA-81 ({self.URL}KSA-81) and `{self.URL}KSA-81`")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            yt_move.print_risk(before)
+        text = out.getvalue()
+        total = int(re.search(r"issue text: (\d+)", text).group(1))
+        likely = int(re.search(r"Likely rewritten by YouTrack: (\d+)", text).group(1))
+        left = int(re.search(r"Likely left as written \(.*?\): (\d+)", text).group(1))
+        urls = int(re.search(r"URLs \(YouTrack may or may not rewrite\): (\d+)", text).group(1))
+        self.assertEqual(likely + left + urls, total)
+        self.assertIn("URLs (YouTrack may or may not rewrite): 2 (1 in prose, references "
+                      "if rewritten; 1 in code, Part B review if rewritten)", text)
+
+
 class ExitSemantics(unittest.TestCase):
     """0 clean; 3 structurally clean but artifacts to remediate; 1 stop."""
 
@@ -262,14 +400,22 @@ class CreateFollowupMocked(unittest.TestCase):
         subprocess.run(["git", "init", "-q", repo], check=True)
         subprocess.run(["git", "-C", repo, "remote", "add", "origin",
                         "ssh://git@git.kevininscoe.com:2223/kinscoe/private-tools.git"], check=True)
-        self.saved = (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO)
+        self.saved = (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO,
+                      yt_move.EVIDENCE_DIR)
         yt_move.FOLLOWUP_REPO = repo
+        yt_move.EVIDENCE_DIR = os.path.join(self.tmp.name, "ticket-moves")
+        os.makedirs(yt_move.EVIDENCE_DIR)
+        for old, new in (("KSA-81", "GLASS-2"), ("KSA-117", "GLASS-3"), ("KTA-19", "GLASS-2")):
+            for _, path in yt_move.evidence_paths(old, new):
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write("evidence\n")
         yt_move.resolve_project = lambda name: {"id": "0-50", "shortName": name}
         self.calls, self.created = [], {}
         yt_move.api = self.fake_api
 
     def tearDown(self):
-        yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO = self.saved
+        (yt_move.api, yt_move.resolve_project, yt_move.FOLLOWUP_REPO,
+         yt_move.EVIDENCE_DIR) = self.saved
         self.tmp.cleanup()
 
     def fake_api(self, method, path, params=None, body=None):
@@ -294,6 +440,7 @@ class CreateFollowupMocked(unittest.TestCase):
                     v["name"] = self.DISPLAY_NAMES.get(v["login"], v["login"])
                 fields.append({"projectCustomField": {"field": {"id": p}}, "value": v})
             return {"idReadable": "POE-99", "customFields": fields,
+                    "description": self.created["description"],
                     "comments": [{"text": self.comment}]}
         raise AssertionError(f"unexpected call {method} {path}")
 
@@ -345,6 +492,40 @@ class CreateFollowupMocked(unittest.TestCase):
         yt_move.api = other_user
         with self.assertRaises(yt_move.Fail):
             yt_move.create_followup("KTA-19", "GLASS-2")
+
+    def test_description_lists_every_evidence_file_by_full_path(self):
+        out = yt_move.create_followup("KTA-19", "GLASS-2")
+        paths = [p for _, p in yt_move.evidence_paths("KTA-19", "GLASS-2")]
+        self.assertEqual(len(paths), 6)
+        for p in paths:
+            self.assertIn(f"- {p} — ", self.created["description"])
+        self.assertEqual(out["evidence_paths"], paths)
+
+    def test_missing_evidence_refuses_before_any_api_call(self):
+        os.remove(yt_move.evidence_paths("KTA-19", "GLASS-2")[1][1])
+        with self.assertRaises(yt_move.Fail) as cm:
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertIn("GLASS-2-after-project-move.md", str(cm.exception))
+        self.assertEqual(self.calls, [])
+
+    def test_empty_evidence_refuses(self):
+        open(yt_move.evidence_paths("KTA-19", "GLASS-2")[0][1], "w").close()
+        with self.assertRaises(yt_move.Fail):
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertEqual(self.calls, [])
+
+    def test_evidence_path_lost_on_read_back_raises(self):
+        real = self.fake_api
+
+        def truncating(method, path, params=None, body=None):
+            r = real(method, path, params, body)
+            if method == "GET" and path == "/api/issues/3-9999":
+                r["description"] = r["description"].replace("preservation-check.json", "")
+            return r
+        yt_move.api = truncating
+        with self.assertRaises(yt_move.Fail) as cm:
+            yt_move.create_followup("KTA-19", "GLASS-2")
+        self.assertIn("Evidence paths", str(cm.exception))
 
     def test_part_a_only_without_remediation(self):
         yt_move.create_followup("KTA-19", "GLASS-2")
@@ -686,6 +867,14 @@ class WalkTests(unittest.TestCase):
             "blocked by KSA-81": "reference",
             "issue KSA-81": "reference",
             "https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
+            "see (https://youtrack.kevininscoe.com/issue/KSA-81).": "reference",
+            "`https://youtrack.kevininscoe.com/issue/KSA-81`": "artifact",
+            "```\ncurl https://youtrack.kevininscoe.com/issue/KSA-81\n```": "artifact",
+            "~~~\ncurl https://youtrack.kevininscoe.com/issue/KSA-81\n~~~": "artifact",
+            "``open https://youtrack.kevininscoe.com/issue/KSA-81``": "artifact",
+            "~~~\nx\n~~~\nsee https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
+            "``a`` see https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
+            "a ` stray, then https://youtrack.kevininscoe.com/issue/KSA-81": "reference",
             "branch KSA-81": "artifact",
             "ai-wt/KSA-81": "artifact",
             "KSA-81-frodo-hostkey": "artifact",
@@ -699,6 +888,36 @@ class WalkTests(unittest.TestCase):
         for text, kind in cases.items():
             i = text.index("KSA-81")
             self.assertEqual(yt_move.classify(text, i, "KSA-81")[0], kind, text)
+
+
+class CodeContextTests(unittest.TestCase):
+    """Markdown code detection behind classify()'s "code wins" rule."""
+
+    def ctx(self, text, marker="X"):
+        return yt_move.code_context(text, text.index(marker))
+
+    def test_fences(self):
+        self.assertEqual(self.ctx("```\nX\n```"), "code block")
+        self.assertEqual(self.ctx("~~~\nX\n~~~"), "code block")
+        self.assertEqual(self.ctx("  ~~~~ text\nX"), "code block")       # unclosed, info string
+        self.assertEqual(self.ctx("```bash X\n```"), "code block")       # the opening line
+        self.assertIsNone(self.ctx("```\na\n```\nX"))
+        self.assertIsNone(self.ctx("~~~\na\n~~~\nX"))
+
+    def test_fence_closes_only_on_matching_delimiter(self):
+        self.assertEqual(self.ctx("~~~\n```\nX\n~~~"), "code block")   # ``` cannot close ~~~
+        self.assertEqual(self.ctx("````\n```\nX\n````"), "code block")  # shorter cannot close
+        self.assertEqual(self.ctx("```\na\n``` trailing\nX"), "code block")  # text after: not a close
+        self.assertIsNone(self.ctx("```\na\n`````\nX"))                 # longer closes
+
+    def test_inline_spans(self):
+        self.assertEqual(self.ctx("a `X` b"), "inline code")
+        self.assertEqual(self.ctx("a ``X`` b"), "inline code")
+        self.assertEqual(self.ctx("a `` `X` `` b"), "inline code")       # single ticks inside double
+        self.assertIsNone(self.ctx("a `b` X"))
+        self.assertIsNone(self.ctx("a ``b`` X"))
+        self.assertIsNone(self.ctx("a ` X"))                             # unmatched run is literal
+        self.assertIsNone(self.ctx("a ``b` X"))                          # run lengths differ
 
 
 class PagerTests(unittest.TestCase):
@@ -738,12 +957,35 @@ class FollowupTests(unittest.TestCase):
         text = yt_move.followup_text("KTA-19", "GLASS-2")
         self.assertIn("Old issue ID: KTA-19\nNew issue ID: GLASS-2", text)
         self.assertIn("(?<![A-Za-z0-9-])KTA\\-19(?![0-9])", text)
-        self.assertIn("rg -n -P --glob '*.md'", text)
+        self.assertIn("--glob '*.md'", text)
         self.assertIn("~/private-tools/yt-rewrite-moved-issue-id.py", text)
         self.assertIn("# Part A", text)
         self.assertNotIn("# Part B", text)
         self.assertEqual(yt_move.followup_summary("KTA-19", "GLASS-2"),
                          "Update Markdown references after KTA-19 moved to GLASS-2")
+
+    def test_inventory_excludes_and_is_archived(self):
+        text = yt_move.followup_text("KTA-19", "GLASS-2")
+        inv = "~/archives/youtrack/ticket-moves/KTA-19-home-markdown-references.txt"
+        self.assertEqual(yt_move.inventory_path("KTA-19"), inv)
+        for opt in ("--no-config", "--hidden", "--no-ignore", "--no-follow",
+                    "--with-filename", "--line-number", "--no-heading", "--color=never",
+                    "--glob '!.git/'", "--glob '!/tmp/'", "--glob '!/Downloads/'",
+                    "--glob '!/.local/share/containers/'",
+                    "--glob '!/archives/youtrack/ticket-moves/'"):
+            self.assertIn(opt, text)
+        self.assertNotIn("~/tmp/KTA-19-home-markdown-references", text)
+        self.assertNotIn("That is accepted", text)
+        self.assertIn("kept for audit", text)
+        self.assertIn("`.MD` and `.markdown` files are outside this scope", text)
+        self.assertIn("never proves that no reference to KTA-19 exists", text)
+        # Both helpers are given in full, with one bash line each.
+        self.assertIn(yt_move.inventory_script("KTA-19").rstrip(), text)
+        self.assertIn(yt_move.inventory_selftest_script("KTA-19").rstrip(), text)
+        self.assertIn("`bash ~/tmp/KTA-19-markdown-inventory-selftest.sh`", text)
+        self.assertIn("`bash ~/tmp/KTA-19-markdown-inventory.sh`", text)
+        # The inventory is produced later, by the POE work; it must not gate creation.
+        self.assertNotIn(inv, [p for _, p in yt_move.evidence_paths("KTA-19", "GLASS-2")])
 
     def test_with_remediation(self):
         rep = yt_move.compare(fixture("ksa81-before.json"), fixture("glass2-after.json"))
@@ -751,7 +993,8 @@ class FollowupTests(unittest.TestCase):
         self.assertIn("# Part A", text)
         self.assertIn("# Part B", text)
         self.assertIn("Never mass-replace GLASS-2 back to KSA-81", text)
-        self.assertIn("~/tmp/KSA-81-before-project-move.api.json", text)
+        self.assertIn("~/archives/youtrack/ticket-moves/KSA-81-before-project-move.api.json", text)
+        self.assertNotIn("~/tmp/KSA-81-before-project-move", text)
         self.assertIn("comment 7-102", text)
         self.assertTrue(yt_move.followup_summary("KSA-81", "GLASS-2", rep)
                         .startswith("Update Markdown references and restore historical text"))
@@ -821,6 +1064,210 @@ class ExportTests(unittest.TestCase):
         self.assertTrue(yt_move.check_export("/nonexistent/x.md", "DEMO-19"))
         with tempfile.NamedTemporaryFile(suffix=".md") as fh:
             self.assertIn("empty", yt_move.check_export(fh.name, "DEMO-19")[0])
+
+
+STUB_RG = r"""#!/usr/bin/env bash
+# Stand-in for rg: records how it was called and behaves per $STUB_MODE.
+# No real search ever runs in these tests.
+printf '%s\n' "$PWD" > "$STUB_LOG.cwd"
+printf '%s\n' "$@" > "$STUB_LOG.args"
+printf '%s' "$STUB_PROMPT" >&2
+root=${@: -1}
+case $STUB_MODE in
+  hits) printf '%s\n' "$root/notes/a.md:3:see KTA-19 here"; exit 0 ;;
+  empty) exit 1 ;;
+  refused) echo "rg: not confirmed -- denying." >&2; exit 1 ;;
+  error) printf '%s\n' "$root/notes/a.md:3:partial"; echo "rg: some error" >&2; exit 2 ;;
+  race) printf 'OTHER\n' > "$STUB_INVENTORY"; printf '%s\n' "$root/a.md:1:KTA-19"; exit 0 ;;
+  interrupt) printf '%s\n' "$root/a.md:1:partial"; kill -TERM "$PPID"; sleep 0.2; exit 0 ;;
+  selftest-pass|selftest-extra)
+    for p in notes/normal.md .hidden/hidden.md ignored/ignored.md repo/gi/gitignored.md repo/tmp/nested.md .local/share/other/kept.md; do
+      printf '%s\n' "$root/$p:2:see KTA-19 here"
+    done
+    [[ $STUB_MODE == selftest-extra ]] && printf '%s\n' "$root/tmp/scratch.md:2:see KTA-19 here"
+    exit 0 ;;
+esac
+exit 99
+"""
+
+
+class InventoryHelperTests(unittest.TestCase):
+    """The generated helpers, run end to end against a stub rg on PATH."""
+
+    OLD = "KTA-19"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = self.tmp.name
+        self.home = os.path.join(t, "home")
+        self.elsewhere = os.path.join(t, "elsewhere")
+        self.bin = os.path.join(t, "bin")
+        self.fixtures = os.path.join(t, "fixtures-tmp")
+        for d in (self.home, self.elsewhere, self.bin, self.fixtures):
+            os.makedirs(d)
+        with open(os.path.join(self.bin, "rg"), "w") as fh:
+            fh.write(STUB_RG)
+        os.chmod(os.path.join(self.bin, "rg"), 0o755)
+        self.log = os.path.join(t, "stub")
+        self.evidence = os.path.join(self.home, "archives/youtrack/ticket-moves")
+        self.inventory = os.path.join(self.evidence, f"{self.OLD}-home-markdown-references.txt")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_helper(self, script, mode, prompt=yt_move.WRAPPER_PROMPT):
+        path = os.path.join(self.tmp.name, "helper.sh")
+        with open(path, "w") as fh:
+            fh.write(script)
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": self.home, "TMPDIR": self.fixtures,
+               "STUB_MODE": mode, "STUB_LOG": self.log, "STUB_PROMPT": prompt,
+               "STUB_INVENTORY": self.inventory, "RIPGREP_CONFIG_PATH": "/nonexistent"}
+        return subprocess.run(["bash", path], cwd=self.elsewhere, env=env, stdin=subprocess.DEVNULL,
+                              capture_output=True, text=True, timeout=30)
+
+    def stub_args(self):
+        with open(self.log + ".args") as fh:
+            return fh.read().splitlines()
+
+    def stub_cwd(self):
+        with open(self.log + ".cwd") as fh:
+            return fh.read().strip()
+
+    def leftovers(self):
+        return [n for n in os.listdir(self.evidence) if n.startswith(".")]
+
+    def read_inventory(self):
+        with open(self.inventory) as fh:
+            return fh.read()
+
+    # -- the inventory helper ----------------------------------------------------
+
+    def test_syntax(self):
+        for script in (yt_move.inventory_script(self.OLD), yt_move.inventory_selftest_script(self.OLD)):
+            r = subprocess.run(["bash", "-n"], input=script, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_hits_published_and_search_runs_from_home(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "hits")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read_inventory(), f"{self.home}/notes/a.md:3:see KTA-19 here\n")
+        self.assertIn("(1 matching lines)", r.stdout)
+        self.assertEqual(self.stub_cwd(), self.home)  # launched from elsewhere
+        self.assertEqual(self.leftovers(), [])
+
+    def test_exact_rg_arguments(self):
+        self.run_helper(yt_move.inventory_script(self.OLD), "hits")
+        args = self.stub_args()
+        expected = list(yt_move.INVENTORY_RG_OPTIONS)
+        for g in yt_move.INVENTORY_GLOBS:
+            expected += ["--glob", g]
+        expected += ["--", yt_move.boundary_pattern(self.OLD), self.home]
+        self.assertEqual(args, expected)
+        for flag in ("--hidden", "--no-ignore", "--no-config", "--no-follow", "--with-filename",
+                     "--line-number", "--no-heading", "--color=never"):
+            self.assertIn(flag, args)
+        for g in ("*.md", "!.git/", "!/tmp/", "!/Downloads/", "!/archives/youtrack/ticket-moves/",
+                  "!/.local/share/containers/"):
+            self.assertIn(g, args)
+        self.assertNotIn("-L", args)
+        self.assertNotIn("--follow", args)
+
+    def test_zero_hits_is_a_kept_empty_inventory(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "empty")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read_inventory(), "")
+        self.assertIn("Zero hits within the covered scope", r.stdout)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_wrapper_refusal_is_not_an_empty_inventory(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "refused")
+        self.assertEqual(r.returncode, 2)
+        self.assertFalse(os.path.exists(self.inventory))
+        self.assertIn("Not treating that as an empty result", r.stderr)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_exit_1_without_the_prompt_still_counts_as_empty(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "empty", prompt="")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read_inventory(), "")
+
+    def test_failed_search_keeps_nothing(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "error")
+        self.assertEqual(r.returncode, 2)
+        self.assertFalse(os.path.exists(self.inventory))
+        self.assertIn("rg exited 2", r.stderr)
+        self.assertEqual(self.leftovers(), [])
+
+    def test_interrupted_search_keeps_nothing(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "interrupt")
+        self.assertEqual(r.returncode, 143)
+        self.assertFalse(os.path.exists(self.inventory))
+        self.assertEqual(self.leftovers(), [])
+
+    def test_existing_inventory_is_refused_untouched(self):
+        os.makedirs(self.evidence)
+        with open(self.inventory, "w") as fh:
+            fh.write("KEEP\n")
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "hits")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("already exists", r.stderr)
+        self.assertEqual(self.read_inventory(), "KEEP\n")
+        self.assertFalse(os.path.exists(self.log + ".args"))  # rg never ran
+        self.assertEqual(self.leftovers(), [])
+
+    def test_inventory_appearing_during_the_run_is_not_overwritten(self):
+        r = self.run_helper(yt_move.inventory_script(self.OLD), "race")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("appeared during the run", r.stderr)
+        self.assertEqual(self.read_inventory(), "OTHER\n")
+        self.assertEqual(self.leftovers(), [])
+
+    # -- the self-test helper ----------------------------------------------------
+
+    def test_helpers_share_one_search_definition(self):
+        block = yt_move.inventory_search_block(self.OLD)
+        self.assertIn(block, yt_move.inventory_script(self.OLD))
+        self.assertIn(block, yt_move.inventory_selftest_script(self.OLD))
+
+    def test_selftest_pass_cleans_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "selftest-pass")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("PASS:", r.stdout)
+        cwd = self.stub_cwd()
+        self.assertTrue(cwd.startswith(self.fixtures) and cwd.endswith("/home"), cwd)
+        self.assertEqual(self.stub_args()[-1], cwd)
+        self.assertEqual(os.listdir(self.fixtures), [])
+        self.assertFalse(os.path.exists(self.evidence))  # never touches the real inventory
+
+    def test_selftest_unexpected_hit_fails_and_cleans_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "selftest-extra")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("FAIL:", r.stdout)
+        self.assertIn("tmp/scratch.md:2:see KTA-19 here", r.stdout)
+        self.assertEqual(os.listdir(self.fixtures), [])
+
+    def test_selftest_missing_hits_fail_and_clean_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "empty")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("FAIL:", r.stdout)
+        self.assertEqual(os.listdir(self.fixtures), [])
+
+    def test_selftest_interrupt_cleans_up(self):
+        r = self.run_helper(yt_move.inventory_selftest_script(self.OLD), "interrupt")
+        self.assertEqual(r.returncode, 143)
+        self.assertEqual(os.listdir(self.fixtures), [])
+
+    def test_selftest_fixture_covers_the_contract(self):
+        script = yt_move.inventory_selftest_script(self.OLD)
+        for want in ("mk .hidden/hidden.md", "mk ignored/ignored.md", "printf 'ignored/\\n' > \"$root/.ignore\"",
+                     "mk repo/tmp/nested.md", "mk tmp/scratch.md", "mk Downloads/download.md",
+                     "mk .local/share/containers/storage/overlay/layer/diff/image.md",
+                     "mk .local/share/other/kept.md",
+                     "mk archives/youtrack/ticket-moves/evidence.md", "mk .git/top.md",
+                     "mk repo/.git/repo.md", "mk repo/sub/deep/.git/deep.md",
+                     "mk notes/boundary.md KTA-190 XKTA-19 ABC-KTA-19",
+                     'ln -s -- "$outside/dir" "$root/linkdir"', 'ln -s -- "$outside/file.md" "$root/link.md"'):
+            self.assertIn(want, script)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,11 @@ disable-model-invocation: true
 
 > One sentence describing what this skill does.
 
+_Required sections must retain this relative order: Prerequisites → Parameters (if present) →
+Instructions → Success Criteria → Notes (if present). Additional sections may appear wherever
+they improve understanding or execution. Place prerequisites, restrictions, and invocation
+conditions before the steps they govern. Delete this guidance from the finished skill._
+
 ## Prerequisites
 
 - List any tools, access, credentials, or system state required
