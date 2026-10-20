@@ -563,9 +563,19 @@ Every time work on the ticket stops, finished or not
    Spent time 84m — elapsed span, not yet reconciled to effort
    ```
 
-   Then **add** the elapsed span to `Spent time`, in minutes (`<N>m`), with
-   `run.sh time add` from `~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/`, which
-   reads the current value and adds to it; never overwrite an earlier session's time.
+   Then **add** the elapsed span to `Spent time` with the guarded helper, and only with it:
+
+   ```bash
+   bash ~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/run.sh time add <KSI-n> \
+     --minutes <N> --start "<YYYY-MM-DD HH:MM>" --end "<YYYY-MM-DD HH:MM>" --session <session UUID>
+   ```
+
+   It picks the host's route itself (the Work route as `admin` on a Mac), posts the
+   `yt-issue-time-entry` marker comment **before** it writes the field, and adds to the current
+   value, never overwriting an earlier session's time. That marker is what lets
+   `ai-effort --write` refuse rather than erase this span after the cutover (POE-57). Never write
+   `Spent time` any other way: no `customFields` payload, no `update --set`, no YouTrack command.
+   If `time add` refuses or fails, report that operation to Kevin and stop.
 
    If the session is being shut down (for a storm, a power outage, or a reboot), record the stop
    **first**, before anything else.
