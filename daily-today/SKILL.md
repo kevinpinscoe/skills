@@ -143,10 +143,13 @@ disable-model-invocation: true
           /home/kevini/.config/check-git-repos-source/ignore.txt`, creating the destination
           directory first if needed), then re-run the scan rather than manually cross-referencing
           the raw output against the Mac's file.
-          As of 2026-09-16 the canonical ignore list (present on both hosts) is: `~/Projects/acst`,
+          As of 2026-10-20 the canonical ignore list is: `~/Projects/acst`,
           `~/Projects/vancopayments`, `~/Projects/3rd-party-repos`, `~/Projects/workspaces/DOSD`,
           `~/Projects/workspaces/SRE`, `~/Projects/public/playbook`, `~/Library`, `~/.claude`,
-          `~/.codex`, and `~/.tmux/plugins`. **`~/Projects/acst/` is out of scope for this skill by
+          `~/.codex`, `~/.tmux/plugins`, and `~/tmp`. `~/tmp` was added on the Mac on 2026-10-20
+          so scratch repos there (review fixtures, throwaway clones) stop appearing in the sync;
+          `mac-container`'s copy was last reconciled on 2026-09-16 and does not have it yet.
+          **`~/Projects/acst/` is out of scope for this skill by
           design, not merely by omission** — Kevin's daily repo sync never touches ACST-owned
           repos through this skill; work on them is handled separately. Nothing keeps either
           host's file in step with the other, so both existence and content can drift again —
