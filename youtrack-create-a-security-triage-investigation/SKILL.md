@@ -320,9 +320,10 @@ action, right after the create:
    tmux. Otherwise skip it silently.
 2. **`Ghostty tab name` field:** write `<KSI-n>`. If step 1 was skipped, leave the field empty.
    An empty field is the record that the host skipped the rule.
-3. **Start record.** The start is one command, and it works only on a host `yt-elapsed`
-   supports (the FLDW today; see `~/private-tools/yt-elapsed-hosts.json`). It runs the `doctor`
-   preflight, reads the clock, and posts the start comment with its ledger record:
+3. **Start record.** The Elapsed time cutover is host by host
+   (`when-creating-a-youtrack-ticket.md` §5): check that directive's activation table for this
+   host. **On an activated host** (the FLDW, from `CUTOVER`) the start is one command. It runs the
+   `doctor` preflight, reads the clock, and posts the start comment with its ledger record:
 
    ```bash
    parzival exec --as ai youtrack-claude-code -- \
@@ -330,11 +331,19 @@ action, right after the create:
    ```
 
    Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. **If it exits 2,
-   do not start the investigation** — whatever the reason: the host is not Supported (`core`
-   until it is listed with its spool monitor, `work-macbook` until POE-42 activates it,
-   `mac-container` until POE-43), the Parzival profile is absent, the identity does not match, or the
-   maintenance flag is set. Tell Kevin what `doctor` reported and stop. There is no fallback:
-   no hand-written start comment, and no write to `Elapsed time` or `Spent time`.
+   do not start the investigation** — whatever the reason: the Parzival profile is absent, the
+   identity does not match, the maintenance flag is set, or any other check failed. Tell Kevin
+   what `doctor` reported and stop. There is no fallback on an activated host: no hand-written
+   start comment, no write to `Elapsed time` or `Spent time`, no `admin` recorder, and no start
+   run from another host.
+
+   **On a host not yet activated** (`core`, `work-macbook`, `mac-container`, any other host) the
+   pre-cutover start stands. Read the clock in the same action as the post:
+
+   ```text
+   Work started 2026-09-25 08:41
+   Session: <session UUID from this session's scratchpad path>
+   ```
 
 4. **Checkpoint.** An investigation usually runs long. It is not inside a git repository, so
    **do not create a `CHECKPOINT.md` yourself**. Ask Kevin whether he wants one, and where: the
@@ -531,7 +540,8 @@ If and only if the disposition is **Confirmed security or access-control failure
 Every time work on the ticket stops, finished or not
 (`when-creating-a-youtrack-ticket.md` §5 and §9):
 
-1. **Stop record:**
+1. **Stop record**, by the same workflow the start used (a stretch never switches workflow
+   part-way). **On an activated host:**
 
    ```bash
    parzival exec --as ai youtrack-claude-code -- \
@@ -544,6 +554,18 @@ Every time work on the ticket stops, finished or not
    its ledger record, then writes and verifies `Elapsed time`. **Do not write `Spent time`.** It
    is effort, and only Kevin writes it. If YouTrack is unreachable, the stop is spooled
    (`SPOOLED`); tell Kevin.
+
+   **On a host not yet activated**, the stop comment and `Spent time` go in the same action. Read
+   the clock with `date '+%Y-%m-%d %H:%M'`. Post the comment:
+
+   ```text
+   Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>
+   Spent time 84m — elapsed span, not yet reconciled to effort
+   ```
+
+   Then **add** the elapsed span to `Spent time`, in minutes (`<N>m`), with
+   `run.sh time add` from `~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/`, which
+   reads the current value and adds to it; never overwrite an earlier session's time.
 
    If the session is being shut down (for a storm, a power outage, or a reboot), record the stop
    **first**, before anything else.
@@ -610,9 +632,11 @@ Also:
 - `Status` was `In Progress` from creation. `Date time entered`, `Priority` (Kevin's choice),
   `Issue domain`, and `Assignee` read back correctly.
 - The live value-list check in step 3 ran before the create, and passed.
-- The start and stop exist as `yt-elapsed` records with clock-read times, and
-  `yt-elapsed reconcile --issue <KSI-n> --check` exits 0, so `Elapsed time` matches the ledger
+- On an activated host: the start and stop exist as `yt-elapsed` records with clock-read times,
+  and `yt-elapsed reconcile --issue <KSI-n> --check` exits 0, so `Elapsed time` matches the ledger
   (invariant I1). `Spent time` was not written by this session.
+- On a host not yet activated: start and stop comments exist, with clock-read times, and
+  `Spent time` holds at least this session's elapsed span.
 - No state-changing action was taken without Kevin's explicit authorization, and any that was
   taken is recorded on the ticket.
 - For a confirmed failure, an incident report exists under the incident directive, and it and the
