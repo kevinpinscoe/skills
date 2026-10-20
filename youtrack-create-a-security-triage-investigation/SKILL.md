@@ -552,7 +552,7 @@ Every time work on the ticket stops, finished or not
 
    It posts `Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>` with
    its ledger record, then writes and verifies `Elapsed time`. **Do not write `Spent time`.** It
-   is effort, and only Kevin writes it. If YouTrack is unreachable, the stop is spooled
+   is the cumulative effort and accounting field, and on an activated host only Kevin writes it. If YouTrack is unreachable, the stop is spooled
    (`SPOOLED`); tell Kevin.
 
    **On a host not yet activated**, the stop comment and `Spent time` go in the same action. Read
