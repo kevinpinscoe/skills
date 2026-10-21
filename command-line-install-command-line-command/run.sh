@@ -5,6 +5,13 @@
 # stays a normal interactive session — permission prompts included.
 set -euo pipefail
 
+# This skill writes to ~/.dotfiles, ~/todo and ~/Projects/private/app-configuration,
+# which mac-container sees only through a read-only mirror or not at all (WMI-45).
+if [ -d /mac-home ] || [ "$(hostname)" = "mac-container" ]; then
+  echo "error: this skill cannot run inside mac-container — run it on work-macbook (mac local) instead" >&2
+  exit 1
+fi
+
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_FILE="$SKILL_DIR/SKILL.md"
 

@@ -11,12 +11,15 @@ disable-model-invocation: true
 
 ## Prerequisites
 
+- Run on the FLDW, `work-macbook` (mac local) or the Raspberry Pi — **never inside `mac-container`**. Since WMI-45 the container sees `~/.dotfiles`, `~/cheats`, `~/todo` and `~/Projects/private/app-configuration` only through a read-only mirror or not at all. `mac-container` remains a valid *target* host (steps 2, 4 and 6); its install happens from its own TODO entry.
 - `~/Projects/private/app-configuration` repo accessible and writable
 - `~/.dotfiles` repo accessible and writable (`~/cheats` is a GNU Stow symlink into `~/.dotfiles/home/cheats/`)
 - `~/todo/<os>/TODO.md` writable for each target OS
 - Network access to download the tool or its documentation
 
 ## Instructions
+
+0. **Refuse to run inside `mac-container`** — before anything else, check the host. If `/mac-home` exists or `hostname` is `mac-container`, stop immediately: tell the user this skill must be run on `work-macbook` (mac local) instead, and take no other action. `run.sh` carries the same guard; this step covers launches that bypass it.
 
 1. **Read grounding files** — read the following files in full before taking any other action:
    - `~/.dotfiles/CLAUDE.md` — binary install paths, gitsign warning, stow structure
@@ -33,7 +36,7 @@ disable-model-invocation: true
    - If installation is more complex than a single file, ask clarifying questions before proceeding
    - If multiple executables will be installed: gather the command name for each, perform collision evaluation for each, and create a separate cheat sheet for each
 
-3. **Install on the current host** — detect the platform with `uname -s` (and `/etc/os-release` on Linux). On Linux, distinguish the Fedora workstation from the Mac-container: both report `fedora` in `/etc/os-release`, but the Mac-container also has `/mac-home` present or hostname == `b38e685e79b8`.
+3. **Install on the current host** — detect the platform with `uname -s` (and `/etc/os-release` on Linux). The current host is never the Mac-container — step 0 has already refused that case.
 
    - **Fedora Linux workstation (x86_64)**: prefer downloading the binary to `~/.local/bin/` (create it first if needed):
      ```bash
@@ -42,7 +45,6 @@ disable-model-invocation: true
      If the tool provides a `dnf` package or official installer, that is also acceptable.
    - **macOS (Apple Silicon)**: prefer `brew install <package>`. If no Homebrew formula exists, fall back to `~/.local/bin/`.
    - **Raspberry Pi 5 (Debian Trixie)**: prefer downloading to `~/.local/bin/`. If the tool provides an `apt` package or official installer, that is also acceptable.
-   - **Mac-container (Fedora Linux, ARM/aarch64)**: same approach as the Fedora workstation — prefer `~/.local/bin/`, and `dnf` packages install identically. **But when downloading a raw binary, use the `aarch64`/`arm64` build — never the `x86_64`/`amd64` build used on the Fedora workstation.**
 
    If the tool requires or creates config files under the home directory, add them to `~/.dotfiles` using the GNU Stow symlink method.
 
