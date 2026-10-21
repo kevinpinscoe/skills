@@ -320,7 +320,25 @@ action, right after the create:
    tmux. Otherwise skip it silently.
 2. **`Ghostty tab name` field:** write `<KSI-n>`. If step 1 was skipped, leave the field empty.
    An empty field is the record that the host skipped the rule.
-3. **Start comment.** Read the clock in the same action as the post:
+3. **Start record.** The Elapsed time cutover is host by host
+   (`when-creating-a-youtrack-ticket.md` §5): check that directive's activation table for this
+   host. **On an activated host** (the FLDW, from `CUTOVER`) the start is one command. It runs the
+   `doctor` preflight, reads the clock, and posts the start comment with its ledger record:
+
+   ```bash
+   parzival exec --as ai youtrack-claude-code -- \
+     yt-elapsed start --recorder claude-code --issue <KSI-n> --session <session UUID from this session's scratchpad path>
+   ```
+
+   Its human lines read `Work started 2026-09-25 08:41` and `Session: <uuid>`. **If it exits 2,
+   do not start the investigation** — whatever the reason: the Parzival profile is absent, the
+   identity does not match, the maintenance flag is set, or any other check failed. Tell Kevin
+   what `doctor` reported and stop. There is no fallback on an activated host: no hand-written
+   start comment, no write to `Elapsed time` or `Spent time`, no `admin` recorder, and no start
+   run from another host.
+
+   **On a host not yet activated** (`core`, `work-macbook`, `mac-container`, any other host) the
+   pre-cutover start stands. Read the clock in the same action as the post:
 
    ```text
    Work started 2026-09-25 08:41
@@ -522,23 +540,45 @@ If and only if the disposition is **Confirmed security or access-control failure
 Every time work on the ticket stops, finished or not
 (`when-creating-a-youtrack-ticket.md` §5 and §9):
 
-1. **Stop comment and `Spent time` in the same action.** Read the clock with
-   `date '+%Y-%m-%d %H:%M'`. Post the comment:
+1. **Stop record**, by the same workflow the start used (a stretch never switches workflow
+   part-way). **On an activated host:**
+
+   ```bash
+   parzival exec --as ai youtrack-claude-code -- \
+     yt-elapsed stop --recorder claude-code --issue <KSI-n> --session <session UUID> \
+       --reason "triage complete, disposition: <disposition>" \
+       --left-at "<where the investigation stands>"
+   ```
+
+   It posts `Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>` with
+   its ledger record, then writes and verifies `Elapsed time`. **Do not write `Spent time`.** It
+   is the cumulative effort and accounting field, and on an activated host only Kevin writes it. If YouTrack is unreachable, the stop is spooled
+   (`SPOOLED`); tell Kevin.
+
+   **On a host not yet activated**, the stop comment and `Spent time` go in the same action. Read
+   the clock with `date '+%Y-%m-%d %H:%M'`. Post the comment:
 
    ```text
    Work stopped 2026-09-25 10:05 — triage complete, disposition: <disposition>
    Spent time 84m — elapsed span, not yet reconciled to effort
    ```
 
-   Then **add** the elapsed span to `Spent time`, in minutes (`<N>m`). Read the current value
-   first and add to it; never overwrite an earlier session's time:
+   Then **add** the elapsed span to `Spent time` with the guarded helper, and only with it:
 
    ```bash
-   export F='{"customFields":[{"name":"Spent time","$type":"PeriodIssueCustomField","value":{"presentation":"<total>m"}}]}'
+   bash ~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/run.sh time add <KSI-n> \
+     --minutes <N> --start "<YYYY-MM-DD HH:MM>" --end "<YYYY-MM-DD HH:MM>" --session <session UUID>
    ```
 
-   If the session is being shut down (for a storm, a power outage, or a reboot), write the stop
-   comment **first**, before anything else.
+   It picks the host's route itself (the Work route as `admin` on a Mac), posts the
+   `yt-issue-time-entry` marker comment **before** it writes the field, and adds to the current
+   value, never overwriting an earlier session's time. That marker is what lets
+   `ai-effort --write` refuse rather than erase this span after the cutover (POE-57). Never write
+   `Spent time` any other way: no `customFields` payload, no `update --set`, no YouTrack command.
+   If `time add` refuses or fails, report that operation to Kevin and stop.
+
+   If the session is being shut down (for a storm, a power outage, or a reboot), record the stop
+   **first**, before anything else.
 2. **Report to Kevin** (see "Report format" below).
 3. **Ask whether to close the ticket.** Never close it on your own judgement. Once he approves,
    set `Status` to `Done`. If the investigation is abandoned, set it to `Wont do` with the same
@@ -602,8 +642,11 @@ Also:
 - `Status` was `In Progress` from creation. `Date time entered`, `Priority` (Kevin's choice),
   `Issue domain`, and `Assignee` read back correctly.
 - The live value-list check in step 3 ran before the create, and passed.
-- Start and stop comments exist, with clock-read times. `Spent time` holds at least this
-  session's elapsed span.
+- On an activated host: the start and stop exist as `yt-elapsed` records with clock-read times,
+  and `yt-elapsed reconcile --issue <KSI-n> --check` exits 0, so `Elapsed time` matches the ledger
+  (invariant I1). `Spent time` was not written by this session.
+- On a host not yet activated: start and stop comments exist, with clock-read times, and
+  `Spent time` holds at least this session's elapsed span.
 - No state-changing action was taken without Kevin's explicit authorization, and any that was
   taken is recorded on the ticket.
 - For a confirmed failure, an incident report exists under the incident directive, and it and the
