@@ -16,8 +16,7 @@ disable-model-invocation: true
 - `~/tools/free-port` present and executable
 - `~/admin/create-kevin-dns-alias.sh` present
 - `~/admin/certbot-request.sh` present
-- Linode DNS API key (certbot-dns-linode format) at `~/.secrets/certbot.ini`
-- Linode Personal Access Token in OpenBao at `linode/api/pat`, brokered through the `linode-cli` parzival profile (the on-disk `~/.secrets/kevin-linode.pat` was removed on 2026-08-23)
+- Linode DNS API key in OpenBao at `linode/api/dns-key`, readable through `parzival`. Neither DNS nor TLS needs a file on disk: `create-kevin-dns-alias.sh` reads the key with `parzival get --as ansible`, and certbot's `linode-creds` pre and post hooks write it to a tmpfs INI and shred it afterwards. `~/.secrets/certbot.ini` and `~/.secrets/kevin-linode.pat` no longer exist.
 - On the FLDW only: the YouTrack issue helper `~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/run.sh`, `parzival`, and `yt-elapsed`, for the FC issue in Step 3
 
 ## Parameters
