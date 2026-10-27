@@ -17,7 +17,8 @@ disable-model-invocation: true
 - `~/admin/create-kevin-dns-alias.sh` present
 - `~/admin/certbot-request.sh` present
 - Linode DNS API key (certbot-dns-linode format) at `~/.secrets/certbot.ini`
-- Linode Personal Access Token at `~/.secrets/kevin-linode.pat`
+- Linode Personal Access Token in OpenBao at `linode/api/pat`, brokered through the `linode-cli` parzival profile (the on-disk `~/.secrets/kevin-linode.pat` was removed on 2026-08-23)
+- On the FLDW only: the YouTrack issue helper `~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/run.sh`, `parzival`, and `yt-elapsed`, for the FC issue in Step 3
 
 ## Parameters
 
@@ -32,9 +33,23 @@ disable-model-invocation: true
 
 2. Ask the user for the service name if not already provided. Then ask for the documentation URL. Confirm both before proceeding.
 
-3. Follow the directive's Steps 1–13 in order. Do not skip steps or deviate from any practice without flagging it to the user and getting explicit approval first.
+3. **On the FLDW, file and start an FC issue for the container before any other work.** Run `hostname`. If it does not read `kevin`, skip this step. Otherwise, do this before the directive's Step 1 and before any directory, port, DNS, TLS, proxy, backup, or documentation change:
+   - Ask the user whether a YouTrack issue already exists for this container. If they name one, use it and do not create another.
+   - Otherwise create one in project **FC** (FLDW - Containers). FC is a standing assignment for this work (`~/ai/directives/when-creating-a-youtrack-ticket.md` §1), so do not ask which project, and running this skill is the user's direction to file it. Follow that directive's §2–§6:
+     ```bash
+     ~/Projects/private/youtrack.kevininscoe.com/scripts/yt-issue/run.sh create FC \
+       --summary "Create self-hosted container <service-name>" --file <description-file> \
+       --set "Status=To do" --set Type=Task --set Priority=Normal \
+       --set Assignee=Claude_Code --set "Affected host=FLDW" --set "Issue domain=Personal"
+     ```
+     The description names the service, `DOCS_URL`, and `https://<service-name>.kevininscoe.com`. The helper sets `Date time entered` itself.
+   - Hand back the issue's full URL as bare text.
+   - Start it now with the directive's §7 start transaction: `yt-elapsed doctor` first, then `Status` to `In Progress`, `yt-elapsed start` with this session's id, the terminal tab and `Ghostty tab name`. If `doctor` refuses, stop and tell the user. Do not create the container without a started issue.
+   - Do every later step under this issue. Log each commit made in any repo to it, and write the stop comment (`yt-elapsed stop`) when the work stops.
 
-4. After all files under `/opt/containers/<service-name>/` have been created or modified, ensure the `/opt/containers` repo git-tracks them:
+4. Follow the directive's Steps 1–13 in order. Do not skip steps or deviate from any practice without flagging it to the user and getting explicit approval first.
+
+5. After all files under `/opt/containers/<service-name>/` have been created or modified, ensure the `/opt/containers` repo git-tracks them:
    - Inspect the repo's `.gitignore` (if it exists). For each of the following patterns that is not already whitelisted, add a negation entry:
      ```
      !*.md
@@ -55,7 +70,7 @@ disable-model-invocation: true
      ```
    - Confirm the push succeeded and the files appear in `git log --stat HEAD`.
 
-5. **Register the FQDN on the tool-shed dashboard** (`~/Projects/private/tool-shed`). Only do this once the service is verified reachable at `https://<service-name>.kevininscoe.com` and has been tested.
+6. **Register the FQDN on the tool-shed dashboard** (`~/Projects/private/tool-shed`). Only do this once the service is verified reachable at `https://<service-name>.kevininscoe.com` and has been tested.
    - Ask the user for the card `icon` (emoji), `category`, and a one-sentence `description`. Do not guess these — ask directly.
    - Append a `Service` entry to the `services` array in `src/services.ts`:
      ```ts
@@ -81,7 +96,7 @@ disable-model-invocation: true
      ```
      Compute `<next-tag>` from `$latest`. Confirm it does not already exist (`git tag | grep -Fx <next-tag>` returns nothing) before creating it.
 
-6. **Add the FQDN to Uptime Kuma monitoring** (`~/Projects/private/observability`). Default to an `http`-type monitor.
+7. **Add the FQDN to Uptime Kuma monitoring** (`~/Projects/private/observability`). Default to an `http`-type monitor.
    - Add a monitor entry to the `monitors:` list in `configs/central-stack/uptime-kuma/monitors.yaml`, placing it in the "tool-shed FQDN sites" section to match its dashboard grouping:
      ```yaml
      - name: <service-name>
@@ -106,6 +121,7 @@ disable-model-invocation: true
 
 ## Success Criteria
 
+- On the FLDW: an FC issue for the container exists, was started (`In Progress`, `yt-elapsed start`) before any container work, and has every commit logged to it
 - Service is reachable at `https://<service-name>.kevininscoe.com` and returns a non-error HTTP response (verified with `curl` from the Apache host)
 - No unresolved SELinux AVC denials related to the new container (per directive Step 11)
 - `RUNBOOK.md` and `AGENTS.md` created in `/opt/containers/<service-name>/`
@@ -120,4 +136,4 @@ disable-model-invocation: true
 - Use `sudo -A` (not plain `sudo`) for all file operations under `/opt/containers/`, which is root-owned.
 - Docker Compose only — no bare `docker run` commands.
 - Secrets and credentials go in `.env` files. Never hardcode them.
-- Steps 5 and 6 touch two separate repos outside `/opt/containers`: the dashboard is `~/Projects/private/tool-shed` (data-driven from `src/services.ts`; see its CLAUDE.md), and the monitoring source of truth is `~/Projects/private/observability` (`configs/central-stack/uptime-kuma/monitors.yaml`; sync procedure in `runbooks/uptime-kuma/RUNBOOK.md`). Only run these two steps after the container is up, has its FQDN, and has been tested.
+- Steps 6 and 7 touch two separate repos outside `/opt/containers`: the dashboard is `~/Projects/private/tool-shed` (data-driven from `src/services.ts`; see its CLAUDE.md), and the monitoring source of truth is `~/Projects/private/observability` (`configs/central-stack/uptime-kuma/monitors.yaml`; sync procedure in `runbooks/uptime-kuma/RUNBOOK.md`). Only run these two steps after the container is up, has its FQDN, and has been tested.
