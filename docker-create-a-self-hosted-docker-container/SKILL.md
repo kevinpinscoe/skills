@@ -1,7 +1,7 @@
 ---
 name: docker-create-a-self-hosted-docker-container
 category: docker
-description: Creates a new self-hosted Docker container service under /opt/containers, including DNS record, TLS certificate, Apache proxy, optional backup job, SELinux audit, and full documentation.
+description: Creates a new self-hosted Docker container service under /home/containers, including DNS record, TLS certificate, Apache proxy, optional backup job, SELinux audit, and full documentation.
 disable-model-invocation: true
 ---
 
@@ -48,7 +48,7 @@ disable-model-invocation: true
 
 4. Follow the directive's Steps 1–13 in order. Do not skip steps or deviate from any practice without flagging it to the user and getting explicit approval first.
 
-5. After all files under `/opt/containers/<service-name>/` have been created or modified, ensure the `/opt/containers` repo git-tracks them:
+5. After all files under `/home/containers/<service-name>/` have been created or modified, ensure the `/home/containers` repo git-tracks them:
    - Inspect the repo's `.gitignore` (if it exists). For each of the following patterns that is not already whitelisted, add a negation entry:
      ```
      !*.md
@@ -60,7 +60,7 @@ disable-model-invocation: true
      ```
    - Stage, commit, and push all new or modified files matching those patterns in the service subdirectory:
      ```bash
-     cd /opt/containers
+     cd /home/containers
      git add <service-name>/*.md <service-name>/*.yml <service-name>/*.sh \
              <service-name>/*.service <service-name>/*.timer \
              <service-name>/scripts/ 2>/dev/null || true
@@ -123,7 +123,7 @@ disable-model-invocation: true
 - On the FLDW: an FC issue for the container exists, was started (`In Progress`, `yt-elapsed start`) before any container work, and has every commit logged to it
 - Service is reachable at `https://<service-name>.kevininscoe.com` and returns a non-error HTTP response (verified with `curl` from the Apache host)
 - No unresolved SELinux AVC denials related to the new container (per directive Step 11)
-- `RUNBOOK.md` and `AGENTS.md` created in `/opt/containers/<service-name>/`
+- `RUNBOOK.md` and `AGENTS.md` created in `/home/containers/<service-name>/`
 - Backup job runs successfully at least once manually and is added to `~/admin/check-all-backups.sh` (if the container holds persistent data)
 - DNS CNAME `<service-name>.kevininscoe.com` resolves correctly
 - A tile for the service appears in `~/Projects/private/tool-shed/src/services.ts`, `pnpm build` passes, and the change is pushed to `main` and tagged with the next semver patch (tag pushed to origin)
@@ -132,7 +132,7 @@ disable-model-invocation: true
 ## Notes
 
 - The directive at `~/ai/directives/when-self-hosting-a-docker-container.md` is the authoritative source for all creation steps and standards. Always read it in full before starting.
-- Use `sudo -A` (not plain `sudo`) for all file operations under `/opt/containers/`, which is root-owned.
+- `/home/containers` is on the shared `containers` group and setgid, so files and directories are created and committed as `kinscoe` with no `sudo` (directive Step 6). Use `sudo -A` (never plain `sudo`) only where root is genuinely needed: a root-owned directory the service requires, root-owned container volumes, `docker` commands, the backup job (which runs as root), and system files such as systemd units and Apache config.
 - Docker Compose only — no bare `docker run` commands.
 - Secrets and credentials go in `.env` files. Never hardcode them.
-- Steps 6 and 7 touch two separate repos outside `/opt/containers`: the dashboard is `~/Projects/private/tool-shed` (data-driven from `src/services.ts`; see its CLAUDE.md), and the monitoring source of truth is `~/Projects/private/observability` (`configs/central-stack/uptime-kuma/monitors.yaml`; sync procedure in `runbooks/uptime-kuma/RUNBOOK.md`). Only run these two steps after the container is up, has its FQDN, and has been tested.
+- Steps 6 and 7 touch two separate repos outside `/home/containers`: the dashboard is `~/Projects/private/tool-shed` (data-driven from `src/services.ts`; see its CLAUDE.md), and the monitoring source of truth is `~/Projects/private/observability` (`configs/central-stack/uptime-kuma/monitors.yaml`; sync procedure in `runbooks/uptime-kuma/RUNBOOK.md`). Only run these two steps after the container is up, has its FQDN, and has been tested.
