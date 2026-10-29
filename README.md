@@ -261,6 +261,11 @@ by typing `/<skill-name>` or through `skills`/`run.sh`. So none of those are mod
   host's `~/.claude/settings.json`. That file is per-machine and never reaches git, so the
   script is **run once on each host** after pulling, and again after a `get-shit-done` update.
   See `RUNBOOK.md`.
+- **A skill this repo does not own that Kevin has made model-invocable** is named in the host's
+  `~/.claude/model-invocable-skills` allowlist (one name per line, `#` comments). The script
+  skips it and lists it as `allowlisted`, so `--check` still passes. The file is per-host and
+  never in git, because this repository is public and a private skill's name must not be
+  published (AI-108).
 
 **The claude.ai skills under `synced/` are outside this rule.** They stay model-invocable, so
 Claude can start one on its own and their descriptions are loaded into each session. Neither

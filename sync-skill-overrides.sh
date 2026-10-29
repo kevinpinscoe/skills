@@ -18,6 +18,13 @@
 #   bash sync-skill-overrides.sh           # add missing overrides
 #   bash sync-skill-overrides.sh --check   # report only; exit 1 if any are missing
 #
+# A skill Kevin has explicitly made model-invocable (when-creating-a-new-skill.md
+# step 5) but which this repo does not own is named in a per-host allowlist,
+# ~/.claude/model-invocable-skills (one name per line; # comments). It lives
+# outside git on purpose: this repo is public, and a private skill's name must
+# not be published to keep it model-invocable. Allowlisted skills are skipped
+# and reported by name, never given an override (AI-108).
+#
 # Re-runnable: no-op when nothing is missing. Only ever ADDS entries; an
 # existing override (whatever its value) is left alone, and entries for
 # skills that no longer exist are reported, never deleted.
@@ -28,12 +35,13 @@ set -euo pipefail
 
 SKILLS_DIR="${SKILLS_DIR:-$HOME/.claude/skills}"
 SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
+ALLOWLIST="${MODEL_INVOCABLE_ALLOWLIST:-$HOME/.claude/model-invocable-skills}"
 CHECK_ONLY=0
 
 case "${1:-}" in
     "") ;;
     --check) CHECK_ONLY=1 ;;
-    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
     *) echo "ERROR: unknown argument: $1 (try --help)" >&2; exit 2 ;;
 esac
 
@@ -50,7 +58,16 @@ has_optout() {
          END { exit found ? 0 : 1 }' "$1"
 }
 
+# Allowlisted names, comments and blank lines removed; empty when there is no file.
+allowed="$( [ -f "$ALLOWLIST" ] && sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$ALLOWLIST" || true)"
+
+is_allowed() {
+    [ -n "$allowed" ] && printf '%s\n' "$allowed" | grep -qxF -- "$1"
+}
+
 missing=()
+allowlisted=()
+overridden_allowed=()
 covered=0
 optout=0
 broken=0
@@ -71,6 +88,11 @@ for dir in "$SKILLS_DIR"/*; do
     fi
     if jq -e --arg n "$name" '.skillOverrides // {} | has($n)' "$SETTINGS" >/dev/null; then
         covered=$((covered + 1))
+        is_allowed "$name" && overridden_allowed+=("$name")
+        continue
+    fi
+    if is_allowed "$name"; then
+        allowlisted+=("$name")
         continue
     fi
     missing+=("$name")
@@ -83,11 +105,24 @@ done)"
 
 echo "opted out in frontmatter: $optout"
 echo "already overridden:       $covered"
+echo "allowlisted:              ${#allowlisted[@]}"
+[ "${#allowlisted[@]}" -eq 0 ] || printf '  = %s\n' "${allowlisted[@]}"
 echo "missing override:         ${#missing[@]}"
+if [ "${#overridden_allowed[@]}" -gt 0 ]; then
+    echo "allowlisted but overridden (still user-invocable only; remove the override deliberately):"
+    printf '  ! %s\n' "${overridden_allowed[@]}"
+fi
 [ "$broken" -eq 0 ] || echo "dangling symlinks:        $broken"
 if [ -n "$stale" ]; then
     echo "stale overrides (skill not on disk; left in place):"
     while IFS= read -r n; do echo "  $n"; done <<< "$stale"
+fi
+stale_allowed="$(printf '%s\n' "$allowed" | while read -r n; do
+    [ -z "$n" ] || [ -d "$SKILLS_DIR/$n" ] || echo "$n"
+done)"
+if [ -n "$stale_allowed" ]; then
+    echo "stale allowlist entries (skill not on disk; left in place):"
+    while IFS= read -r n; do echo "  $n"; done <<< "$stale_allowed"
 fi
 
 if [ "${#missing[@]}" -eq 0 ]; then

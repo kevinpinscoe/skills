@@ -119,6 +119,12 @@ The script only **adds** entries, backs up `settings.json` to `settings.json.bak
 first, and keeps the file's mode (`0600`). It reports stale entries (skills no longer on disk)
 but never deletes them. Restart open Claude Code sessions afterwards.
 
+A skill this repo does not own that Kevin has explicitly made model-invocable goes in
+`~/.claude/model-invocable-skills` on that host, one name per line, with the approving issue in
+a `#` comment. The script skips it and prints it under `allowlisted:`. It also reports an
+allowlisted skill that still has an override, and an allowlist entry with no skill on disk. The
+file never goes in git: this repository is public (AI-108).
+
 ### Step 4 — Add a new skill
 
 **Why:** every skill has the same shape, and three things break quietly when it does not: the
@@ -304,6 +310,7 @@ repo owns. The other six `youtrack-*` skills are owned here. Only
 | `install.sh` prints `skip: … is not ~/.claude/skills` | The clone is elsewhere (the work Mac's `~/Projects/public/skills`, or an `ai-wt/` worktree), where the committed relative links cannot resolve | Expected — nothing was changed. On the Mac, `~/.claude/skills` is wired by `~/Projects/private/vanco-skills/wire-claude-skills.sh`. Set `VANCO_ROOT` only for a deliberate local rewrite |
 | `git status` shows the `vanco-skills` symlinks modified after a pull | A pre-AI-53 absolute link was rewritten locally, or `VANCO_ROOT` was used | `git checkout -- <link>` to restore the committed relative text, then `bash ~/.claude/skills/install.sh` should report `ok` without changing it |
 | Claude starts a skill on its own, or skill descriptions are back in every session's context | A new skill without the frontmatter flag, or new `gsd-*` skills from a plugin update | `bash ~/.claude/skills/sync-skill-overrides.sh`, and add `disable-model-invocation: true` to any skill this repo owns |
+| `--check` lists a skill Kevin made model-invocable as `missing override` | It is not in this host's `~/.claude/model-invocable-skills` | Add its name to that file. Never run the sync first: it would add the override and disable the skill |
 | `/<skill-name>` is not recognized | The skill was set to `off` rather than `user-invocable-only`, or the session predates the change | Check `jq .skillOverrides ~/.claude/settings.json`; restart the session |
 
 ---

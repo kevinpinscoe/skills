@@ -85,7 +85,9 @@ disable-model-invocation: true
 Claude Code loads the skill's description into every session's context. Leave it out only when
 Kevin explicitly asks for a skill Claude may start on its own. Skills this repo does not own
 (`gsd-*`, the `vanco-skills` symlinks) are covered per host by `sync-skill-overrides.sh`; see
-`~/ai/directives/when-creating-a-new-skill.md`.
+`~/ai/directives/when-creating-a-new-skill.md`. One of those that Kevin has made model-invocable
+goes in the host's untracked `~/.claude/model-invocable-skills` allowlist, never in this public
+repo (AI-108).
 
 `name:` must exactly match the skill's directory name. `category:` is the old category as a
 lowercase, hyphenated slug (e.g. `docker`, `raspberry-pi-5`) — it is what `skills-tui` actually
