@@ -14,4 +14,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YOUTRACK_TOKEN="$(sed -n 's/^header = "Authorization: Bearer \(.*\)"$/\1/p' "$YOUTRACK_CURL_CONFIG")"
 export YOUTRACK_TOKEN
 
+# Apple's python3 on macOS, never another from PATH and with no fallback: other Python binaries in a
+# long-running terminal session can be refused the LAN (Errno 65). Every other host keeps PATH's.
+if [ "$(uname -s)" = Darwin ]; then
+  exec /usr/bin/python3 "$SCRIPT_DIR/create_alert_ticket.py" "$@"
+fi
 exec python3 "$SCRIPT_DIR/create_alert_ticket.py" "$@"
