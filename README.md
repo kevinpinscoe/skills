@@ -180,6 +180,9 @@ prefix back out of the name would be ambiguous).
 │   └── scripts/              # yt_backlog.py, yt-backlog (parzival wrapper), tests
 ├── youtrack-read-updates-from-tasks-and-generate-stand-up/    # symlink → vanco-skills
 ├── youtrack-reconcile/                                 # symlink → vanco-skills
+├── youtrack-report-a-fldw-dns-issue-and-investigate/
+│   ├── SKILL.md
+│   └── run.sh
 ├── youtrack-report-a-fldw-swap-issue-and-investigate/
 │   ├── SKILL.md
 │   └── run.sh
