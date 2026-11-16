@@ -159,12 +159,12 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
 5a. **Link any newly created first-level MOC into `home.md` (required whenever a first-level MOC is created).** A first-level MOC must always appear in the vault's home page so it is reachable from the main navigation. If — and only if — Step 5 created a **new** first-level MOC, open `~/KnowledgeVault/PKM/home.md` and:
 
-    - Find the `## Main Indexes` section.
+    - Find the `## Maps of Content` section.
     - Append a new list item in the same format as the existing entries: `- [[<l1_slug>|<l1_title>]]`.
     - Do **not** add a duplicate if a line already links `<l1_slug>`.
     - Update `home.md`'s `updated:` frontmatter field to today's date (Step 9).
 
-    If Step 5 selected an **existing** first-level MOC, do not modify `home.md` — but if you notice the selected first-level MOC is missing from `## Main Indexes`, add it the same way (every first-level MOC belongs in the home index). Include `home.md` in the Step 13 commit whenever it changed.
+    If Step 5 selected an **existing** first-level MOC, do not modify `home.md` — but if you notice the selected first-level MOC is missing from `## Maps of Content`, add it the same way (every first-level MOC belongs in the home index). Include `home.md` in the Step 13 commit whenever it changed.
 
 6. **Prompt about a second-level MOC.** Ask:
 
@@ -307,7 +307,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - Classification applied: `deepest_cls` — `deepest_lbl`
     - Images downloaded (filenames) and any images skipped (with the reason)
     - Any MOC levels created during the walk (which skill, which slug)
-    - Whether `home.md`'s `## Main Indexes` was updated (and the line added), if a first-level MOC was created
+    - Whether `home.md`'s `## Maps of Content` was updated (and the line added), if a first-level MOC was created
     - Commit hash pushed
 
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PKM-notec`.
@@ -320,7 +320,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 - Filename follows `<lcc_prefix>-<note_slug>.md` (lowercase, no dots in prefix, hyphens throughout)
 - Any successfully downloaded images live in `attachments/` and are embedded in the note body
 - The note was **not** written to the PCM vault
-- Whenever a new first-level MOC was created, `home.md`'s `## Main Indexes` section links it (`[[<l1_slug>|<l1_title>]]`); when only existing MOCs were used, `home.md` is updated only if the selected first-level MOC was missing from the index
+- Whenever a new first-level MOC was created, `home.md`'s `## Maps of Content` section links it (`[[<l1_slug>|<l1_title>]]`); when only existing MOCs were used, `home.md` is updated only if the selected first-level MOC was missing from the index
 - KnowledgeVault commit pushed
 
 ## Notes
