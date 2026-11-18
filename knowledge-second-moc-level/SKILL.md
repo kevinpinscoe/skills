@@ -213,7 +213,9 @@ interactive prompts in the numbered Instructions:
 - **Slug** — lowercase-hyphenate `MOC_NAME` per Step 5.
 - **LCC classification (Step 6)** — search for a deeper class, then **auto-select the best
   match without asking**, reusing the parent's classification if none clearly fits. Do not
-  block on ambiguity.
+  block on ambiguity. Apply the verification rule in Step 6 to any code the local outline does
+  not list. If that code cannot be confirmed, use the most specific confirmed class or the
+  parent's class, and state this in the final report.
 - **Execute Steps 7–13 exactly as written** — create both vault files, update the parent
   MOC in both vaults, commit and push. Do **not** modify `home.md`.
 - **Step 11 (the PCM MOC map rebuild) is not skipped — it is auto-accepted.** Do not ask
@@ -290,6 +292,8 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    - T: TA (Engineering), TC (Hydraulic), TD (Environmental/Sanitary), TE (Highway), TF (Railroad), TG (Bridge), TH (Building), TJ (Mechanical/Machinery), TK (Electrical/Electronics), TL (Motor Vehicles/Aviation), TN (Mining), TP (Chemical tech), TR (Photography), TS (Manufactures), TT (Handicrafts/Arts and crafts), TX (Home economics)
    - H: HA (Statistics), HB (Economic theory), HC (Economic history), HD (Industries/Labor), HE (Transportation), HF (Commerce), HG (Finance), HJ (Public finance), HM (Sociology), HN (Social history), HQ (Family/Sexuality), HV (Social pathology/Criminology), HX (Socialism)
    - B: BC (Logic), BD (Speculative philosophy), BF (Psychology), BJ (Ethics), BL (Religion), BP (Islam), BQ (Buddhism), BR (Christianity), BS (Bible), BT (Doctrinal theology), BX (Christian denominations)
+
+   **Verify any code the local outline does not list.** The outline stops at broad ranges. Before proposing or assigning a more specific code, check it against the full Library of Congress schedule. If the schedule is not available, use the call numbers on matching records in the LC Catalog (https://catalog.loc.gov/). Never assign such a code from memory. Tell the human which source confirmed it. If it cannot be confirmed, say so and offer only confirmed classes.
 
    Call out ambiguities explicitly before confirming. Example: "lawn tools" could be TJ (Mechanical machinery) or SB (Plant culture) or TT (Handicrafts). Ask: "Which classification best matches your intent: [list candidates]?" Wait for confirmation.
 
