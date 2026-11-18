@@ -171,7 +171,9 @@ interactive prompts in the numbered Instructions:
 - **Slug** — lowercase-hyphenate `MOC_NAME` per Step 3.
 - **LCC classification (Steps 4–5)** — perform the lookup, then **auto-select the single
   best-matching class without asking.** If genuinely ambiguous, pick the most likely and
-  state the choice in the final report; do not block.
+  state the choice in the final report; do not block. Apply the verification rule in Step 5
+  to any code the local outline does not list. If that code cannot be confirmed, use the most
+  specific confirmed class and state this in the final report.
 - **Execute Steps 6–13 exactly as written** — create both vault files, update both
   `home.md` files, commit and push in both repos.
 - **Step 11 (the PCM MOC map rebuild) is not skipped — it is auto-accepted.** Do not ask
@@ -218,7 +220,9 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    - "Tools" could mean: T (Technology broadly), TJ (Mechanical engineering and machinery), TT (Handicrafts/Arts and crafts — hand tools), or QA76 (Computer software — software tools/utilities)
    - "Radio" could mean: TK (Electrical engineering and electronics) or P (Language and Literature — broadcasting)
    - "Finance" could mean: HG (Finance) or HJ (Public finance)
-   
+
+   **Verify any code the local outline does not list.** The outline stops at broad ranges. Before proposing or assigning a more specific code, check it against the full Library of Congress schedule. If the schedule is not available, use the call numbers on matching records in the LC Catalog (https://catalog.loc.gov/). Never assign such a code from memory. Tell the human which source confirmed it. If it cannot be confirmed, say so and offer only confirmed classes.
+
    Ask: "Which LCC classification best matches your intent? [list candidates with codes and labels]" Wait for confirmation before continuing.
 
 6. **Get today's date** — Run `date +%Y-%m-%d` to get the current date in YYYY-MM-DD format.

@@ -177,7 +177,9 @@ interactive prompts in the numbered Instructions:
 - **Slug** — lowercase-hyphenate `MOC_NAME` per Step 7.
 - **LCC classification (Step 8)** — search for a deeper class, then **auto-select the best
   match without asking**, reusing the parent's classification if none clearly fits. Do not
-  block on ambiguity.
+  block on ambiguity. Apply the verification rule in Step 8 to any code the local outline does
+  not list. If that code cannot be confirmed, use the most specific confirmed class or the
+  parent's class, and state this in the final report.
 - **Execute Steps 9–15 exactly as written** — create both vault files, update the
   second-level parent MOC in both vaults, commit and push. Do **not** modify `home.md`.
 - **Step 13 (the PCM MOC map rebuild) is not skipped — it is auto-accepted.** Do not ask
@@ -291,6 +293,8 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    **If a more specific sub-class exists**: use it.
 
    **If no more specific sub-class fits**: reuse the parent's classification code and label unchanged. Do not force a classification that doesn't fit.
+
+   **Verify any code the local outline does not list.** The outline stops at broad ranges. Before proposing or assigning a more specific code, check it against the full Library of Congress schedule. If the schedule is not available, use the call numbers on matching records in the LC Catalog (https://catalog.loc.gov/). Never assign such a code from memory. Tell the human which source confirmed it. If it cannot be confirmed, say so and offer only confirmed classes.
 
    Call out ambiguities before confirming. Ask: "Which classification best matches your intent: [list candidates]?" Wait for confirmation.
 
