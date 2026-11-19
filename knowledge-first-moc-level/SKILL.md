@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 > Creates a first-level Map of Content (MOC) markdown file in both knowledge vaults, performs an LCC classification lookup, confirms the correct category with the human, and adds a navigation link to each vault's home.md.
 
+## The MOC chooser does not apply here
+
+`km-moc-chooser` picks an existing **parent** MOC. A first-level MOC has no parent, so this
+skill never opens the chooser or its popup. Instead, Step 3 checks the new name against the
+canonical MOC map automatically (`km-moc-dupcheck`). It asks the human something only when a
+possible duplicate turns up.
+
 ## Prerequisites
 
 - `~/Projects/private/knowledge-management-practice` cloned (it provides `moc-op` and the
@@ -176,6 +183,9 @@ interactive prompts in the numbered Instructions:
   - `DISPLAY_TITLE` — the title/link text (Step 2). If absent, title-case `MOC_NAME`.
   - (A first-level MOC has no parent.)
 - **Slug** — lowercase-hyphenate `MOC_NAME` per Step 3.
+- **Duplicate check (Step 3) is never skipped.** If `km-moc-dupcheck` exits `1` or `2`, do
+  not ask and do not create anything. Report its output, and finish with
+  `MOC-FAILED <slug> none`.
 - **LCC classification (Steps 4–5)** — perform the lookup, then **auto-select the single
   best-matching class without asking.** If genuinely ambiguous, pick the most likely and
   state the choice in the final report; do not block. Apply the verification rule in Step 5
@@ -203,6 +213,29 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 2. **Ask for display title and link text** — Ask: "How should the title and link name appear in home.md for each vault? (For example: `[[linux|Linux]]` uses `Linux` as the display text.)" Wait for their answer.
 
 3. **Determine the filename slug** — Convert the subject name to a lowercase, hyphen-separated slug. Example: "Compute Infrastructure" → `compute-infrastructure`. This will be the filename in both vaults: `moc/<slug>.md`.
+
+   Then check the canonical MOC map for duplicates, before anything else:
+
+   ```bash
+   bash ~/Projects/private/knowledge-management-practice/scripts/km-moc-dupcheck.sh --title "<Display Title>" --slug <slug>
+   ```
+
+   It compares the title and the slug with every MOC in the map, at every level, because all
+   MOC files share one `moc/<slug>.md` namespace. It matches exact titles and slugs, and also
+   titles and slugs that differ only in case, accents, punctuation, whitespace, hyphens, or
+   `&` versus `and`. It only reads.
+
+   - **Exit `0`** (`NO-DUPLICATE`): continue to Step 4 at once, without asking anything.
+   - **Exit `1`**: each output line is `MATCH<TAB><kind><TAB><level><TAB><slug><TAB><title>`.
+     Show each match as `<title> (<slug>, level <level>, <kind>)` and ask: "This may duplicate
+     an existing MOC. Do you want to reuse it, or give a different name?"
+     - **Reuse:** create nothing, open no operation, and stop, naming the existing MOC and its
+       file.
+     - **Different name:** return to Step 1 with the new name, and run this check again.
+
+     Never create the MOC while a match stands. Never overwrite an existing MOC.
+   - **Exit `2`**: the check could not run. Report its stderr and stop. A first-level MOC is
+     never created without this check.
 
 4. **Search the LCC catalog** — Read the LCC outline files in `~/KnowledgeVault/PKM/lcc/`. The files are named `lcco-a.md`, `lcco-b.md`, ..., `lcco-z.md` and contain the Library of Congress Classification hierarchy. Search for classes that plausibly match the subject. Common top-level classes:
    - A: General Works
