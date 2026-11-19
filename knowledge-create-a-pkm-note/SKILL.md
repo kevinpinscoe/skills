@@ -13,6 +13,20 @@ disable-model-invocation: true
 
 This skill writes the note to the **KnowledgeVault (PKM) only** (`~/KnowledgeVault/PKM/`). It does **not** write the note to the PCM vault — use `create-a-pcm-note` for that. A note lives in exactly one vault; MOCs may exist in both (they are categories), notes must not.
 
+## Shared MOC hierarchy
+
+The PKM and PCM vaults share **one** MOC hierarchy; the canonical copy is
+`~/Projects/private/knowledge-management-practice/maps/moc-map.md`. The rules are defined in
+`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md` and enforced by `moc-op`; they are not restated here. For this skill that means:
+
+- **The chooser shows the shared hierarchy.** Before it runs, `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check` must report
+  the three maps aligned; if it does not, show its report and stop before choosing a MOC.
+- **A missing MOC is created only through the MOC-level skills**, which run the full
+  procedure and create it in **both** vaults. This skill never creates, renames, re-parents or
+  retires a MOC, and never edits `home.md` or a `## Child MOCs` section.
+- **The note itself goes to one vault only.** Linking it into the target MOC's `## Notes` list
+  is a vault-specific change, not a hierarchy change.
+
 ## How This Skill Chains
 
 This is an **orchestrator**. It reuses the existing knowledge skills rather than duplicating their logic:
@@ -32,6 +46,7 @@ Everything happens in one sequential Claude session. The human is asked before e
 - `~/KnowledgeVault/PKM/` exists with `moc/`, `notes/`, `attachments/`, `lcc/`, and `templates/note-template.md`
 - `~/KnowledgeVault/PKM/moc/` contains at least one first-level MOC (or the human is willing to create one)
 - The MOC-creation skills exist under `~/.claude/skills/knowledge-*/`
+- `~/Projects/private/knowledge-management-practice` cloned (it provides `moc-op`)
 - Python 3 available (`python3`)
 - `curl` available (for best-effort image downloads)
 - Network access if the input is a link
@@ -76,6 +91,16 @@ Example: "How Agentic RAG Works" → `how-agentic-rag-works` → file `qa76-how-
 ## Instructions
 
 Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name PKM-note`. If the command is not on `PATH`, skip this step silently.
+
+0. **Confirm the shared hierarchy** — Run, before anything else:
+
+   ```bash
+   bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check
+   ```
+
+   It is read-only. If it does not end with `MOC-OP-RESULT OK`, show the human its report (it
+   names each MOC that differs and each repository involved) and stop: do not choose a MOC or
+   write a note against a hierarchy that has diverged.
 
 1. **Ask for the source** — Before anything else, ask the human:
 
@@ -153,18 +178,19 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
 5. **Resolve the first-level MOC (required).** Based on the human's choice in Step 3:
    - **Accept the suggestion or pick another number** → record `l1_slug`, `l1_title`, `l1_cls`, `l1_lbl` from the chosen row.
-   - **None fit / create new** → execute the `first-moc-level` skill at `~/.claude/skills/knowledge-first-moc-level/SKILL.md`: read it and follow its Instructions to create the new first-level MOC. When it finishes, use the MOC it created as `l1_*`. **Do not** follow that skill's own "offer to create a second-level MOC / note" tail steps — return here. **Then immediately link the new first-level MOC into `home.md` (see Step 5a).**
+   - **None fit / create new** → execute the `first-moc-level` skill at `~/.claude/skills/knowledge-first-moc-level/SKILL.md`: read it and follow its Instructions to create the new first-level MOC. When it finishes, use the MOC it created as `l1_*`. **Do not** follow that skill's own "offer to create a second-level MOC / note" tail steps — return here. That skill links the new MOC from `home.md` in both vaults (see Step 5a).
 
    Set `deepest_slug = l1_slug`, `deepest_title = l1_title`, `deepest_cls = l1_cls`, `deepest_lbl = l1_lbl`.
 
-5a. **Link any newly created first-level MOC into `home.md` (required whenever a first-level MOC is created).** A first-level MOC must always appear in the vault's home page so it is reachable from the main navigation. If — and only if — Step 5 created a **new** first-level MOC, open `~/KnowledgeVault/PKM/home.md` and:
+   A delegated MOC skill counts as finished only when its `moc-op finish` ended with
+   `MOC-OP-RESULT OK`. If it reports anything else, stop this note flow and report it —
+   never file the note under a MOC that has not landed in both vaults.
 
-    - Find the `## Maps of Content` section.
-    - Append a new list item in the same format as the existing entries: `- [[<l1_slug>|<l1_title>]]`.
-    - Do **not** add a duplicate if a line already links `<l1_slug>`.
-    - Update `home.md`'s `updated:` frontmatter field to today's date (Step 9).
-
-    If Step 5 selected an **existing** first-level MOC, do not modify `home.md` — but if you notice the selected first-level MOC is missing from `## Maps of Content`, add it the same way (every first-level MOC belongs in the home index). Include `home.md` in the Step 13 commit whenever it changed.
+5a. **Check `home.md` (read only).** Every first-level MOC is linked from `home.md`'s
+    `## Maps of Content` in both vaults; `first-moc-level` adds that link in both when it creates
+    one. This skill does not edit `home.md`. If the selected first-level MOC is missing from
+    either vault's `## Maps of Content`, say so in the final report rather than fixing it in
+    one vault.
 
 6. **Prompt about a second-level MOC.** Ask:
 
@@ -291,12 +317,10 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
     ```bash
     git -C ~/KnowledgeVault/PKM add \
-      notes/<filename> moc/<deepest_slug>.md home.md attachments/
+      notes/<filename> moc/<deepest_slug>.md attachments/
     git -C ~/KnowledgeVault/PKM commit -m "note: add <lcc_prefix>-<note_slug>"
     git -C ~/KnowledgeVault/PKM push
     ```
-
-    (Include `home.md` only if it was changed in Step 5a; otherwise drop it from the `add` list.)
 
     Report the commit hash after pushing.
 
@@ -307,7 +331,8 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - Classification applied: `deepest_cls` — `deepest_lbl`
     - Images downloaded (filenames) and any images skipped (with the reason)
     - Any MOC levels created during the walk (which skill, which slug)
-    - Whether `home.md`'s `## Maps of Content` was updated (and the line added), if a first-level MOC was created
+    - Any MOC operation a delegated skill ran: its operation id and `MOC-OP-RESULT`
+    - Whether the first-level MOC is missing from either vault's `home.md` (Step 5a), if so
     - Commit hash pushed
 
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PKM-notec`.
@@ -320,14 +345,16 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 - Filename follows `<lcc_prefix>-<note_slug>.md` (lowercase, no dots in prefix, hyphens throughout)
 - Any successfully downloaded images live in `attachments/` and are embedded in the note body
 - The note was **not** written to the PCM vault
-- Whenever a new first-level MOC was created, `home.md`'s `## Maps of Content` section links it (`[[<l1_slug>|<l1_title>]]`); when only existing MOCs were used, `home.md` is updated only if the selected first-level MOC was missing from the index
+- `moc-op check` reported the three maps aligned before the chooser ran
+- Every MOC created during the walk was created by a MOC-level skill whose operation ended `MOC-OP-RESULT OK`, so it exists in both vaults
+- `home.md` was not modified by this skill
 - KnowledgeVault commit pushed
 
 ## Notes
 
 - **First level is mandatory; second and third are optional.** The human is prompted before each deeper level and may stop at any point — the note targets the deepest MOC actually selected.
 - Image grabbing is **best effort**. Hotlink protection, 403s, paywalls, and timeouts are expected on some sites; skip and report rather than failing the note.
-- This skill writes the **note** to the KnowledgeVault only. The delegated MOC-creation skills (`first-moc-level`, `second-moc-level`, `third-moc-level`) keep their own dual-vault behavior — that is their concern, not this skill's.
+- This skill writes the **note** to the KnowledgeVault only. MOCs are created only by the delegated MOC-level skills (`first-moc-level`, `second-moc-level`, `third-moc-level`), which run the shared procedure in `~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md` and create each MOC in both vaults.
 - When delegating to a MOC-creation skill, **stop before its "offer to create a child MOC / note" tail steps** and return to this skill's flow, so the level walk stays under this orchestrator's control.
 - `created` and `updated` use plain `YYYY-MM-DD` (not the Obsidian `{{date}}` template tokens — those are resolved by Obsidian, not here).
 - Leave `tags: []` blank for the human to fill in later.

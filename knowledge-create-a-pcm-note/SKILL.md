@@ -13,13 +13,28 @@ disable-model-invocation: true
 
 This skill writes the note to **PCM only** (`~/PCM/PCM/`). It does **not** touch the KnowledgeVault (PKM). Its sibling `create-a-pkm-note` is the PKM-only counterpart — a note lives in exactly one vault. MOCs may exist in both vaults (they are categories); notes must not.
 
+## Shared MOC hierarchy
+
+The PKM and PCM vaults share **one** MOC hierarchy; the canonical copy is
+`~/Projects/private/knowledge-management-practice/maps/moc-map.md`. The rules are defined in
+`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md` and enforced by `moc-op`; they are not restated here. For this skill that means:
+
+- **The chooser shows the shared hierarchy.** Before it runs, `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check` must report
+  the three maps aligned; if it does not, show its report and stop before choosing a MOC.
+- **A missing MOC is created only through the MOC-level skills**, which run the full
+  procedure and create it in **both** vaults. This skill never creates, renames, re-parents or
+  retires a MOC, and never edits `home.md` or a `## Child MOCs` section.
+- **The note itself goes to one vault only.** Linking it into the target MOC's `## Notes` list
+  is a vault-specific change, not a hierarchy change.
+
 ## How This Skill Chains
 
-Three Python choosers run sequentially and conditionally — first-level always, second-level only if children exist, third-level only if children of the second-level exist. Each chooser runs inline as a Bash step; Claude captures its output, presents the list, waits for the human to pick a number, then continues. The entire flow happens in one Claude session. The note inherits its LCC classification from the **deepest MOC selected**.
+Three Python choosers run sequentially — first-level always, then second- and third-level when the human wants to go deeper. At each level the human may pick an existing MOC or create a new one, which this skill delegates to the matching MOC-level skill so the MOC is created in both vaults. Each chooser runs inline as a Bash step; Claude captures its output, presents the list, waits for the human to pick a number, then continues. The entire flow happens in one Claude session. The note inherits its LCC classification from the **deepest MOC selected**.
 
 ## Prerequisites
 
-- `~/PCM/PCM/moc/` must contain at least one first-level MOC
+- `~/PCM/PCM/moc/` must contain at least one first-level MOC (or the human is willing to create one)
+- `~/Projects/private/knowledge-management-practice` cloned (it provides `moc-op`), and the MOC-level skills under `~/.claude/skills/knowledge-*/`
 - `~/PCM/PCM/notes/` must exist
 - `~/PCM/PCM/templates/note-template.md` must exist
 - Python 3 available (`python3`)
@@ -79,6 +94,16 @@ shelf marker.
 
 Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name PCM-note`. If the command is not on `PATH`, skip this step silently.
 
+0. **Confirm the shared hierarchy** — Run, before anything else:
+
+   ```bash
+   bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check
+   ```
+
+   It is read-only. If it does not end with `MOC-OP-RESULT OK`, show the human its report (it
+   names each MOC that differs and each repository involved) and stop: do not choose a MOC or
+   write a note against a hierarchy that has diverged.
+
 1. **Run the first-level MOC chooser** — Run immediately, before asking the human anything:
 
    ```python
@@ -114,7 +139,14 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
        print(f"{i}. {title}  [{cls} — {lbl}]  ({slug})")
    ```
 
-   Present the numbered list and ask: "Which first-level MOC does this note belong under? Enter the number." Wait for their answer. Record: `l1_slug`, `l1_title`, `l1_cls`, `l1_lbl`.
+   Present the numbered list and ask: "Which first-level MOC does this note belong under? Enter the number, or **N** to create a new first-level MOC." Wait for their answer.
+   - **A number** → record `l1_slug`, `l1_title`, `l1_cls`, `l1_lbl` from that row.
+   - **N** → execute the `first-moc-level` skill at `~/.claude/skills/knowledge-first-moc-level/SKILL.md`: read it and follow its Instructions to create the MOC in both vaults. Do **not** follow its offer-to-create tail steps; return here and use the MOC it created as `l1_*`.
+
+   A delegated MOC skill counts as finished only when its `moc-op finish` ended with
+   `MOC-OP-RESULT OK`. If it reports anything else, stop this note flow and report it —
+   never file the note under a MOC that has not landed in both vaults.
+
 
    Set `deepest_slug = l1_slug`, `deepest_title = l1_title`, `deepest_cls = l1_cls`, `deepest_lbl = l1_lbl`.
 
@@ -161,13 +193,17 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
            print(f"{i}. {title}  [{cls} — {lbl}]  ({slug})")
    ```
 
-   - If output is `NONE`: no second-level MOCs exist under this parent. Skip to Step 5 (note title).
-   - If a list is printed: present it and ask: "Select a second-level MOC, or press Enter to use **[l1_title]** as the target MOC." If the human selects one, record: `l2_slug`, `l2_title`, `l2_cls`, `l2_lbl` and update `deepest_*` to these values. If they press Enter / skip, keep the first-level values as deepest.
+   Present any list printed (`NONE` means there are no second-level MOCs yet) and ask: "Select a second-level MOC, **N** to create a new one under **[l1_title]**, or press Enter to use **[l1_title]** as the target MOC."
+   - **A number** → record `l2_slug`, `l2_title`, `l2_cls`, `l2_lbl` and update `deepest_*` to these values.
+   - **N** → execute the `second-moc-level` skill at `~/.claude/skills/knowledge-second-moc-level/SKILL.md` with **[l1_title]** as the parent; skip its chooser and its offer-to-create tail steps, and use the MOC it created as `l2_*`. The same `MOC-OP-RESULT OK` rule as Step 1 applies.
+   - **Enter** → keep the first-level values as deepest and skip to Step 4.
 
 3. **Check for third-level MOCs** (only if a second-level MOC was selected) — Run the same script as Step 2, substituting the selected **second-level** slug and title for `parent_slug` / `parent_title`.
 
-   - If output is `NONE`: no third-level MOCs exist. Keep `deepest_*` at the second-level values. Skip to Step 5.
-   - If a list is printed: present it and ask: "Select a third-level MOC, or press Enter to use **[l2_title]** as the target MOC." If the human selects one, record: `l3_slug`, `l3_title`, `l3_cls`, `l3_lbl` and update `deepest_*` to these values.
+   Present any list printed and ask: "Select a third-level MOC, **N** to create a new one under **[l2_title]**, or press Enter to use **[l2_title]** as the target MOC."
+   - **A number** → record `l3_slug`, `l3_title`, `l3_cls`, `l3_lbl` and update `deepest_*` to these values.
+   - **N** → execute the `third-moc-level` skill at `~/.claude/skills/knowledge-third-moc-level/SKILL.md` with **[l2_title]** as the parent; skip its choosers and its offer-to-create tail steps, and use the MOC it created as `l3_*`. The same `MOC-OP-RESULT OK` rule as Step 1 applies.
+   - **Enter** → keep the second-level values as deepest.
 
 4. **Confirm the target MOC** — Tell the human: "The note will be linked to: **[deepest_title]** (classification: `deepest_cls` — deepest_lbl)." Proceed.
 
@@ -241,6 +277,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - Note file created: full path
     - Target MOC updated: full path, with the exact line added
     - Classification applied: `deepest_cls` — `deepest_lbl`
+    - Any MOC created during the walk: which skill, which slug, its operation id and `MOC-OP-RESULT`
     - Commit pushed: hash
 
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PCM-notec`.
@@ -251,7 +288,9 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 - The note was **not** written to the KnowledgeVault (PKM)
 - Target MOC in PCM contains `[[<lcc_prefix>-<title_slug>|<Note Title>]]` in its `## Notes` section
 - Filename follows `<lcc_prefix>-<title_slug>.md` convention (lowercase, no dots in prefix, hyphens throughout)
-- `home.md` was not modified
+- `moc-op check` reported the three maps aligned before the chooser ran
+- Every MOC created during the walk was created by a MOC-level skill whose operation ended `MOC-OP-RESULT OK`, so it exists in both vaults
+- `home.md` was not modified by this skill
 - PCM commit pushed
 
 ## Notes
@@ -261,4 +300,5 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 - `created` and `updated` use plain `YYYY-MM-DD` format (not the `YYYY-MM-DDThh:mm:ss` Obsidian template syntax — that is resolved by Obsidian's template engine, not here)
 - Leave `## Details` and `tags: []` blank for the human to fill in after creation
 - For saving a web article into PCM (with image archival), prefer the ingest pipeline `~/PCM/PCM/scripts/ingest-html-page.sh <url>` over this manual skill
-- Related skills: `create-a-pkm-note` (the PKM-only counterpart), `first-moc-level`, `second-moc-level`, `third-moc-level` (create MOC structure before adding notes)
+- MOCs are created only through `first-moc-level`, `second-moc-level` and `third-moc-level`, never in PCM alone — see `~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md`
+- Related skills: `create-a-pkm-note` (the PKM-only counterpart), `first-moc-level`, `second-moc-level`, `third-moc-level`
