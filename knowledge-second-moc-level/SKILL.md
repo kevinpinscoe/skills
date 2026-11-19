@@ -7,11 +7,11 @@ disable-model-invocation: true
 
 # Create Second-Level MOC
 
-> Runs a Python chooser to select a first-level parent MOC, then asks for a subtopic or focus area within that subject, looks up a deeper LCC classification if one exists, and writes the second-level MOC in both knowledge vaults.
+> Opens a chooser popup (or, as a fallback, a numbered list) to select a first-level parent MOC, then asks for a subtopic or focus area within that subject, looks up a deeper LCC classification if one exists, and writes the second-level MOC in both knowledge vaults.
 
 ## How This Skill Chains
 
-The Python chooser is **Step 1 of this skill** — it runs inline via `python3`, Claude captures its output, presents the numbered list to the human, and the human picks a number. There is no separate launcher. The entire flow — chooser → subtopic question → LCC lookup → file creation — happens in one sequential Claude session. The skill's parameter (the parent MOC) is resolved at runtime through the chooser, not passed in advance.
+The parent is chosen in **Step 1 of this skill**. Claude runs `km-moc-popup`, which opens the keyboard-driven `km-moc-chooser` in a tmux popup over this pane and hands the validated choice straight back: no copying, pasting or number typing. Where no popup is possible, Step 1 falls back to the inline Python numbered list: Claude presents the list and the human picks a number. There is no separate launcher. The entire flow — chooser → subtopic question → LCC lookup → file creation — happens in one sequential Claude session. The skill's parameter (the parent MOC) is resolved at runtime through the chooser, not passed in advance.
 
 ## Prerequisites
 
@@ -20,12 +20,14 @@ The Python chooser is **Step 1 of this skill** — it runs inline via `python3`,
 - Both vaults hold the same MOC hierarchy, with at least one first-level MOC (the Step 7 preflight checks this)
 - Both vaults must have `templates/moc-note-template.md`
 - Python 3 available (`python3`)
+- For the chooser popup (optional; without it Step 1 uses the numbered list): the session
+  runs inside tmux 3.3+, and Fedora's `python3-urwid` is installed
 
 ## Parameters
 
 | Name | Description | Default |
 |------|-------------|---------|
-| `PARENT_MOC` | The first-level MOC this lives under | _(resolved via chooser in Step 1)_ |
+| `PARENT_MOC` | The first-level MOC this lives under | _(resolved in Step 1: chooser popup, or the numbered-list fallback)_ |
 | `SUBTOPIC` | The subdivision or focus area within the parent subject | _(asked after parent is chosen)_ |
 | `DISPLAY_TITLE` | Title as it should appear in parent MOC links | _(asked after subtopic is known)_ |
 | `LCC_CODE` | Classification code — deeper than parent if one exists, otherwise reuse parent's | _(derived via lookup)_ |
@@ -214,7 +216,7 @@ interactive prompts in the numbered Instructions:
   - `MOC_NAME` — the subtopic. Use it as `SUBTOPIC` (Step 3).
   - `DISPLAY_TITLE` — the title/link text (Step 4). If absent, title-case `MOC_NAME`.
   - `PARENT_SLUG` — the **first-level** parent MOC's filename slug.
-- **Skip Step 1 (the parent chooser).** The parent is `PARENT_SLUG`; read its frontmatter
+- **Skip Step 1 (the parent chooser): open neither the popup nor the numbered list.** The parent is `PARENT_SLUG`; read its frontmatter
   per Step 2 (title, classification, classification_label).
 - **Slug** — lowercase-hyphenate `MOC_NAME` per Step 5.
 - **LCC classification (Step 6)** — search for a deeper class, then **auto-select the best
@@ -238,7 +240,31 @@ the numbered Instructions below as usual.
 
 Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name MOC`. If the command is not on `PATH`, skip this step silently.
 
-1. **Run the parent chooser** — Run this Python script immediately, before asking the human anything:
+1. **Choose the parent.** Before asking the human anything, open the chooser popup:
+
+   ```bash
+   bash ~/Projects/private/knowledge-management-practice/scripts/km-moc-popup.sh --depth 1 --title "Parent for the new second-level MOC"
+   ```
+
+   It opens `km-moc-chooser` in a tmux popup over this pane, waits while the human picks, and
+   prints five validated `KEY=VALUE` lines (`LEVEL`, `FIRST_SLUG`, `FIRST_TITLE`, `SECOND_SLUG`,
+   `SECOND_TITLE`). Read them by splitting each line on its **first** `=`. **Never `eval` or
+   `source` the output.** Act on the exit code:
+
+   - **`0`**: the parent is `FIRST_SLUG` (title `FIRST_TITLE`; `LEVEL` is always `1` here). Do not
+     run the numbered list below. Go to Step 2.
+   - **`1`**: the human cancelled. **Stop.** Create nothing, open no operation, and say the
+     run was cancelled.
+   - **`2`**: the popup ran but failed. Its stderr says why: a chooser error, a timeout, or a
+     missing, malformed, stale or invalid result. Give the human that reason in one line, then
+     use the fallback below.
+   - **`3`**: no popup is possible here (not in tmux, no attached client, or tmux older than
+     3.3). Use the fallback below without comment.
+
+   Its checks and exit codes are documented in
+   `~/Projects/private/knowledge-management-practice/scripts/RUNBOOK.md` → Step 6.
+
+   **Fallback: the numbered list.** Run this Python script:
 
    ```python
    import os, re
@@ -276,7 +302,8 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    - `classification` — the parent's LCC code (e.g. `T`)
    - `classification_label` — the parent's LCC label (e.g. "Technology")
 
-   These values are the baseline for the new MOC's classification.
+   These values are the baseline for the new MOC's classification. If the file does not exist,
+   stop: the canonical map and the vault disagree, and the Step 7 preflight would refuse anyway.
 
 3. **Ask for the subtopic** — Ask: "What subtopic, focus area, or subdivision within **[Parent Title]** do you want to map?" Wait for their answer. This becomes the subject of the new second-level MOC.
 
