@@ -20,7 +20,7 @@ a person, an LLM, or a coding agent. The same rules apply to all three.
 
 1. Make a directory at the top level of this repo named `<category>-<verb-noun>`, lowercase and
    hyphenated, for example `prescription-check-for-refills`. Never start the name with `gsd-`;
-   that prefix belongs to the `get-shit-done` plugin and is gitignored.
+   that prefix is still gitignored, left over from the removed `get-shit-done` plugin.
 2. Copy `template.md` to `<directory>/SKILL.md` and fill it in. In the frontmatter, `name:` must
    equal the directory name exactly, `category:` is the lowercase slug the chooser groups by, and
    `disable-model-invocation: true` stays as it is.
@@ -59,9 +59,10 @@ including the one exception.
 
 This repo's working tree lives at **`~/.claude/skills`** — Claude Code's own
 officially-recognized skill path — flat, one level deep: **skill directory** → **`SKILL.md`**,
-paired with a **`run.sh`** that launches it. That same directory also holds ~65 `gsd-*`
-directories installed by the separate `get-shit-done` Claude Code plugin; this repo's
-`.gitignore` excludes `gsd-*` so that third-party content is never vendored or tracked here.
+paired with a **`run.sh`** that launches it. Third-party content installed into that same
+directory belongs in this repo's `.gitignore`. The `gsd-*` pattern there is a leftover guard:
+the `get-shit-done` plugin that installed ~65 `gsd-*` directories was removed on 2026-11-20
+(AI-146) after its upstream repository was archived.
 Every skill directory in this repo carries a `run.sh` — see "Why every skill has a `run.sh`"
 below.
 
@@ -197,14 +198,13 @@ prefix back out of the name would be ambiguous).
 ├── mise.toml          # pins Python for the skill helper scripts
 ├── LICENSE
 ├── ai-wt/             # project worktrees, one per YouTrack issue — gitignored
-├── gsd-*/             # ~65 dirs — third-party, gitignored, not owned by this repo
 └── ...                # this repo's own README.md, RUNBOOK.md, CLAUDE.md, etc.
 ```
 
 The `skills` command reads `~/.claude/skills` by default (overridable via `SKILLS_DIR`), lists
 directories that contain a `run.sh` or a `SKILL.md`, and excludes anything matched by
-`~/.claude/skills/.gitignore` — which is how the `gsd-*` plugin content stays out of the
-chooser without the tool needing to know anything about `get-shit-done` specifically.
+`~/.claude/skills/.gitignore` — which is how third-party content installed there stays out of
+the chooser without the tool needing to know anything about it specifically.
 
 ### Skills synced in from claude.ai
 
@@ -250,19 +250,19 @@ layout (`FSM-3`), which solves the same underlying problem (distinguishing "mine
 ### Why skills outside `synced/` are user-invocable only
 
 Claude Code puts the name and description of every skill it may invoke on its own into the
-model's context at the start of **every** session. With ~40 skills here plus ~65 `gsd-*`
-plugin skills, that costs tokens in every session for skills that are only ever run on purpose,
+model's context at the start of **every** session. With ~40 skills here, that costs tokens in
+every session for skills that are only ever run on purpose,
 by typing `/<skill-name>` or through `skills`/`run.sh`. So none of those are model-invocable
 (AI-52):
 
 - **Skills this repo owns** set `disable-model-invocation: true` in their `SKILL.md`
   frontmatter, and so does `template.md`. That setting is tracked, so it reaches every host
   with `git pull`.
-- **Skills this repo does not own** (`gsd-*`, and the `vanco-skills` symlinks) cannot carry
+- **Skills this repo does not own** (the `vanco-skills` symlinks, and any plugin's skills) cannot carry
   that edit. `sync-skill-overrides.sh` covers them instead: for every skill that does not set
   the flag, it adds a `"<skill>": "user-invocable-only"` entry under `skillOverrides` in the
   host's `~/.claude/settings.json`. That file is per-machine and never reaches git, so the
-  script is **run once on each host** after pulling, and again after a `get-shit-done` update.
+  script is **run once on each host** after pulling, and again after any plugin installs skills.
   See `RUNBOOK.md`.
 - **A skill this repo does not own that Kevin has made model-invocable** is named in the host's
   `~/.claude/model-invocable-skills` allowlist (one name per line, `#` comments). The script

@@ -14,9 +14,9 @@
 **/__pycache__/
 **/ai-wt/
 
-# Third-party content installed into this same directory by the get-shit-done
-# Claude Code plugin, once this repo's working tree is re-homed to
-# ~/.claude/skills (FSM-3). Never vendor or track it here.
+# Third-party content once installed into this same directory by the
+# get-shit-done Claude Code plugin (FSM-3). The plugin was removed on
+# 2026-11-20 (AI-146); the pattern stays as a guard. Never vendor or track it.
 gsd-*
 
 # Claude Code skill-sync state marker (last finished sync pass) - per-machine,
