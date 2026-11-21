@@ -288,14 +288,16 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     ```bash
     m="moc/<deepest_slug>.md"
     if ! git -C "$PCM_VAULT" ls-files --error-unmatch "$m" >/dev/null 2>&1; then echo new
-    elif ! git -C "$PCM_VAULT" diff --quiet -- "$m" || ! git -C "$PCM_VAULT" diff --cached --quiet -- "$m"; then echo pending
+    elif [ -n "$(git -C "$PCM_VAULT" status --porcelain -- moc/ home.md moc-map.md)" ] \
+      || [ -n "$(git -C "$PCM_VAULT" diff --cached --name-only)" ]; then echo pending
     else echo clean; fi
     ```
 
     Run that check **before** editing the MOC in Step 11, and keep the answer.
 
     - **`new`** (the MOC was created locally and is not committed yet) or **`pending`** (the
-      MOC already has edits that are not committed, so staging it would take them along):
+      vault has uncommitted MOC changes — in this MOC, any other MOC (including an
+      unpublished local one), `home.md` or `moc-map.md` — or something is already staged):
       **file locally.** Stage nothing, commit nothing, push nothing. Verify:
 
       ```bash
@@ -307,17 +309,21 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
       Then report exactly: `Note filed locally under <deepest_title>; publication pending.`
       The note and its backlink are published with the MOC, as a separate request (PKM-98).
 
-    - **`clean`** (the MOC is committed and had no pending edits): commit only this note's own
-      paths, so nothing else staged or pending is included, then push:
+    - **`clean`** (the MOC is committed, no MOC change is pending anywhere in the vault, and
+      nothing is staged): stage and commit this note's own paths, then push:
 
       ```bash
       git -C "$PCM_VAULT" add notes/<filename> "$m"
-      git -C "$PCM_VAULT" commit -m "note: add <lcc_prefix>-<title_slug>" -- notes/<filename> "$m"
+      git -C "$PCM_VAULT" commit -m "note: add <lcc_prefix>-<title_slug>"
       git -C "$PCM_VAULT" push
       ```
 
-      `git commit -- <paths>` commits only those paths and leaves anything else that was
-      already staged still staged. Report the commit hash after pushing.
+      `clean` guarantees nothing else is staged and no MOC change is pending, so a plain
+      commit holds only this note's paths, plus whatever the vault's own pre-commit hook
+      regenerates for the note (PKM's hook refreshes `toc.md`, `index.md` and
+      `moc-map.md` from the working tree). That is why any pending MOC change, an
+      unpublished local MOC included, makes the state `pending`: the hook would otherwise
+      publish its map lines ahead of the MOC. Report the commit hash after pushing.
 
 13. **Report completion** — Summarize:
     - Note file created: full path
