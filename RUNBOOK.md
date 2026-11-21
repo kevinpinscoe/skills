@@ -32,9 +32,10 @@ This repo is a collection of AI task automation skills, browsed and run with the
 that carry operational detail worth writing down have their own, listed below. No skill in this
 repo runs on a timer today.
 
-Its working tree is `~/.claude/skills` — Claude Code's own officially-recognized skill path,
-shared with the ~65 `gsd-*` directories installed by the separate `get-shit-done` plugin. This
-repo's `.gitignore` excludes `gsd-*`; see `README.md` → "Structure" for the full model. It also
+Its working tree is `~/.claude/skills` — Claude Code's own officially-recognized skill path.
+The `get-shit-done` plugin's ~65 `gsd-*` directories that used to share it were removed on
+2026-11-20 (AI-146); `.gitignore` still excludes `gsd-*` as a guard. See `README.md` →
+"Structure" for the full model. It also
 holds `synced/`, the claude.ai skills Claude Code syncs in, which is tracked but not maintained
 here.
 
@@ -102,12 +103,12 @@ skill into the current session and does not start a new one.
 
 **Why:** every model-invocable skill's description is loaded into every Claude Code session. This
 repo's own skills opt out in their frontmatter (`disable-model-invocation: true`, tracked). The
-untracked ones (`gsd-*`, `vanco-skills` symlinks) are opted out per host in
+untracked ones (the `vanco-skills` symlinks, and any plugin's skills) are opted out per host in
 `~/.claude/settings.json` → `skillOverrides`, which git never carries. See `README.md`, "Why
 skills outside `synced/` are user-invocable only".
 
-Run after the first clone on a host, after pulling a change that adds a skill, and after a
-`get-shit-done` plugin update:
+Run after the first clone on a host, after pulling a change that adds a skill, and after any
+plugin installs skills into `~/.claude/skills`:
 
 ```bash
 git -C ~/.claude/skills pull --ff-only origin main
@@ -255,14 +256,14 @@ bash ~/.claude/skills/sync-skill-overrides.sh --check
 
 **Expected output:** ends `ok: nothing to add`, exit 0. **Success criteria:** every top-level
 skill directory under `~/.claude/skills` that has a `SKILL.md` on this host is user-invocable
-only: this repo's owned skills through their frontmatter flag, and the `gsd-*` plugin skills and
-the resolving `vanco-skills` links through a `skillOverrides` entry. The check skips a link
+only: this repo's owned skills through their frontmatter flag, and the resolving
+`vanco-skills` links (and any plugin skills) through a `skillOverrides` entry. The check skips a link
 whose target is missing here, and it covers nothing outside `~/.claude/skills`'s top level.
 
 **The `synced/` exception still holds.** The claude.ai skills under `synced/` are deliberately
 model-invocable, and neither this check nor the validator looks inside `synced/` (`README.md`,
 "Why skills outside `synced/` are user-invocable only"). In a new Claude Code session, the skill
-list the model is shown contains none of this repo's skills and no `gsd-*` skill, while
+list the model is shown contains none of this repo's skills, while
 `/<skill-name>` still runs each one. The `synced/` skills may still appear in that list.
 
 ---
@@ -309,7 +310,7 @@ repo owns. The other six `youtrack-*` skills are owned here. Only
 | A `vanco-skills` symlink (`jira-*`, some `youtrack-*`) is broken or missing | `vanco-skills` was moved, the link was clobbered, or it is an old absolute link | Run `bash ~/.claude/skills/install.sh`; it recreates the relative link (`../../Projects/private/vanco-skills/skills/<name>`) and reports `ok` for correct ones |
 | `install.sh` prints `skip: … is not ~/.claude/skills` | The clone is elsewhere (the work Mac's `~/Projects/public/skills`, or an `ai-wt/` worktree), where the committed relative links cannot resolve | Expected — nothing was changed. On the Mac, `~/.claude/skills` is wired by `~/Projects/private/vanco-skills/wire-claude-skills.sh`. Set `VANCO_ROOT` only for a deliberate local rewrite |
 | `git status` shows the `vanco-skills` symlinks modified after a pull | A pre-AI-53 absolute link was rewritten locally, or `VANCO_ROOT` was used | `git checkout -- <link>` to restore the committed relative text, then `bash ~/.claude/skills/install.sh` should report `ok` without changing it |
-| Claude starts a skill on its own, or skill descriptions are back in every session's context | A new skill without the frontmatter flag, or new `gsd-*` skills from a plugin update | `bash ~/.claude/skills/sync-skill-overrides.sh`, and add `disable-model-invocation: true` to any skill this repo owns |
+| Claude starts a skill on its own, or skill descriptions are back in every session's context | A new skill without the frontmatter flag, or new skills from a plugin install | `bash ~/.claude/skills/sync-skill-overrides.sh`, and add `disable-model-invocation: true` to any skill this repo owns |
 | `--check` lists a skill Kevin made model-invocable as `missing override` | It is not in this host's `~/.claude/model-invocable-skills` | Add its name to that file. Never run the sync first: it would add the override and disable the skill |
 | `/<skill-name>` is not recognized | The skill was set to `off` rather than `user-invocable-only`, or the session predates the change | Check `jq .skillOverrides ~/.claude/settings.json`; restart the session |
 
@@ -345,8 +346,8 @@ journalctl --user -u <skill-name>.service -n 100
 - **Last game-day test:** 2026-08-21
 - **Next scheduled review:** when a skill gains or loses a timer
 - **Known drift risks:**
-  - `skillOverrides` in `~/.claude/settings.json` is per-host and untracked. A `get-shit-done`
-    update adds `gsd-*` skills that are model-invocable until `sync-skill-overrides.sh` is re-run
+  - `skillOverrides` in `~/.claude/settings.json` is per-host and untracked. A plugin that
+    installs skills here leaves them model-invocable until `sync-skill-overrides.sh` is re-run
     on that host (AI-52).
   - The `## Structure` tree in `README.md` and the runbook list above are both maintained by hand
     and drift as skills are added. `CLAUDE.md` requires the README tree to be updated whenever a

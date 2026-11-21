@@ -6,13 +6,13 @@
 # into every session, which costs tokens for skills Kevin only ever runs by
 # typing /name. Skills tracked in this repo opt out in their own frontmatter
 # (`disable-model-invocation: true`), which reaches every host via git. Skills
-# this repo does not own - the gitignored gsd-* plugin content and the
-# vanco-skills symlinks - cannot carry that edit, so this script covers them
+# this repo does not own - the vanco-skills symlinks, and any skills a plugin
+# installs here - cannot carry that edit, so this script covers them
 # instead: it adds `"<skill>": "user-invocable-only"` under `skillOverrides`
 # in the host's ~/.claude/settings.json, a per-machine file git never sees.
 #
-# Run it on every host after `git pull`, and again after a get-shit-done
-# plugin update (new gsd-* skills).
+# Run it on every host after `git pull`, and again after any plugin installs
+# skills into ~/.claude/skills.
 #
 # Usage:
 #   bash sync-skill-overrides.sh           # add missing overrides
