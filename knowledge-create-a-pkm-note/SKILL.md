@@ -15,14 +15,17 @@ This skill writes the note to the **KnowledgeVault (PKM) only** (`~/KnowledgeVau
 
 ## Shared MOC hierarchy
 
-The PKM and PCM vaults share **one** MOC hierarchy; the canonical copy is
-`~/Projects/private/knowledge-management-practice/maps/moc-map.md`. The rules are defined in
-`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md` and enforced by `moc-op`; they are not restated here. For this skill that means:
+The PKM and PCM vaults share **one** MOC hierarchy. Each vault's `moc-map.md` is its local
+copy, and the two must be identical. The shared reference map
+(`~/Projects/private/knowledge-management-practice/maps/moc-map.md`) is the published copy and
+may lag behind them until locally created MOCs are published. The rules are defined in
+`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md`; they are not restated here. For this skill that means:
 
-- **The chooser shows the shared hierarchy.** Before it runs, `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check` must report
-  the three maps aligned; if it does not, show its report and stop before choosing a MOC.
-- **A missing MOC is created only through the MOC-level skills**, which run the full
-  procedure and create it in **both** vaults. This skill never creates, renames, re-parents or
+- **The chooser shows the local hierarchy.** Before it runs, Step 0 checks that both vault maps
+  (`moc-map.md`) are current and identical; if they are not, stop before choosing a MOC. MOCs
+  created locally and not yet published are part of that hierarchy and can be chosen.
+- **A missing MOC is created only through the MOC-level skills**, which create it locally in
+  **both** vaults and leave it unstaged and uncommitted (AI-148). This skill never creates, renames, re-parents or
   retires a MOC, and never edits `home.md` or a `## Child MOCs` section.
 - **The note itself goes to one vault only.** Linking it into the target MOC's `## Notes` list
   is a vault-specific change, not a hierarchy change.
@@ -46,7 +49,7 @@ Everything happens in one sequential Claude session. The human is asked before e
 - `~/KnowledgeVault/PKM/` exists with `moc/`, `notes/`, `attachments/`, `lcc/`, and `templates/note-template.md`
 - `~/KnowledgeVault/PKM/moc/` contains at least one first-level MOC (or the human is willing to create one)
 - The MOC-creation skills exist under `~/.claude/skills/knowledge-*/`
-- `~/Projects/private/knowledge-management-practice` cloned (it provides `moc-op`)
+- `~/Projects/private/knowledge-management-practice` cloned (the MOC-level skills use its `km-moc-*` tools)
 - Python 3 available (`python3`)
 - `curl` available (for best-effort image downloads)
 - Network access if the input is a link
@@ -88,6 +91,13 @@ Example: "How Agentic RAG Works" → `how-agentic-rag-works` → file `qa76-how-
 - **Second-level MOC**: `primary_moc:` matches a first-level MOC slug or title
 - **Third-level MOC**: `primary_moc:` matches a second-level MOC slug or title
 
+### Vault locations
+
+`PKM_VAULT` defaults to `~/KnowledgeVault/PKM` and `PCM_VAULT` to `~/PCM/PCM`. Each vault's
+repository root is its parent directory. The Instructions use these variables; a caller or a
+test may supply other paths (such as disposable copies), and then they are exported and used
+everywhere, never falling back to the live vaults.
+
 ## Instructions
 
 Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name PKM-note`. If the command is not on `PATH`, skip this step silently.
@@ -95,12 +105,18 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 0. **Confirm the shared hierarchy** — Run, before anything else:
 
    ```bash
-   bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check
+   bash "$PKM_VAULT/scripts/create-moc-map.sh" --check --strict
+   bash "$PCM_VAULT/scripts/create-moc-map.sh" --check --strict
+   cmp "$PKM_VAULT/moc-map.md" "$PCM_VAULT/moc-map.md"
+   git -C "$(dirname "$PKM_VAULT")" diff --cached --name-only
    ```
 
-   It is read-only. If it does not end with `MOC-OP-RESULT OK`, show the human its report (it
-   names each MOC that differs and each repository involved) and stop: do not choose a MOC or
-   write a note against a hierarchy that has diverged.
+   It is read-only. Both vault maps must be current and identical. That is the local MOC
+   hierarchy, including MOCs created locally and not yet published (AI-148). The shared
+   reference map may lag behind them, which is expected. If a check fails, show the human which
+   one and stop: do not choose a MOC or write a note against a hierarchy that has diverged.
+   Record the staged list printed by the last command (normally empty). Step 13 must leave it
+   exactly as it is.
 
 1. **Ask for the source** — Before anything else, ask the human:
 
@@ -118,9 +134,9 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    - **Grab images (best effort):** identify image URLs referenced in the article body. For each, download it with `curl` into the attachments folder. Use a stable, slug-based filename. Run for each image (substitute values):
 
      ```bash
-     mkdir -p ~/KnowledgeVault/PKM/attachments
+     mkdir -p $PKM_VAULT/attachments
      curl -fsSL --max-time 30 -o \
-       ~/KnowledgeVault/PKM/attachments/<note-slug>-01.<ext> \
+       $PKM_VAULT/attachments/<note-slug>-01.<ext> \
        "<image-url>"
      ```
 
@@ -140,7 +156,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
+   moc_dir = os.path.join(os.path.expanduser(os.environ.get("PKM_VAULT", "~/KnowledgeVault/PKM")), "moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -182,9 +198,10 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
    Set `deepest_slug = l1_slug`, `deepest_title = l1_title`, `deepest_cls = l1_cls`, `deepest_lbl = l1_lbl`.
 
-   A delegated MOC skill counts as finished only when its `moc-op finish` ended with
-   `MOC-OP-RESULT OK`. If it reports anything else, stop this note flow and report it —
-   never file the note under a MOC that has not landed in both vaults.
+   A delegated MOC skill counts as finished only when its verification step passed: the MOC
+   exists in both vaults and is reachable from both vault maps. It is local and uncommitted,
+   which is expected (AI-148). If it reports a failed check, stop this note flow and report it.
+   Never file the note under a MOC that is missing from either vault.
 
 5a. **Check `home.md` (read only).** Every first-level MOC is linked from `home.md`'s
     `## Maps of Content` in both vaults; `first-moc-level` adds that link in both when it creates
@@ -202,7 +219,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
      ```python
      import os, re
 
-     moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
+     moc_dir = os.path.join(os.path.expanduser(os.environ.get("PKM_VAULT", "~/KnowledgeVault/PKM")), "moc")
      parent_slug = "<l1_slug>"    # substitute
      parent_title = "<l1_title>"  # substitute
      results = []
@@ -268,7 +285,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 10. **Confirm the plan** — Tell the human, then proceed:
     > "I will create **notes/<filename>**, classified **`deepest_cls` — deepest_lbl**, linked under **[deepest_title]**, with <K> image(s) saved to attachments/."
 
-11. **Write the note (KnowledgeVault only)** — Write `~/KnowledgeVault/PKM/notes/<filename>`.
+11. **Write the note (KnowledgeVault only)** — Write `$PKM_VAULT/notes/<filename>`.
 
     `primary_moc` is the **deepest** MOC (`deepest_slug`); `related_mocs` lists the **broader
     ancestor MOCs above it**, as slugs — never a repeat of `deepest_slug`, and never a display
@@ -308,21 +325,55 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - [[<deepest_slug>|<deepest_title>]]
     ```
 
-12. **Link the note into the deepest MOC** — Open `~/KnowledgeVault/PKM/moc/<deepest_slug>.md`:
+12. **Link the note into the deepest MOC** — Open `$PKM_VAULT/moc/<deepest_slug>.md`:
+    - **First**, run Step 13's state check on this MOC and keep its answer (`new`, `pending` or `clean`).
     - Find the `## Notes` section. If it contains only the `- [[]]` placeholder, replace that line with the new link. Otherwise append a new list item.
     - Link format: `- [[<lcc_prefix>-<note_slug>|<NOTE_TITLE>]]`
     - Update the MOC's `updated:` frontmatter field to today's date.
 
-13. **Commit and push (KnowledgeVault only)** — Stage the new note, the updated MOC, and any new attachments, then commit and push:
+13. **Commit and push, or file locally** — decide by the state of the target MOC **in this
+    vault**, recorded before Step 12 changed it, and never stage anything that is not this
+    note's own:
 
     ```bash
-    git -C ~/KnowledgeVault/PKM add \
-      notes/<filename> moc/<deepest_slug>.md attachments/
-    git -C ~/KnowledgeVault/PKM commit -m "note: add <lcc_prefix>-<note_slug>"
-    git -C ~/KnowledgeVault/PKM push
+    m="moc/<deepest_slug>.md"
+    if ! git -C "$PKM_VAULT" ls-files --error-unmatch "$m" >/dev/null 2>&1; then echo new
+    elif [ -n "$(git -C "$PKM_VAULT" status --porcelain -- moc/ home.md moc-map.md)" ] \
+      || [ -n "$(git -C "$PKM_VAULT" diff --cached --name-only)" ]; then echo pending
+    else echo clean; fi
     ```
 
-    Report the commit hash after pushing.
+    Run that check **before** editing the MOC in Step 12, and keep the answer.
+
+    - **`new`** (the MOC was created locally and is not committed yet) or **`pending`** (the
+      vault has uncommitted MOC changes — in this MOC, any other MOC (including an
+      unpublished local one), `home.md` or `moc-map.md` — or something is already staged):
+      **file locally.** Stage nothing, commit nothing, push nothing. Verify:
+
+      ```bash
+      test -f "$PKM_VAULT/notes/<filename>"
+      grep -F -- "[[<lcc_prefix>-<note_slug>|" "$PKM_VAULT/$m"
+      git -C "$(dirname "$PKM_VAULT")" diff --cached --name-only   # must equal the Step 0 list
+      ```
+
+      Then report exactly: `Note filed locally under <deepest_title>; publication pending.`
+      The note and its backlink are published with the MOC, as a separate request (PKM-98).
+
+    - **`clean`** (the MOC is committed, no MOC change is pending anywhere in the vault, and
+      nothing is staged): stage and commit this note's own paths, then push:
+
+      ```bash
+      git -C "$PKM_VAULT" add notes/<filename> "$m" <each attachments/<note_slug>-NN.<ext> this note downloaded, if any>
+      git -C "$PKM_VAULT" commit -m "note: add <lcc_prefix>-<note_slug>"
+      git -C "$PKM_VAULT" push
+      ```
+
+      `clean` guarantees nothing else is staged and no MOC change is pending, so a plain
+      commit holds only this note's paths, plus whatever the vault's own pre-commit hook
+      regenerates for the note (PKM's hook refreshes `toc.md`, `index.md` and
+      `moc-map.md` from the working tree). That is why any pending MOC change, an
+      unpublished local MOC included, makes the state `pending`: the hook would otherwise
+      publish its map lines ahead of the MOC. Report the commit hash after pushing.
 
 14. **Report completion** — Summarize:
     - Source used (link or pasted text)
@@ -331,9 +382,8 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - Classification applied: `deepest_cls` — `deepest_lbl`
     - Images downloaded (filenames) and any images skipped (with the reason)
     - Any MOC levels created during the walk (which skill, which slug)
-    - Any MOC operation a delegated skill ran: its operation id and `MOC-OP-RESULT`
     - Whether the first-level MOC is missing from either vault's `home.md` (Step 5a), if so
-    - Commit hash pushed
+    - Commit hash pushed, or `Note filed locally under <deepest_title>; publication pending.`
 
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PKM-notec`.
 
@@ -345,10 +395,10 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 - Filename follows `<lcc_prefix>-<note_slug>.md` (lowercase, no dots in prefix, hyphens throughout)
 - Any successfully downloaded images live in `attachments/` and are embedded in the note body
 - The note was **not** written to the PCM vault
-- `moc-op check` reported the three maps aligned before the chooser ran
-- Every MOC created during the walk was created by a MOC-level skill whose operation ended `MOC-OP-RESULT OK`, so it exists in both vaults
+- Step 0 found both vault maps current and identical before the chooser ran
+- Every MOC created during the walk was created locally by a MOC-level skill whose verification passed, so it exists in both vaults
 - `home.md` was not modified by this skill
-- KnowledgeVault commit pushed
+- KnowledgeVault commit pushed — or, when the target MOC was new or already had pending edits, the note was filed locally: nothing staged, committed or pushed, and the staged list is unchanged
 
 ## Notes
 
