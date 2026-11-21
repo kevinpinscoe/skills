@@ -15,14 +15,17 @@ This skill writes the note to **PCM only** (`~/PCM/PCM/`). It does **not** touch
 
 ## Shared MOC hierarchy
 
-The PKM and PCM vaults share **one** MOC hierarchy; the canonical copy is
-`~/Projects/private/knowledge-management-practice/maps/moc-map.md`. The rules are defined in
-`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md` and enforced by `moc-op`; they are not restated here. For this skill that means:
+The PKM and PCM vaults share **one** MOC hierarchy. Each vault's `moc-map.md` is its local
+copy, and the two must be identical. The shared reference map
+(`~/Projects/private/knowledge-management-practice/maps/moc-map.md`) is the published copy and
+may lag behind them until locally created MOCs are published. The rules are defined in
+`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md`; they are not restated here. For this skill that means:
 
-- **The chooser shows the shared hierarchy.** Before it runs, `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check` must report
-  the three maps aligned; if it does not, show its report and stop before choosing a MOC.
-- **A missing MOC is created only through the MOC-level skills**, which run the full
-  procedure and create it in **both** vaults. This skill never creates, renames, re-parents or
+- **The chooser shows the local hierarchy.** Before it runs, Step 0 checks that both vault maps
+  (`moc-map.md`) are current and identical; if they are not, stop before choosing a MOC. MOCs
+  created locally and not yet published are part of that hierarchy and can be chosen.
+- **A missing MOC is created only through the MOC-level skills**, which create it locally in
+  **both** vaults and leave it unstaged and uncommitted (AI-148). This skill never creates, renames, re-parents or
   retires a MOC, and never edits `home.md` or a `## Child MOCs` section.
 - **The note itself goes to one vault only.** Linking it into the target MOC's `## Notes` list
   is a vault-specific change, not a hierarchy change.
@@ -34,7 +37,7 @@ Three Python choosers run sequentially — first-level always, then second- and 
 ## Prerequisites
 
 - `~/PCM/PCM/moc/` must contain at least one first-level MOC (or the human is willing to create one)
-- `~/Projects/private/knowledge-management-practice` cloned (it provides `moc-op`), and the MOC-level skills under `~/.claude/skills/knowledge-*/`
+- `~/Projects/private/knowledge-management-practice` cloned (the MOC-level skills use its `km-moc-*` tools), and the MOC-level skills under `~/.claude/skills/knowledge-*/`
 - `~/PCM/PCM/notes/` must exist
 - `~/PCM/PCM/templates/note-template.md` must exist
 - Python 3 available (`python3`)
@@ -90,6 +93,13 @@ shelf marker.
 - **Second-level MOC**: `primary_moc:` is set; its value matches a first-level MOC slug or title
 - **Third-level MOC**: `primary_moc:` is set; its value matches a second-level MOC slug or title
 
+### Vault locations
+
+`PKM_VAULT` defaults to `~/KnowledgeVault/PKM` and `PCM_VAULT` to `~/PCM/PCM`. Each vault's
+repository root is its parent directory. The Instructions use these variables; a caller or a
+test may supply other paths (such as disposable copies), and then they are exported and used
+everywhere, never falling back to the live vaults.
+
 ## Instructions
 
 Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name` is on `PATH`, run `set-ghostty-tab-name PCM-note`. If the command is not on `PATH`, skip this step silently.
@@ -97,19 +107,25 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 0. **Confirm the shared hierarchy** — Run, before anything else:
 
    ```bash
-   bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh check
+   bash "$PKM_VAULT/scripts/create-moc-map.sh" --check --strict
+   bash "$PCM_VAULT/scripts/create-moc-map.sh" --check --strict
+   cmp "$PKM_VAULT/moc-map.md" "$PCM_VAULT/moc-map.md"
+   git -C "$(dirname "$PCM_VAULT")" diff --cached --name-only
    ```
 
-   It is read-only. If it does not end with `MOC-OP-RESULT OK`, show the human its report (it
-   names each MOC that differs and each repository involved) and stop: do not choose a MOC or
-   write a note against a hierarchy that has diverged.
+   It is read-only. Both vault maps must be current and identical. That is the local MOC
+   hierarchy, including MOCs created locally and not yet published (AI-148). The shared
+   reference map may lag behind them, which is expected. If a check fails, show the human which
+   one and stop: do not choose a MOC or write a note against a hierarchy that has diverged.
+   Record the staged list printed by the last command (normally empty). Step 12 must leave it
+   exactly as it is.
 
 1. **Run the first-level MOC chooser** — Run immediately, before asking the human anything:
 
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/PCM/PCM/moc")
+   moc_dir = os.path.join(os.path.expanduser(os.environ.get("PCM_VAULT", "~/PCM/PCM")), "moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -143,9 +159,10 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    - **A number** → record `l1_slug`, `l1_title`, `l1_cls`, `l1_lbl` from that row.
    - **N** → execute the `first-moc-level` skill at `~/.claude/skills/knowledge-first-moc-level/SKILL.md`: read it and follow its Instructions to create the MOC in both vaults. Do **not** follow its offer-to-create tail steps; return here and use the MOC it created as `l1_*`.
 
-   A delegated MOC skill counts as finished only when its `moc-op finish` ended with
-   `MOC-OP-RESULT OK`. If it reports anything else, stop this note flow and report it —
-   never file the note under a MOC that has not landed in both vaults.
+   A delegated MOC skill counts as finished only when its verification step passed: the MOC
+   exists in both vaults and is reachable from both vault maps. It is local and uncommitted,
+   which is expected (AI-148). If it reports a failed check, stop this note flow and report it.
+   Never file the note under a MOC that is missing from either vault.
 
 
    Set `deepest_slug = l1_slug`, `deepest_title = l1_title`, `deepest_cls = l1_cls`, `deepest_lbl = l1_lbl`.
@@ -155,7 +172,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/PCM/PCM/moc")
+   moc_dir = os.path.join(os.path.expanduser(os.environ.get("PCM_VAULT", "~/PCM/PCM")), "moc")
    parent_slug = "<l1_slug>"    # substitute
    parent_title = "<l1_title>"  # substitute
    results = []
@@ -195,14 +212,14 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
    Present any list printed (`NONE` means there are no second-level MOCs yet) and ask: "Select a second-level MOC, **N** to create a new one under **[l1_title]**, or press Enter to use **[l1_title]** as the target MOC."
    - **A number** → record `l2_slug`, `l2_title`, `l2_cls`, `l2_lbl` and update `deepest_*` to these values.
-   - **N** → execute the `second-moc-level` skill at `~/.claude/skills/knowledge-second-moc-level/SKILL.md` with **[l1_title]** as the parent; skip its chooser and its offer-to-create tail steps, and use the MOC it created as `l2_*`. The same `MOC-OP-RESULT OK` rule as Step 1 applies.
+   - **N** → execute the `second-moc-level` skill at `~/.claude/skills/knowledge-second-moc-level/SKILL.md` with **[l1_title]** as the parent; skip its chooser and its offer-to-create tail steps, and use the MOC it created as `l2_*`. The same verification rule as Step 1 applies.
    - **Enter** → keep the first-level values as deepest and skip to Step 4.
 
 3. **Check for third-level MOCs** (only if a second-level MOC was selected) — Run the same script as Step 2, substituting the selected **second-level** slug and title for `parent_slug` / `parent_title`.
 
    Present any list printed and ask: "Select a third-level MOC, **N** to create a new one under **[l2_title]**, or press Enter to use **[l2_title]** as the target MOC."
    - **A number** → record `l3_slug`, `l3_title`, `l3_cls`, `l3_lbl` and update `deepest_*` to these values.
-   - **N** → execute the `third-moc-level` skill at `~/.claude/skills/knowledge-third-moc-level/SKILL.md` with **[l2_title]** as the parent; skip its choosers and its offer-to-create tail steps, and use the MOC it created as `l3_*`. The same `MOC-OP-RESULT OK` rule as Step 1 applies.
+   - **N** → execute the `third-moc-level` skill at `~/.claude/skills/knowledge-third-moc-level/SKILL.md` with **[l2_title]** as the parent; skip its choosers and its offer-to-create tail steps, and use the MOC it created as `l3_*`. The same verification rule as Step 1 applies.
    - **Enter** → keep the second-level values as deepest.
 
 4. **Confirm the target MOC** — Tell the human: "The note will be linked to: **[deepest_title]** (classification: `deepest_cls` — deepest_lbl)." Proceed.
@@ -220,7 +237,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
 9. **Get today's date** — Run `date +%Y-%m-%d` for the `created`/`updated` fields.
 
-10. **Create the PCM note** — Write `~/PCM/PCM/notes/<filename>`.
+10. **Create the PCM note** — Write `$PCM_VAULT/notes/<filename>`.
 
     `primary_moc` is the **deepest** MOC (`deepest_slug`); `related_mocs` lists the **broader
     ancestor MOCs above it**, as slugs — never a repeat of `deepest_slug`, and never a display
@@ -258,40 +275,69 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - [[<deepest_slug>|<deepest_title>]]
     ```
 
-11. **Update the target MOC in PCM** — Open `~/PCM/PCM/moc/<deepest_slug>.md`:
+11. **Update the target MOC in PCM** — Open `$PCM_VAULT/moc/<deepest_slug>.md`:
+    - **First**, run Step 12's state check on this MOC and keep its answer (`new`, `pending` or `clean`).
     - Find the `## Notes` section. If it contains only `- [[]]`, replace that placeholder line with the new link. Otherwise append the link as a new list item.
     - Link format: `- [[<lcc_prefix>-<title_slug>|<Note Title>]]`
     - Update the `updated:` frontmatter field to today's date.
 
-12. **Commit and push in PCM** — Stage the new note and updated MOC, then commit and push:
+12. **Commit and push, or file locally** — decide by the state of the target MOC **in this
+    vault**, recorded before Step 11 changed it, and never stage anything that is not this
+    note's own:
 
     ```bash
-    git -C ~/PCM add PCM/notes/<filename> PCM/moc/<deepest_slug>.md
-    git -C ~/PCM commit -m "note: add <lcc_prefix>-<title_slug>"
-    git -C ~/PCM push
+    m="moc/<deepest_slug>.md"
+    if ! git -C "$PCM_VAULT" ls-files --error-unmatch "$m" >/dev/null 2>&1; then echo new
+    elif ! git -C "$PCM_VAULT" diff --quiet -- "$m" || ! git -C "$PCM_VAULT" diff --cached --quiet -- "$m"; then echo pending
+    else echo clean; fi
     ```
 
-    Report the commit hash after pushing.
+    Run that check **before** editing the MOC in Step 11, and keep the answer.
+
+    - **`new`** (the MOC was created locally and is not committed yet) or **`pending`** (the
+      MOC already has edits that are not committed, so staging it would take them along):
+      **file locally.** Stage nothing, commit nothing, push nothing. Verify:
+
+      ```bash
+      test -f "$PCM_VAULT/notes/<filename>"
+      grep -F -- "[[<lcc_prefix>-<title_slug>|" "$PCM_VAULT/$m"
+      git -C "$(dirname "$PCM_VAULT")" diff --cached --name-only   # must equal the Step 0 list
+      ```
+
+      Then report exactly: `Note filed locally under <deepest_title>; publication pending.`
+      The note and its backlink are published with the MOC, as a separate request (PKM-98).
+
+    - **`clean`** (the MOC is committed and had no pending edits): commit only this note's own
+      paths, so nothing else staged or pending is included, then push:
+
+      ```bash
+      git -C "$PCM_VAULT" add notes/<filename> "$m"
+      git -C "$PCM_VAULT" commit -m "note: add <lcc_prefix>-<title_slug>" -- notes/<filename> "$m"
+      git -C "$PCM_VAULT" push
+      ```
+
+      `git commit -- <paths>` commits only those paths and leaves anything else that was
+      already staged still staged. Report the commit hash after pushing.
 
 13. **Report completion** — Summarize:
     - Note file created: full path
     - Target MOC updated: full path, with the exact line added
     - Classification applied: `deepest_cls` — `deepest_lbl`
-    - Any MOC created during the walk: which skill, which slug, its operation id and `MOC-OP-RESULT`
-    - Commit pushed: hash
+    - Any MOC created during the walk: which skill, which slug, and that it is local and unpublished
+    - Commit pushed: hash, or `Note filed locally under <deepest_title>; publication pending.`
 
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name PCM-notec`.
 
 ## Success Criteria
 
-- `~/PCM/PCM/notes/<filename>` exists with `primary_moc` set to `deepest_slug` and `classification` filled
+- `$PCM_VAULT/notes/<filename>` exists with `primary_moc` set to `deepest_slug` and `classification` filled
 - The note was **not** written to the KnowledgeVault (PKM)
 - Target MOC in PCM contains `[[<lcc_prefix>-<title_slug>|<Note Title>]]` in its `## Notes` section
 - Filename follows `<lcc_prefix>-<title_slug>.md` convention (lowercase, no dots in prefix, hyphens throughout)
-- `moc-op check` reported the three maps aligned before the chooser ran
-- Every MOC created during the walk was created by a MOC-level skill whose operation ended `MOC-OP-RESULT OK`, so it exists in both vaults
+- Step 0 found both vault maps current and identical before the chooser ran
+- Every MOC created during the walk was created locally by a MOC-level skill whose verification passed, so it exists in both vaults
 - `home.md` was not modified by this skill
-- PCM commit pushed
+- PCM commit pushed — or, when the target MOC was new or already had pending edits, the note was filed locally: nothing staged, committed or pushed, and the staged list is unchanged
 
 ## Notes
 

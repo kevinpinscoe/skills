@@ -11,12 +11,13 @@ disable-model-invocation: true
 
 ## How This Skill Chains
 
-The parent is chosen in **Step 1**. Claude runs `km-moc-popup --depth 2`, which opens the keyboard-driven `km-moc-chooser` in a tmux popup over this pane. The human picks a first-level MOC and a second-level MOC under it in one pass, and the validated pair comes straight back. Where no popup is possible, the skill falls back to two inline Python numbered lists, in Steps 1 and 3: Claude presents each list and the human picks a number. There is no separate launcher. The entire flow — chooser 1 → chooser 2 → focus area question → LCC lookup → file creation → commit — happens in one sequential Claude session.
+The parent is chosen in **Step 1**. Claude runs `km-moc-popup --depth 2`, which opens the keyboard-driven `km-moc-chooser` in a tmux popup over this pane. The human picks a first-level MOC and a second-level MOC under it in one pass, and the validated pair comes straight back. Where no popup is possible, the skill falls back to two inline Python numbered lists, in Steps 1 and 3: Claude presents each list and the human picks a number. There is no separate launcher. The entire flow — chooser 1 → chooser 2 → focus area question → LCC lookup → file creation → map regeneration and verification — happens in one sequential Claude session.
 
 ## Prerequisites
 
-- `~/Projects/private/knowledge-management-practice` cloned (it provides `moc-op` and the
-  canonical map), and push access to the PKM, PCM and knowledge-management-practice repositories
+- `~/Projects/private/knowledge-management-practice` cloned (it provides `km-moc-popup` and
+  `km-moc-chooser`). No push access is needed: this skill creates the MOC locally and commits nothing
+- Each vault's `scripts/create-moc-map.sh` (it regenerates that vault's `moc-map.md`)
 - Both vaults hold the same MOC hierarchy, with at least one first-level and one second-level MOC (the Step 9 preflight checks the vaults agree)
 - Both vaults must have `templates/moc-note-template.md`
 - Python 3 available (`python3`)
@@ -87,7 +88,7 @@ updated: {{date}}
 ### Vault 2 — Personal Context Management (private)
 Path: `~/PCM/PCM/`
 
-- `moc/` — mirrors the KnowledgeVault; may be empty or partial
+- `moc/` — holds the same MOC hierarchy as the KnowledgeVault
 - `lcc/` — `~/PCM/PCM/lcc/` is a symlink to the canonical `~/KnowledgeVault/PKM/lcc/`; either path works for lookups
 - `home.md` — **do not modify**
 
@@ -135,34 +136,51 @@ None yet.
 - **Frontmatter values** (title, labels, aliases): normal capitalization and spaces are fine
 - **Files must live in** `moc/`
 
-## Hierarchy alignment — one logical operation
+## Local creation — the default
 
-The PKM and PCM vaults share **one** MOC hierarchy, and
-`~/Projects/private/knowledge-management-practice/maps/moc-map.md` is its canonical copy. The
-rules and the procedure are not restated here. They are defined in
-`~/Projects/private/knowledge-management-practice/practices/moc-hierarchy-alignment.md`, and the `moc-op` command enforces them:
+"Create a MOC" means **create it locally** (AI-148). The MOC is written in **both** vaults,
+the parent's `## Child MOCs` is updated in both vaults, each vault's `moc-map.md` is
+regenerated with that vault's own script, and the result is verified as reachable in both
+vaults. Everything is left **unstaged and uncommitted**. Creation is complete at that point.
 
-```bash
-MOC_OP=~/Projects/private/knowledge-management-practice/scripts/moc-op.sh
-```
+Publishing (committing and pushing PKM and PCM, and updating the shared reference map
+`~/Projects/private/knowledge-management-practice/maps/moc-map.md`) is a **separate action Kevin
+requests explicitly**. Publishing MOCs that were created locally is pending work under PKM-98.
+This skill never runs `moc-op begin` or `moc-op finish`, never runs `git add`, `git commit` or
+`git push`, and never touches the shared reference map.
 
-This skill runs that procedure:
+Local creation works when:
 
-- **Preflight** — `bash $MOC_OP begin` runs before any file is written (Step 9). It fetches all
-  three repositories, refuses unsafe local state, and requires the three maps to agree. If it
-  fails, stop: show its report and create nothing.
-- **Apply** — write the MOC in **both** vaults and wire the parent's `## Child MOCs` in both vaults. Never one vault only.
-- **Validate, stage, integrate, verify** — `bash $MOC_OP finish` (Step 13) regenerates both
-  vault maps with `create-moc-map.py --strict`, requires them to be identical, writes the
-  canonical map from them, commits each repository with a shared `MOC-Operation` trailer,
-  pushes PKM → PCM → canonical, and verifies that all three remote maps agree.
-- **Complete** only on `MOC-OP-RESULT OK`. Any other result is reported as it stands, never as
-  success.
+- other edits are pending in either vault, including in `moc/` (for example in
+  `PCM/moc/uncategorized.md`) — they are never staged, reverted or rewritten;
+- earlier MOCs were created locally and are still uncommitted — they are part of the local
+  hierarchy, can be chosen as parents, and the next MOC builds on them;
+- the shared reference map lags behind the vault maps.
 
-Do not edit any `moc-map.md` by hand, do not `git add`/`commit`/`push` the MOC paths yourself,
-and never reconcile a difference by choosing one vault as the authority. The choosers read
-PKM's `moc/`; the preflight guarantees both vaults hold the same hierarchy, so that is the
-shared one. Max depth is three levels.
+The rules that still hold:
+
+- **Both vaults, always.** Never create a MOC in one vault only, and never pick one vault as
+  the authority when they disagree. If their maps differ, stop and report it.
+- **The vault maps are the hierarchy.** The chooser reads `$PKM_VAULT/moc-map.md` (`--map`),
+  not the shared reference map, so a locally created MOC can be chosen as a parent. The
+  preflight (Step 9) proves the two vault maps are identical, so PKM's is the shared one.
+- **Maps are generated, never hand-edited.** Each vault's `moc-map.md` is rewritten only by
+  `<vault>/scripts/create-moc-map.sh --strict`, which always targets its own vault.
+- **Edit only what this MOC needs.** The new `moc/<slug>.md`, one line (and the `updated:`
+  date) in the parent MOC, and the regenerated `moc-map.md` in each vault. Never `home.md`.
+- Max depth is three levels.
+
+### Vault locations
+
+| Variable | Default | Repository root |
+|----------|---------|-----------------|
+| `PKM_VAULT` | `~/KnowledgeVault/PKM` | its parent directory (`~/KnowledgeVault`) |
+| `PCM_VAULT` | `~/PCM/PCM` | its parent directory (`~/PCM`) |
+
+The commands below use these variables. Interactively, use the defaults. A caller (the
+navigator, or a test) may supply other paths, such as disposable copies. When it does, use
+them everywhere — export both before running any command or the fallback chooser — and never
+fall back to the live vaults.
 
 ## Unattended parameterized invocation
 
@@ -178,6 +196,8 @@ interactive prompts in the numbered Instructions:
 - **Parameters** (read from the invoking prompt):
   - `MOC_NAME` — the focus area. Use it as `FOCUS_AREA` (Step 5).
   - `DISPLAY_TITLE` — the title/link text (Step 6). If absent, title-case `MOC_NAME`.
+  - `PKM_VAULT`, `PCM_VAULT` — the vault paths (see *Vault locations*). If absent, use the
+    defaults.
   - `PARENT_SLUG` — the **second-level** parent MOC's filename slug.
 - **Skip Steps 1 and 3 (both choosers): open neither the popup nor the numbered lists.** The second-level parent is `PARENT_SLUG`; read
   its frontmatter per Step 4 (title, classification, classification_label).
@@ -187,14 +207,13 @@ interactive prompts in the numbered Instructions:
   block on ambiguity. Apply the verification rule in Step 8 to any code the local outline does
   not list. If that code cannot be confirmed, use the most specific confirmed class or the
   parent's class, and state this in the final report.
-- **Execute Steps 9–15 exactly as written** — create both vault files, update the second-level parent MOC in both vaults, and finish the operation (Step 13). Do **not** modify `home.md`.
-- **Step 13 (finishing the operation) is never skipped.** If the result is anything other
-  than `MOC-OP-RESULT OK`, do not retry by editing files; stop and report it.
+- **Execute Steps 9–15 exactly as written** — the local preflight, both vault files, the parent MOC in both vaults, the map regeneration and the verification. Do **not** modify `home.md`.
+- **Step 14 (verification) is never skipped.** If any check fails, do not retry by editing
+  other files; stop and report it.
 - **Skip Step 16** (the interactive offer to create a note).
 - **Final line** — after the completion report, print exactly `MOC-CREATED <slug>` on its
-  own line **only** when Step 13 ended with `MOC-OP-RESULT OK`. Otherwise print
-  `MOC-FAILED <slug> <operation-id>` (`none` if no operation was opened). The navigator
-  also confirms the result itself with `moc-op check --expect-slug <slug>`.
+  own line **only** when every Step 14 check passed. Otherwise print `MOC-FAILED <slug>`. The
+  navigator repeats the local reachability check itself before it reports success.
 
 When invoked interactively (no parameters in the prompt), ignore this section and follow
 the numbered Instructions below as usual.
@@ -206,10 +225,11 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 1. **Choose the grandparent and the parent.** Before asking the human anything, open the chooser popup:
 
    ```bash
-   bash ~/Projects/private/knowledge-management-practice/scripts/km-moc-popup.sh --depth 2 --title "Parent for the new third-level MOC"
+   bash ~/Projects/private/knowledge-management-practice/scripts/km-moc-popup.sh --map "$PKM_VAULT/moc-map.md" --depth 2 --title "Parent for the new third-level MOC"
    ```
 
-   It opens `km-moc-chooser` in a tmux popup over this pane, waits while the human picks, and
+   `--map` points it at the vault map, so MOCs created locally and not yet published can be
+   chosen. It opens `km-moc-chooser` in a tmux popup over this pane, waits while the human picks, and
    prints five validated `KEY=VALUE` lines (`LEVEL`, `FIRST_SLUG`, `FIRST_TITLE`, `SECOND_SLUG`,
    `SECOND_TITLE`). Read them by splitting each line on its **first** `=`. **Never `eval` or
    `source` the output.** Act on the exit code:
@@ -218,7 +238,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
      `SECOND_SLUG` (title `SECOND_TITLE`). `LEVEL` is always `2` here, because the command
      rejects anything else. Do not run either numbered list. Do Step 2, skip Step 3, and continue
      at Step 4.
-   - **`1`**: the human cancelled. **Stop.** Create nothing, open no operation, and say the
+   - **`1`**: the human cancelled. **Stop.** Create nothing, and say the
      run was cancelled.
    - **`2`**: the popup ran but failed. Its stderr says why: a chooser error, a timeout, or a
      missing, malformed, stale or invalid result. Give the human that reason in one line, then
@@ -234,7 +254,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
+   moc_dir = os.path.join(os.path.expanduser(os.environ.get("PKM_VAULT", "~/KnowledgeVault/PKM")), "moc")
    results = []
 
    for fname in sorted(os.listdir(moc_dir)):
@@ -262,14 +282,14 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
    Present the numbered list and ask: "Which first-level MOC contains the second-level MOC you want to nest under? Enter the number." Wait for their answer. Record the selected first-level MOC's **slug** and **title**.
 
-2. **Read the first-level MOC's frontmatter** — Open `~/KnowledgeVault/PKM/moc/<grandparent-slug>.md` and extract its `title`.
+2. **Read the first-level MOC's frontmatter** — Open `$PKM_VAULT/moc/<grandparent-slug>.md` and extract its `title`.
 
 3. **Run the second-level MOC chooser.** This is the fallback only: skip this step when the popup chose the parent in Step 1. Run this Python script, substituting the selected grandparent slug and title:
 
    ```python
    import os, re
 
-   moc_dir = os.path.expanduser("~/KnowledgeVault/PKM/moc")
+   moc_dir = os.path.join(os.path.expanduser(os.environ.get("PKM_VAULT", "~/KnowledgeVault/PKM")), "moc")
    grandparent_slug = "<grandparent-slug>"   # substitute from step 1
    grandparent_title = "<Grandparent Title>" # substitute from step 1
    results = []
@@ -309,7 +329,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
    Otherwise, present the numbered list and ask: "Which second-level MOC is the parent for this new third-level MOC? Enter the number." Wait for their answer. Record the selected second-level MOC's **slug**, **title**, **classification code**, and **classification_label**.
 
-4. **Read the second-level MOC's frontmatter** — Open `~/KnowledgeVault/PKM/moc/<parent-slug>.md` and extract:
+4. **Read the second-level MOC's frontmatter** — Open `$PKM_VAULT/moc/<parent-slug>.md` and extract:
    - `title` — the parent's display title
    - `classification` — the parent's LCC code (baseline for this MOC)
    - `classification_label` — the parent's LCC label
@@ -320,7 +340,7 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
 7. **Determine the filename slug** — Convert the focus area to a lowercase, hyphen-separated slug. Example: "Package Managers" → `package-managers`.
 
-8. **Search for a deeper LCC classification** — Read the relevant LCC outline file from `~/KnowledgeVault/PKM/lcc/` starting from the parent's LCC class. Look for a sub-class that more precisely matches the focus area.
+8. **Search for a deeper LCC classification** — Read the relevant LCC outline file from `$PKM_VAULT/lcc/` starting from the parent's LCC class. Look for a sub-class that more precisely matches the focus area.
 
    **If a more specific sub-class exists**: use it.
 
@@ -330,24 +350,41 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
    Call out ambiguities before confirming. Ask: "Which classification best matches your intent: [list candidates]?" Wait for confirmation.
 
-9. **Get today's date and open the MOC operation** — Run `date +%Y-%m-%d`. Then run the
-   preflight, which opens the operation, before writing any file:
+9. **Get today's date and run the local preflight** — Run `date +%Y-%m-%d`. Then, before
+   writing any file:
 
    ```bash
-   bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh begin --slug <slug> --description "third-level MOC <slug>"
+   PKM_REPO=$(dirname "$PKM_VAULT"); PCM_REPO=$(dirname "$PCM_VAULT")
+   test ! -e "$PKM_VAULT/moc/<slug>.md" && test ! -e "$PCM_VAULT/moc/<slug>.md"
+   test -e "$PKM_VAULT/moc/<parent-slug>.md" && test -e "$PCM_VAULT/moc/<parent-slug>.md"
+   bash "$PKM_VAULT/scripts/create-moc-map.sh" --check --strict
+   bash "$PCM_VAULT/scripts/create-moc-map.sh" --check --strict
+   cmp "$PKM_VAULT/moc-map.md" "$PCM_VAULT/moc-map.md"
+   git -C "$PKM_REPO" diff --cached --name-only; git -C "$PCM_REPO" diff --cached --name-only
    ```
 
-   Before running it, confirm `moc/<slug>.md` exists in **neither** vault. If it exists in
-   either, stop: this is not a new MOC (and if it exists in only one, the vaults have
-   diverged, which the preflight will also report).
+   - **The slug exists in either vault:** stop. This is not a new MOC. If it exists in only
+     one vault, the vaults have diverged; report that too.
+   - **The parent is missing from either vault:** stop. The vaults have diverged. Never create
+     a stub in one vault to get past it.
+   - **A map is stale** (`--check` fails): something already pending changed the hierarchy
+     without regenerating the map. Stop and report the vault. Do not regenerate it here,
+     because that would fold an unrelated change into this MOC.
+   - **The two maps differ** (`cmp` fails): the vaults disagree about the hierarchy. Stop and
+     report the difference (`diff` the two maps). Never resolve it by choosing one vault.
+   - **Something is already staged** in either repository: record the list. This skill stages
+     nothing, so the same list must still be staged, and nothing more, at Step 14.
 
-   Record the operation id from its `MOC-OP preparing <id>` line. If the output does not end
-   with `MOC-OP-RESULT OK`, **stop**: show the human its report (it names each MOC that differs
-   and each repository involved), create nothing, and go no further. If this run stops for any
-   other reason after this point and before Step 13, run
-   `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh abandon --op <id>` and tell the human which files were left in place.
+   Pending unstaged edits and a lagging shared reference map are expected. Neither is a reason
+   to stop.
 
-10. **Create the KnowledgeVault MOC file** — Write `~/KnowledgeVault/PKM/moc/<slug>.md`:
+10. **Create the KnowledgeVault MOC file** — Write `$PKM_VAULT/moc/<slug>.md`:
+   Start from the vault's own `templates/moc-note-template.md` (read the file; the copy in the
+   Background above is for orientation and may be out of date). Keep every section and comment
+   line it has, including `## Child MOCs` with `None yet.`, and write lists in block style
+   (`tags:` then `  - moc`), never `["moc"]`.
+
+   Fill in:
     - `title`: the display title
     - `aliases`: `["moc <title lowercase>"]`
     - `type`: `moc`
@@ -356,14 +393,14 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
     - `classification_source`: `lcc`
     - `primary_moc`: the second-level parent's slug
     - `related_mocs`: list with the second-level parent's **slug**, quoted — not its display title
-    - `tags`: `["moc"]`
+    - `tags`: a block list with `moc`
     - `created` / `updated`: today's date
     - Body, in this order (`rules/moc-section-order.md`): `# <title> MOC`, `## Overview` with a
       one-sentence description of what focus area this covers, `## Child MOCs` with `None yet.`
       (this is the deepest level, so it stays empty), `## Notes` with `- [[]]`, then
       `## Related MOCs` linking back to the parent
 
-11. **Create the PCM MOC file** — Write `~/PCM/PCM/moc/<slug>.md` with the same content. The PCM
+11. **Create the PCM MOC file** — Write `$PCM_VAULT/moc/<slug>.md` with the same content. The PCM
     template already carries these fields, so this is the shape to fill in, not fields to add:
     ```yaml
     ---
@@ -389,41 +426,55 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
       section exists, add one immediately **before `## Notes`** — `rules/moc-section-order.md` in
       the PCM vault fixes the order as Overview → Child MOCs → Notes → Related MOCs, and it takes
       precedence over any other placement.
-    - Append: `- [[<slug>|<Display Title>]]`
+    - Add `- [[<slug>|<Display Title>]]`: if the section holds only the `None yet.` placeholder,
+      replace that line with the link; otherwise append the link after the last entry.
     - Update the `updated:` frontmatter field to today's date.
     - If the parent MOC is missing from either vault, stop: the vaults have diverged. Never create a stub in one vault.
 
-13. **Finish the operation** — validate, commit, push in order and verify, in one call:
+13. **Regenerate each vault's map** — with that vault's own script (it defaults to its own vault, so it runs from any directory):
 
     ```bash
-    bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh finish --op <id> \
-      --message "moc: add <slug> third-level MOC under <parent-slug>" --expect-slug <slug>
+    bash "$PKM_VAULT/scripts/create-moc-map.sh" --strict
+    bash "$PCM_VAULT/scripts/create-moc-map.sh" --strict
+    git -C "$PKM_REPO" diff -- "$PKM_VAULT/moc-map.md"; git -C "$PCM_REPO" diff -- "$PCM_VAULT/moc-map.md"
     ```
 
-    It commits only the MOC paths: `moc/`, `home.md` and `moc-map.md` in each vault, and
-    `maps/moc-map.md` in knowledge-management-practice. PKM's pre-commit hook still regenerates
-    and stages `toc.md`, `index.md` and `runbooks/index.md` in the PKM commit; that is expected.
+    Because Step 9 proved both maps were current, the only new lines are this MOC's, plus any
+    earlier local MOCs that are already in the map. Do not edit `moc-map.md` by hand.
 
-14. **Act on the result** — read the final `MOC-OP-RESULT` line:
-    - **`OK`** — the MOC is on `origin/main` in both vaults and the three maps agree. Continue.
-    - **`FAILED` at validation** — the two vault maps differ, or `--strict` failed. Nothing was
-      committed. Show the report, correct the named MOC in the named vault so both match, and
-      run the same `finish` command again.
-    - **`FAILED` or `INTEGRATING` after committing** — some repositories have the operation and
-      some do not. Show the report: it lists the repositories that advanced, those pending, and
-      the cause. Once the cause is fixed, `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh resume --op <id>` continues safely and never
-      duplicates a commit.
-    - **`BLOCKED`** — show the reason and stop.
+14. **Verify** — every check must pass:
 
-    Never report the MOC as created unless the result is `OK`. Never reset, force-push, or
-    edit a map by hand to make the check pass.
+    ```bash
+    for v in "$PKM_VAULT" "$PCM_VAULT"; do
+      grep -F -- "- **3** [[<slug>|<Display Title>]]" "$v/moc-map.md"
+      grep -B10000 -F -- "**3** [[<slug>|" "$v/moc-map.md" | grep -E '^  - \*\*2\*\*' | tail -1 \
+        | grep -F -- "[[<parent-slug>|"   # the nearest level-2 line above it is the parent
+      grep -F -- "[[<slug>|" "$v/moc/<parent-slug>.md"
+      grep -F -- "[[moc-map|" "$v/home.md"
+    done
+    cmp "$PKM_VAULT/moc-map.md" "$PCM_VAULT/moc-map.md"
+    git -C "$PKM_REPO" diff --cached --name-only; git -C "$PCM_REPO" diff --cached --name-only
+    ```
+
+    - The map has the MOC as a level-3 entry directly under its parent (the nearest
+      level-2 line above it is the parent), the parent MOC links it, and `home.md` links the MOC
+      Map (`[[moc-map|…]]`), so the MOC is reachable from each vault's map.
+    - The two maps are identical.
+    - The staged lists equal the ones recorded in Step 9. Normally both are empty.
+    - Every edit that was pending before Step 9 is still there, unchanged.
+      `git -C <repo> status --short` lists the new MOC files and this run's parent-MOC and
+      `moc-map.md` changes alongside them.
+
+    If any check fails, report which one and stop. Do not commit to "fix" it.
 
 15. **Report completion** — Summarize:
     - Files created: both full paths
     - Parent MOC updated: both full paths, with the exact line added
     - LCC classification applied: code + label (note if reused from parent or deeper)
-    - Operation: the id and its final `MOC-OP-RESULT`
-    - Commits: each repository's commit and push state, from `bash ~/Projects/private/knowledge-management-practice/scripts/moc-op.sh status --op <id>`
+    - Map lines added: the new line in each `moc-map.md`
+    - Verification: each Step 14 check and its result
+    - State plainly that everything is unstaged and uncommitted, that the shared reference map
+      was not changed, and that publishing is a separate request (PKM-98)
 
     After reporting, close the tab: if `set-ghostty-tab-name` was run in the step before Step 1, run `set-ghostty-tab-name MOCc`.
 
@@ -443,11 +494,11 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 
 ## Success Criteria
 
-- `~/KnowledgeVault/PKM/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
-- `~/PCM/PCM/moc/<slug>.md` exists with the same frontmatter
+- `$PKM_VAULT/moc/<slug>.md` exists with `primary_moc` set to the second-level parent's slug and `classification` filled
+- `$PCM_VAULT/moc/<slug>.md` exists with the same frontmatter
 - Second-level parent MOC in both vaults contains `[[<slug>|<Display Title>]]` in a child section
-- `moc-op finish` ended with `MOC-OP-RESULT OK`: the MOC is on `origin/main` in PKM, PCM and
-  the canonical map, and the three maps agree line for line
+- Both `moc-map.md` files were regenerated by their own script, list the MOC at level 3 under its parent, and are identical
+- Nothing new is staged or committed in either repository, every edit pending before the run is intact, and the shared reference map is unchanged
 - Neither `home.md` was modified
 - Filename is lowercase, hyphen-separated, no spaces
 
@@ -458,4 +509,5 @@ Before Step 1, name the terminal tab this run is using: if `set-ghostty-tab-name
 - The second-level chooser matches `primary_moc` against both the grandparent slug and title (case-insensitive) to handle the inconsistency in existing files where some use slugs and some use display titles
 - Reusing the parent's classification is correct when no tighter LCC sub-class fits
 - If the chooser in Step 3 returns no results, stop and direct the human to the `second-moc-level` skill
+- Publishing a locally created MOC is a separate request; the workflow for it is PKM-98. Until it is published, `moc-op begin` refuses to start, because the vault maps are ahead of the shared reference map. That is expected, and it does not affect local creation
 - Related skills: `first-moc-level` (top-level creation), `second-moc-level` (create the parent first)
